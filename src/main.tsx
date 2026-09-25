@@ -46,7 +46,12 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   })
 }
 
-// 部署新版本后，旧标签页请求已不存在的懒加载 chunk 会失败——自动刷新恢复
+// 部署新版本后，旧标签页请求已不存在的懒加载 chunk 会失败——自动刷新恢复。
+// 10 秒内只自动刷新一次，防止弱网/代理下 preload 持续失败形成刷新循环。
 window.addEventListener('vite:preloadError', () => {
+  const key = 'interview-preload-reload-at'
+  const last = Number(sessionStorage.getItem(key) || 0)
+  if (Date.now() - last < 10_000) return
+  sessionStorage.setItem(key, String(Date.now()))
   window.location.reload()
 })
