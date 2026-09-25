@@ -26,7 +26,7 @@ function Highlight({ text, kw }: { text: string; kw: string }) {
     while (hit !== -1) {
       if (hit > from) parts.push(text.slice(from, hit))
       parts.push(
-        <mark key={key++} className="rounded-sm bg-amber-200 px-0.5 text-inherit dark:bg-amber-500/40">
+        <mark key={key++} className="rounded-sm bg-amber-200 px-0.5 text-slate-900 dark:bg-amber-500/40 dark:text-amber-100">
           {text.slice(hit, hit + needle.length)}
         </mark>,
       )

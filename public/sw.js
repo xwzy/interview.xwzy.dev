@@ -4,6 +4,17 @@ const CACHE = 'interview-cache-v1'
 /** 应用根目录（从 SW scope 派生，兼容根路径与子路径部署） */
 const APP_ROOT = self.registration.scope
 
+/** 缓存条目上限：防止跨版本部署后旧 hash 资源无限累积撑大存储 */
+const MAX_ENTRIES = 150
+
+async function pruneCache() {
+  const cache = await caches.open(CACHE)
+  const keys = await cache.keys()
+  if (keys.length <= MAX_ENTRIES) return
+  // keys 按插入顺序，淘汰最早的超出部分
+  await Promise.all(keys.slice(0, keys.length - MAX_ENTRIES).map((k) => cache.delete(k)))
+}
+
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches
@@ -18,6 +29,7 @@ self.addEventListener('activate', (event) => {
     caches
       .keys()
       .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+      .then(pruneCache)
       .then(() => self.clients.claim()),
   )
 })
@@ -34,7 +46,10 @@ self.addEventListener('fetch', (event) => {
       .then((response) => {
         if (response.ok) {
           const copy = response.clone()
-          caches.open(CACHE).then((cache) => cache.put(request, copy))
+          caches
+            .open(CACHE)
+            .then((cache) => cache.put(request, copy))
+            .then(pruneCache)
         }
         return response
       })

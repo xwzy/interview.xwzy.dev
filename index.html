@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#3b82f6" />
+    <meta name="theme-color" content="#0f172a" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <meta
       name="description"
@@ -19,12 +19,14 @@
     <meta name="twitter:card" content="summary" />
     <title>面试宝典 · 互联网技术面试知识库</title>
     <script>
+      // 默认深色；仅当用户显式选择浅色时才用浅色（system 跟随 OS）
       try {
-        var t = localStorage.getItem('interview.theme')
-        if (t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-          document.documentElement.classList.add('dark')
-        }
-      } catch (e) {}
+        var t = localStorage.getItem('interview.theme') || 'dark'
+        var dark = t === 'dark' || (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+        if (dark) document.documentElement.classList.add('dark')
+      } catch (e) {
+        document.documentElement.classList.add('dark')
+      }
     </script>
     <script>
       // GitHub Pages SPA 回退配套：恢复 404.html 转存的真实路由（本地开发无副作用）

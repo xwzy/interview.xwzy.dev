@@ -541,6 +541,15 @@ export default function QuizPage() {
           {revealed ? (
             <div className="mt-5 border-t border-slate-100 pt-4 dark:border-white/5">
               <AnswerBody question={item.question} />
+              <div className="mt-4 text-right">
+                <button
+                  type="button"
+                  onClick={() => setRevealed(false)}
+                  className="text-xs font-medium text-slate-400 transition-colors hover:text-blue-600 dark:text-slate-500 dark:hover:text-blue-400"
+                >
+                  🙈 收起要点
+                </button>
+              </div>
             </div>
           ) : (
             <div className="mt-6 flex flex-col items-start gap-3 border-t border-dashed border-slate-200 pt-5 dark:border-white/10">

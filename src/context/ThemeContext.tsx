@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 
 const STORAGE_KEY = 'interview.theme'
 
-/** 浅色 / 深色 / 跟随系统 */
+/** 浅色 / 深色 / 跟随系统（默认深色） */
 export type ThemeMode = 'light' | 'dark' | 'system'
 
 export const themeModeMeta: Record<ThemeMode, { label: string; icon: string }> = {
@@ -28,9 +28,9 @@ function loadInitialMode(): ThemeMode {
     const stored = localStorage.getItem(STORAGE_KEY)
     if (stored === 'light' || stored === 'dark' || stored === 'system') return stored
   } catch {
-    // 隐私模式下 localStorage 不可用，回退到系统偏好
+    // 隐私模式下 localStorage 不可用，回退默认
   }
-  return 'system'
+  return 'dark'
 }
 
 function systemPrefersDark(): boolean {
@@ -41,6 +41,12 @@ function resolve(mode: ThemeMode): 'light' | 'dark' {
   return mode === 'system' ? (systemPrefersDark() ? 'dark' : 'light') : mode
 }
 
+function applyTheme(r: 'light' | 'dark') {
+  document.documentElement.classList.toggle('dark', r === 'dark')
+  const meta = document.querySelector('meta[name="theme-color"]')
+  if (meta) meta.setAttribute('content', r === 'dark' ? '#0f172a' : '#f8fafc')
+}
+
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [mode, setMode] = useState<ThemeMode>(loadInitialMode)
   const [resolved, setResolved] = useState<'light' | 'dark'>(() => resolve(mode))
@@ -49,9 +55,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const r = resolve(mode)
     setResolved(r)
-    document.documentElement.classList.toggle('dark', r === 'dark')
-    const meta = document.querySelector('meta[name="theme-color"]')
-    if (meta) meta.setAttribute('content', r === 'dark' ? '#0f172a' : '#f8fafc')
+    applyTheme(r)
     try {
       localStorage.setItem(STORAGE_KEY, mode)
     } catch {
@@ -66,9 +70,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       if (mode === 'system') {
         const r = resolve('system')
         setResolved(r)
-        document.documentElement.classList.toggle('dark', r === 'dark')
-        const meta = document.querySelector('meta[name="theme-color"]')
-        if (meta) meta.setAttribute('content', r === 'dark' ? '#0f172a' : '#f8fafc')
+        applyTheme(r)
       }
     }
     mq.addEventListener('change', onChange)
@@ -79,8 +81,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     () => ({
       mode,
       resolved,
-      cycleMode: () =>
-        setMode((m) => MODES[(MODES.indexOf(m) + 1) % MODES.length]!),
+      cycleMode: () => setMode((m) => MODES[(MODES.indexOf(m) + 1) % MODES.length]!),
     }),
     [mode, resolved],
   )
