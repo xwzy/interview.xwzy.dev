@@ -109,7 +109,7 @@ export default function Layout() {
         跳到主内容
       </a>
       <Header />
-      <main id="main-content" className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6">
+      <main id="main-content" tabIndex={-1} className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 outline-none sm:px-6">
         <Outlet />
       </main>
       <footer className="border-t border-slate-200 py-6 dark:border-white/10">

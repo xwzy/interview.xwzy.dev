@@ -45,11 +45,13 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [mode, setMode] = useState<ThemeMode>(loadInitialMode)
   const [resolved, setResolved] = useState<'light' | 'dark'>(() => resolve(mode))
 
-  // 应用主题 + 持久化
+  // 应用主题 + 持久化 + 同步浏览器地址栏主题色
   useEffect(() => {
     const r = resolve(mode)
     setResolved(r)
     document.documentElement.classList.toggle('dark', r === 'dark')
+    const meta = document.querySelector('meta[name="theme-color"]')
+    if (meta) meta.setAttribute('content', r === 'dark' ? '#0f172a' : '#f8fafc')
     try {
       localStorage.setItem(STORAGE_KEY, mode)
     } catch {
@@ -57,7 +59,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
   }, [mode])
 
-  // 跟随系统模式下，OS 切换深浅色时站点实时跟随
+  // 跟随系统模式下，OS 切换深浅色时站点实时跟随（含浏览器主题色）
   useEffect(() => {
     const mq = window.matchMedia('(prefers-color-scheme: dark)')
     const onChange = () => {
@@ -65,6 +67,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         const r = resolve('system')
         setResolved(r)
         document.documentElement.classList.toggle('dark', r === 'dark')
+        const meta = document.querySelector('meta[name="theme-color"]')
+        if (meta) meta.setAttribute('content', r === 'dark' ? '#0f172a' : '#f8fafc')
       }
     }
     mq.addEventListener('change', onChange)
