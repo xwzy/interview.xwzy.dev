@@ -1,4 +1,5 @@
 import { memo, useEffect, useState } from 'react'
+import { useNavigate } from 'react-router'
 import type { NormalizedQuestion } from '../types'
 import { difficultyMeta } from '../types'
 import { useMastery } from '../context/MasteryContext'
@@ -32,6 +33,7 @@ function QuestionItemImpl({
   const [confirmDelete, setConfirmDelete] = useState(false)
   const { isMastered, toggle } = useMastery()
   const { isFavorite, toggleFavorite } = useFavorites()
+  const navigate = useNavigate()
   const mastered = isMastered(question.id)
   const favorite = isFavorite(question.id)
 
@@ -77,7 +79,23 @@ function QuestionItemImpl({
               </span>
             )}
             {question.tags?.map((tag) => (
-              <span key={tag} className="text-xs text-slate-400 dark:text-slate-500">
+              <span
+                key={tag}
+                role="link"
+                tabIndex={0}
+                title={`查看「${tag}」标签下的全部题目`}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  navigate(`/search?q=${encodeURIComponent(tag)}`)
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.stopPropagation()
+                    navigate(`/search?q=${encodeURIComponent(tag)}`)
+                  }
+                }}
+                className="cursor-pointer text-xs text-slate-400 transition-colors hover:text-blue-600 dark:text-slate-500 dark:hover:text-blue-400"
+              >
                 #{tag}
               </span>
             ))}
