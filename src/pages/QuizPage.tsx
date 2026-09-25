@@ -462,6 +462,15 @@ export default function QuizPage() {
               />
               只抽收藏题
             </label>
+            {selectedTopics.size > 0 && (
+              <button
+                type="button"
+                onClick={() => setSelectedTopics(new Set())}
+                className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-500 transition-colors hover:border-rose-300 hover:text-rose-500 dark:border-white/10 dark:text-slate-400 dark:hover:border-rose-500/40"
+              >
+                清空选择
+              </button>
+            )}
             <span className="text-xs text-slate-400 dark:text-slate-500">
               当前题池 {pool.length} 题
             </span>
