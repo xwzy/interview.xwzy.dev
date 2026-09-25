@@ -112,6 +112,7 @@ function QuestionItemImpl({
             onClick={() => toggleFavorite(question.id)}
             aria-pressed={favorite}
             title={favorite ? '取消收藏' : '收藏此题'}
+            aria-label={favorite ? '取消收藏' : '收藏此题'}
             className={cx(
               'rounded-full border px-2 py-0.5 text-xs transition-colors',
               favorite

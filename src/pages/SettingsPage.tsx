@@ -1,25 +1,13 @@
 import { useRef, useState } from 'react'
 import { useMastery } from '../context/MasteryContext'
 import { useVerdicts } from '../context/InterviewContext'
-import { useSessions, type InterviewSession } from '../context/SessionContext'
+import { useSessions } from '../context/SessionContext'
 import { useCustomQuestions } from '../context/BankContext'
 import { useBank } from '../context/BankContext'
 import { useFavorites } from '../context/FavoritesContext'
-import type { CustomQuestion } from '../types'
 import { buildTracksMarkdown } from '../lib/exportMd'
+import { BACKUP_VERSION, sanitizeBackup, type BackupFile } from '../lib/backup'
 import { cx } from '../lib/utils'
-
-const BACKUP_VERSION = 1
-
-interface BackupFile {
-  version: number
-  exportedAt: string
-  mastery: string[]
-  verdicts: Record<string, string>
-  sessions: InterviewSession[]
-  customQuestions: CustomQuestion[]
-  favorites: string[]
-}
 
 function download(filename: string, content: string, mime = 'application/json') {
   const blob = new Blob([content], { type: mime })
@@ -76,23 +64,15 @@ export default function SettingsPage() {
 
   const handleImport = async (file: File) => {
     try {
-      const raw = JSON.parse(await file.text()) as Partial<BackupFile>
-      if (raw.version !== BACKUP_VERSION || !Array.isArray(raw.mastery) || typeof raw.verdicts !== 'object' || raw.verdicts === null || !Array.isArray(raw.sessions)) {
-        throw new Error('格式不符')
-      }
-      // 写入 localStorage 后刷新，让各 Context 重新加载
-      localStorage.setItem('interview.mastery.v1', JSON.stringify(raw.mastery))
-      localStorage.setItem('interview.verdicts.v1', JSON.stringify(raw.verdicts))
-      localStorage.setItem('interview.sessions.v1', JSON.stringify(raw.sessions))
-      localStorage.setItem(
-        'interview.custom-questions.v1',
-        JSON.stringify(Array.isArray(raw.customQuestions) ? raw.customQuestions : []),
-      )
-      localStorage.setItem(
-        'interview.favorites.v1',
-        JSON.stringify(Array.isArray(raw.favorites) ? raw.favorites : []),
-      )
-      flash('ok', `导入成功：${raw.mastery.length} 条掌握记录 · ${raw.sessions.length} 份考察记录，即将刷新页面`)
+      const backup = sanitizeBackup(JSON.parse(await file.text()))
+      if (!backup) throw new Error('格式不符')
+      // 清洗通过后写入 localStorage，刷新让各 Context 重新加载
+      localStorage.setItem('interview.mastery.v1', JSON.stringify(backup.mastery))
+      localStorage.setItem('interview.verdicts.v1', JSON.stringify(backup.verdicts))
+      localStorage.setItem('interview.sessions.v1', JSON.stringify(backup.sessions))
+      localStorage.setItem('interview.custom-questions.v1', JSON.stringify(backup.customQuestions))
+      localStorage.setItem('interview.favorites.v1', JSON.stringify(backup.favorites))
+      flash('ok', `导入成功：${backup.mastery.length} 条掌握记录 · ${backup.sessions.length} 份考察记录，即将刷新页面`)
       setTimeout(() => window.location.reload(), 1200)
     } catch {
       flash('err', '导入失败：文件格式不正确')

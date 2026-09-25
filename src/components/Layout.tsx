@@ -1,6 +1,5 @@
-import { useEffect } from 'react'
-import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router'
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
+import { Link, NavLink, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router'
 import { useTheme, themeModeMeta } from '../context/ThemeContext'
 import { cx } from '../lib/utils'
 
@@ -15,8 +14,19 @@ const navLinkClass = ({ isActive }: { isActive: boolean }) =>
 function Header() {
   const [keyword, setKeyword] = useState('')
   const navigate = useNavigate()
+  const location = useLocation()
+  const [searchParams] = useSearchParams()
   const { mode, cycleMode } = useTheme()
   const themeMeta = themeModeMeta[mode]
+
+  // 在搜索结果页时，头部输入框与 URL 的 q 保持同步（前进/后退、外部导航均一致）
+  useEffect(() => {
+    if (location.pathname === '/search') {
+      setKeyword(searchParams.get('q') ?? '')
+    } else {
+      setKeyword('')
+    }
+  }, [location.pathname, searchParams])
 
   const handleSearch = (e: FormEvent) => {
     e.preventDefault()

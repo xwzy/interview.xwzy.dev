@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { useBank } from '../context/BankContext'
 import { useFavorites } from '../context/FavoritesContext'
@@ -45,6 +45,12 @@ export default function SearchPage() {
   const q = searchParams.get('q') ?? ''
   const favOnly = searchParams.get('fav') === '1'
   const [input, setInput] = useState(q)
+
+  // URL 上的 q 被外部改变（顶部搜索提交、前进/后退）时同步输入框；
+  // 与输入框本身引起的变更互不打断（比较 trim 后的值）
+  useEffect(() => {
+    setInput((prev) => (prev.trim() === q.trim() ? prev : q))
+  }, [q])
 
   const results = useMemo(() => {
     const kw = q.trim().toLowerCase()
