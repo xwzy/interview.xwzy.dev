@@ -1,0 +1,19 @@
+{
+  "name": "面试宝典 · 互联网技术面试知识库",
+  "short_name": "面试宝典",
+  "description": "各岗位面试知识按领域分类整理，面试官出题与个人刷题共享一套题库。",
+  "lang": "zh-CN",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#3b82f6",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

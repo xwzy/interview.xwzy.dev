@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <title>面试宝典</title>
+    <script>
+      // GitHub Pages SPA 回退：404 页面把原始路径存入 sessionStorage 后回到首页，
+      // 由 index.html 中的配套脚本恢复路由。
+      sessionStorage.setItem(
+        'redirect',
+        window.location.pathname + window.location.search + window.location.hash,
+      )
+      window.location.replace('/')
+    </script>
+  </head>
+  <body></body>
+</html>

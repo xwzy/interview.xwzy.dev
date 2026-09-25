@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#3b82f6" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta
+      name="description"
+      content="互联网技术面试知识库：前端、后端、计算机基础、系统设计等方向的分类题库，支持随机抽题出卷、掌握进度追踪与资料索引。"
+    />
+    <title>面试宝典 · 互联网技术面试知识库</title>
+    <script>
+      try {
+        var t = localStorage.getItem('interview.theme')
+        if (t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+          document.documentElement.classList.add('dark')
+        }
+      } catch (e) {}
+    </script>
+    <script>
+      // GitHub Pages SPA 回退配套：恢复 404.html 转存的真实路由（本地开发无副作用）
+      ;(function () {
+        var redirect = sessionStorage.getItem('redirect')
+        sessionStorage.removeItem('redirect')
+        if (redirect && redirect !== window.location.pathname) {
+          window.history.replaceState(null, '', redirect)
+        }
+      })()
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
