@@ -4,13 +4,13 @@
     <meta charset="UTF-8" />
     <title>面试宝典</title>
     <script>
-      // GitHub Pages SPA 回退：404 页面把原始路径存入 sessionStorage 后回到应用根目录，
-      // 由 index.html 中的配套脚本恢复路由。base 从本文件自身的 URL 派生，兼容任意部署路径。
-      // 回跳根目录附加查询参数以穿透浏览器缓存的旧 301（曾绑定过自定义域名期间产生）。
+      // GitHub Pages SPA 回退：GH 会用本文件响应所有未命中的路径（URL 保持原样）。
+      // 处理：把真实路径存入 sessionStorage → 跳到应用根 → index.html 的配套脚本恢复路由。
+      // 注意：BASE 需与 vite.config.ts 的 base 保持一致（切换部署形态时两处同步修改）。
       ;(function () {
-        var base = location.pathname.replace(/\/404\.html$/, '/')
+        var BASE = '/interview.xwzy.dev/'
         sessionStorage.setItem('redirect', location.pathname + location.search + location.hash)
-        window.location.replace(base + '?e=404')
+        window.location.replace(BASE)
       })()
     </script>
   </head>

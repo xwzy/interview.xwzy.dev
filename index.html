@@ -24,7 +24,8 @@
       ;(function () {
         var redirect = sessionStorage.getItem('redirect')
         sessionStorage.removeItem('redirect')
-        if (redirect && redirect !== window.location.pathname) {
+        if (redirect && redirect !== location.pathname && redirect.indexOf(location.pathname) !== 0) {
+          // 仅当保存的路径不是当前路径本身时恢复；部署于子路径，恢复后由前端路由接管
           window.history.replaceState(null, '', redirect)
         }
       })()
