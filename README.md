@@ -36,10 +36,14 @@ npm run preview   # 预览构建产物
 
 ## 部署
 
-纯静态站点，`npm run build` 产物在 `dist/`，可部署到任何静态托管。
-仓库已内置 GitHub Pages 工作流（`.github/workflows/deploy.yml`，推送到 `main` 自动构建部署）
-和 `public/404.html` SPA 路由回退。若部署到 `https://<user>.github.io/<repo>/` 子路径，
-需在 `vite.config.ts` 设置 `base: '/<repo>/'`；绑定自定义域名（根路径）则无需调整。
+站点已部署：**https://interview.xwzy.dev**（自定义域名，待 DNS 生效期间可通过
+https://xwzy.github.io/interview.xwzy.dev/ 访问）。
+
+- 推送到 `main` 自动触发 `.github/workflows/deploy.yml`：lint → test → build → 发布 Pages
+- `public/CNAME` 绑定自定义域名 `interview.xwzy.dev`；`public/404.html` 提供 SPA 路由回退
+- DNS 需在域名服务商处添加：`CNAME interview → xwzy.github.io`，
+  生效后在仓库 Settings → Pages → 勾选 **Enforce HTTPS**
+- 若改用其他仓库名（子路径部署），需在 `vite.config.ts` 设置 `base: '/<repo>/'`
 
 ## 如何补充题库
 
