@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router'
 import { useBank } from '../context/BankContext'
 import { useFavorites } from '../context/FavoritesContext'
+import { useMastery } from '../context/MasteryContext'
 import { copyText } from '../lib/clipboard'
 import { cx, formatDuration, shuffle, trackThemes } from '../lib/utils'
 import { buildSummaryText, generateId, type SessionItem, type SummaryCounts } from '../lib/summary'
@@ -83,6 +84,7 @@ export default function QuizPage() {
   const [candidate, setCandidate] = useState('')
   const [ordered, setOrdered] = useState(false)
   const [onlyFavorites, setOnlyFavorites] = useState(false)
+  const [onlyUnmastered, setOnlyUnmastered] = useState(false)
   const [queue, setQueue] = useState<IndexedQuestion[]>([])
   const [notes, setNotes] = useState<Record<string, string>>({})
   const [current, setCurrent] = useState(0)
@@ -97,6 +99,7 @@ export default function QuizPage() {
   const { getVerdict, setVerdict } = useVerdicts()
   const { saveSession } = useSessions()
   const { favorites } = useFavorites()
+  const { mastered } = useMastery()
   const { tracks, questionIndex, questionById } = useBank()
 
   const pool = useMemo(
@@ -105,9 +108,10 @@ export default function QuizPage() {
         (r) =>
           selectedTopics.has(r.topic.id) &&
           (diff === 'all' || r.question.difficulty === diff) &&
-          (!onlyFavorites || favorites.has(r.question.id)),
+          (!onlyFavorites || favorites.has(r.question.id)) &&
+          (!onlyUnmastered || !mastered.has(r.question.id)),
       ),
-    [questionIndex, selectedTopics, diff, onlyFavorites, favorites],
+    [questionIndex, selectedTopics, diff, onlyFavorites, favorites, onlyUnmastered, mastered],
   )
 
   const toggleTopic = (topicId: string) => {
@@ -461,6 +465,15 @@ export default function QuizPage() {
                 className="h-3.5 w-3.5 accent-blue-600"
               />
               只抽收藏题
+            </label>
+            <label className="flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-300">
+              <input
+                type="checkbox"
+                checked={onlyUnmastered}
+                onChange={(e) => setOnlyUnmastered(e.target.checked)}
+                className="h-3.5 w-3.5 accent-blue-600"
+              />
+              只抽未掌握
             </label>
             {selectedTopics.size > 0 && (
               <button
