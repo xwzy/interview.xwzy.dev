@@ -17,14 +17,10 @@ if (!existsSync(htmlPath)) {
 
 const html = readFileSync(htmlPath, 'utf8')
 
-// 从 vite.config.ts 读取 base（与构建时一致）
-const viteCfg = readFileSync('vite.config.ts', 'utf8')
-const baseMatch = viteCfg.match(/base:\s*(?:process\.env\.VITE_BASE_PATH\s*\?\?\s*)?'([^']*)'/)
-const base = baseMatch ? baseMatch[1] : '/'
-if (!base.endsWith('/')) {
-  console.error('[check-dist] vite base 配置必须以 / 结尾，当前:', base)
-  process.exit(1)
-}
+// base 与构建时一致（优先环境变量，缺省根路径）
+const base = (process.env.VITE_BASE_PATH ?? '/').endsWith('/')
+  ? (process.env.VITE_BASE_PATH ?? '/')
+  : (process.env.VITE_BASE_PATH ?? '/') + '/'
 
 // 收集 index.html 引用的站内资源
 const refs = [...html.matchAll(/(?:src|href)="(\/[^"]+)"/g)].map((m) => m[1].split('?')[0])
@@ -50,12 +46,16 @@ if (prefixes.size > 1) {
   failures += 1
 }
 
-// PWA 关键文件
-for (const f of ['sw.js', 'manifest.webmanifest', '404.html']) {
+// PWA 关键文件（404.html 不应存在：Cloudflare Pages 下它会破坏 SPA 深链回退）
+for (const f of ['sw.js', 'manifest.webmanifest']) {
   if (!existsSync(join(dist, f))) {
     console.error(`[check-dist] 缺失 PWA 文件: ${f}`)
     failures += 1
   }
+}
+if (existsSync('dist/404.html')) {
+  console.error('[check-dist] 不应发布 404.html（CF Pages 以 index.html 做 SPA 回退）')
+  failures += 1
 }
 
 if (failures > 0) {

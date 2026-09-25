@@ -45,14 +45,13 @@ npm run preview   # 预览构建产物
 
 ## 部署
 
-站点已部署：**https://interview.xwzy.dev**（自定义域名，待 DNS 生效期间可通过
-https://xwzy.github.io/interview.xwzy.dev/ 访问）。
+站点已部署至 **Cloudflare Pages**：生产地址 https://interview.xwzy.dev（自定义域名，DNS 生效后可访问），
+预览地址 https://interview-xwzy-dev.pages.dev/
 
-- 推送到 `main` 自动触发 `.github/workflows/deploy.yml`：lint → test → build → 发布 Pages
-- `public/CNAME` 绑定自定义域名 `interview.xwzy.dev`；`public/404.html` 提供 SPA 路由回退
-- DNS 需在域名服务商处添加：`CNAME interview → xwzy.github.io`，
-  生效后在仓库 Settings → Pages → 勾选 **Enforce HTTPS**
-- 若改用其他仓库名（子路径部署），需在 `vite.config.ts` 设置 `base: '/<repo>/'`
+- 部署方式：`npx wrangler pages deploy dist --project-name=interview-xwzy-dev --branch=main`
+- 首次配置：`npx wrangler login` 后 `npx wrangler pages project create interview-xwzy-dev --production-branch=main`
+- 自定义域名：Pages 项目 → Custom domains → 激活 `interview.xwzy.dev`（同账号 zone 自动创建 DNS 与证书）
+- SPA 说明：Cloudflare Pages 在无 `404.html` 时自动以 `index.html` 兜底未命中路径，深链直接可用
 
 ## 如何补充题库
 

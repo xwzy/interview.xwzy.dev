@@ -28,16 +28,6 @@
         document.documentElement.classList.add('dark')
       }
     </script>
-    <script>
-      // GitHub Pages SPA 回退配套：恢复 404.html 转存的真实路由（本地开发无副作用）
-      ;(function () {
-        var redirect = sessionStorage.getItem('redirect')
-        sessionStorage.removeItem('redirect')
-        if (redirect && redirect !== location.pathname) {
-          window.history.replaceState(null, '', redirect)
-        }
-      })()
-    </script>
   </head>
   <body>
     <div id="root"></div>
