@@ -21,6 +21,10 @@ function countsOf(session: InterviewSession) {
   return counts
 }
 
+function totalDurationOf(session: InterviewSession): number {
+  return session.items.reduce((n, item) => n + (item.duration ?? 0), 0)
+}
+
 function summaryOf(session: InterviewSession, questionById: Map<string, { track: { name: string }; topic: { name: string }; question: { title: string } }>) {
   return buildSummaryText(session.items, (id) => {
     const r = questionById.get(id)
@@ -84,6 +88,8 @@ export default function HistoryPage() {
                     </h2>
                     <span className="text-xs text-slate-400 dark:text-slate-500">
                       {formatDate(session.createdAt)} · {session.items.length} 题
+                      {totalDurationOf(session) > 0 &&
+                        ` · 总用时 ${formatDuration(totalDurationOf(session))}`}
                     </span>
                     <div className="ml-auto flex items-center gap-2">
                       <button

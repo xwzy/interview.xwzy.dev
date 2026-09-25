@@ -24,6 +24,13 @@ html {
   contain-intrinsic-size: auto 140px;
 }
 
+/* 打印时完整输出所有题卡（content-visibility 跳过的部分也要打印） */
+@media print {
+  .qa-card {
+    content-visibility: visible;
+  }
+}
+
 /* 尊重系统"减少动态效果"偏好：平滑滚动与过渡动画关闭 */
 @media (prefers-reduced-motion: reduce) {
   html {
