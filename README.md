@@ -1,5 +1,9 @@
 # 面试宝典 · interview.xwzy.dev
 
+[![Deploy to GitHub Pages](https://github.com/xwzy/interview.xwzy.dev/actions/workflows/deploy.yml/badge.svg)](https://github.com/xwzy/interview.xwzy.dev/actions/workflows/deploy.yml)
+
+线上地址：<https://xwzy.github.io/interview.xwzy.dev/>
+
 互联网技术面试知识库（纯前端站点）：把各岗位的面试知识按方向 → 领域 → 题目三层组织好，
 **面试官出题** 与 **个人刷题** 共享同一套题库。
 

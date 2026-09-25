@@ -6,10 +6,11 @@
     <script>
       // GitHub Pages SPA 回退：404 页面把原始路径存入 sessionStorage 后回到应用根目录，
       // 由 index.html 中的配套脚本恢复路由。base 从本文件自身的 URL 派生，兼容任意部署路径。
+      // 回跳根目录附加查询参数以穿透浏览器缓存的旧 301（曾绑定过自定义域名期间产生）。
       ;(function () {
         var base = location.pathname.replace(/\/404\.html$/, '/')
         sessionStorage.setItem('redirect', location.pathname + location.search + location.hash)
-        window.location.replace(base)
+        window.location.replace(base + '?e=404')
       })()
     </script>
   </head>
