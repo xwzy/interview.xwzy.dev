@@ -44,7 +44,7 @@ export default function HomePage() {
   }
   const personalStats = [
     { icon: '✓', label: '已掌握', value: masteredTotal },
-    { icon: '★', label: '收藏', value: favorites.size },
+    { icon: '★', label: '收藏', value: favorites.size, to: '/search?fav=1' },
     { icon: '✎', label: '自定义题目', value: customQuestions.length },
     { icon: '🗂️', label: '考察记录', value: sessions.length, to: '/history' },
   ] as const

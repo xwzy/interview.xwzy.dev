@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router'
 import { useBank } from '../context/BankContext'
 import { useFavorites } from '../context/FavoritesContext'
+import { copyText } from '../lib/clipboard'
 import { cx, formatDuration, shuffle, trackThemes } from '../lib/utils'
 import { buildSummaryText, generateId, type SessionItem, type SummaryCounts } from '../lib/summary'
 import { difficultyMeta, type Difficulty, type IndexedQuestion } from '../types'
@@ -50,6 +51,7 @@ export default function QuizPage() {
   const [summary, setSummary] = useState<{ text: string; counts: SummaryCounts } | null>(null)
   const [copied, setCopied] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [confirmExit, setConfirmExit] = useState(false)
   const startRef = useRef(Date.now())
   const durationsRef = useRef<Record<string, number>>({})
   const { getVerdict, setVerdict } = useVerdicts()
@@ -166,6 +168,17 @@ export default function QuizPage() {
     startRef.current = Date.now()
   }, [phase, current])
 
+  // 考察进行中离开页面（刷新/关闭）前给出挽留提示，避免评分与备注丢失
+  useEffect(() => {
+    if (phase !== 'running') return
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault()
+      e.returnValue = ''
+    }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [phase])
+
   // 键盘快捷键：空格/回车展示要点，← → 切题，1/2/3 评分（每次渲染重挂载，避免闭包过期）
   useEffect(() => {
     if (phase !== 'running') return
@@ -193,23 +206,8 @@ export default function QuizPage() {
 
   const copySummary = async () => {
     if (!summary) return
-    try {
-      await navigator.clipboard.writeText(summary.text)
-      setCopied(true)
-    } catch {
-      // 剪贴板 API 不可用（非安全上下文等）时走 execCommand 兜底
-      const ta = document.createElement('textarea')
-      ta.value = summary.text
-      document.body.appendChild(ta)
-      ta.select()
-      try {
-        document.execCommand('copy')
-        setCopied(true)
-      } catch {
-        setCopied(false)
-      }
-      ta.remove()
-    }
+    const ok = await copyText(summary.text)
+    setCopied(ok)
     setTimeout(() => setCopied(false), 2000)
   }
 
@@ -374,10 +372,22 @@ export default function QuizPage() {
         <div className="flex items-center gap-3">
           <button
             type="button"
-            onClick={() => setPhase('setup')}
-            className="text-sm text-slate-400 hover:text-blue-600 dark:hover:text-blue-400"
+            onClick={() => {
+              if (confirmExit) {
+                setPhase('setup')
+              } else {
+                setConfirmExit(true)
+                setTimeout(() => setConfirmExit(false), 3000)
+              }
+            }}
+            className={cx(
+              'rounded-lg border px-3 py-1.5 text-sm transition-colors',
+              confirmExit
+                ? 'border-rose-400 bg-rose-500 text-white'
+                : 'border-slate-200 text-slate-400 hover:border-rose-300 hover:text-rose-500 dark:border-white/10 dark:hover:border-rose-500/40',
+            )}
           >
-            ← 结束并返回
+            {confirmExit ? '确认结束？（未存档的备注将丢失）' : '← 结束并返回'}
           </button>
           <span className="ml-auto flex items-center gap-3 text-sm font-medium tabular-nums text-slate-500 dark:text-slate-400">
             <ElapsedTimer key={item.question.id} startTs={startRef.current} />
@@ -452,6 +462,7 @@ export default function QuizPage() {
           <textarea
             value={currentNote}
             onChange={(e) => updateNote(e.target.value)}
+            aria-label="面试备注：记录候选人回答要点或你的评价"
             placeholder="记录候选人回答要点 / 你的评价（可选，会写入面试小结）"
             rows={2}
             className="mt-3 w-full resize-y rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100 dark:border-white/10 dark:bg-white/5 dark:text-slate-100 dark:focus:border-blue-500/50 dark:focus:ring-blue-500/20"

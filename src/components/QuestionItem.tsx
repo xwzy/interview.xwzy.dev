@@ -51,7 +51,7 @@ function QuestionItemImpl({
     <article
       id={question.id}
       className={cx(
-        'scroll-mt-20 overflow-hidden rounded-xl border bg-white transition-colors dark:bg-white/[0.03]',
+        'qa-card scroll-mt-20 overflow-hidden rounded-xl border bg-white transition-colors dark:bg-white/[0.03]',
         mastered
           ? 'border-emerald-300 dark:border-emerald-500/30'
           : 'border-slate-200 dark:border-white/10',

@@ -4,6 +4,7 @@ import { useBank } from '../context/BankContext'
 import { useSessions, type InterviewSession } from '../context/SessionContext'
 import { buildSummaryText } from '../lib/summary'
 import { verdictMeta } from '../context/InterviewContext'
+import { copyText } from '../lib/clipboard'
 import { cx, formatDuration } from '../lib/utils'
 
 function formatDate(iso: string): string {
@@ -41,18 +42,11 @@ export default function HistoryPage() {
 
   const copySummary = async (session: InterviewSession) => {
     const { text } = summaryOf(session, questionById)
-    try {
-      await navigator.clipboard.writeText(text)
-    } catch {
-      const ta = document.createElement('textarea')
-      ta.value = text
-      document.body.appendChild(ta)
-      ta.select()
-      document.execCommand('copy')
-      ta.remove()
+    const ok = await copyText(text)
+    if (ok) {
+      setCopiedId(session.id)
+      setTimeout(() => setCopiedId(null), 2000)
     }
-    setCopiedId(session.id)
-    setTimeout(() => setCopiedId(null), 2000)
   }
 
   return (

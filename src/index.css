@@ -18,6 +18,12 @@ html {
   outline-offset: 2px;
 }
 
+/* 长列表渲染优化：视口外的题卡跳过布局与绘制（滚动到时自动渲染） */
+.qa-card {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 140px;
+}
+
 /* 尊重系统"减少动态效果"偏好：平滑滚动与过渡动画关闭 */
 @media (prefers-reduced-motion: reduce) {
   html {
