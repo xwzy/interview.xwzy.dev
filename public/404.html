@@ -4,13 +4,13 @@
     <meta charset="UTF-8" />
     <title>面试宝典</title>
     <script>
-      // GitHub Pages SPA 回退：404 页面把原始路径存入 sessionStorage 后回到首页，
-      // 由 index.html 中的配套脚本恢复路由。
-      sessionStorage.setItem(
-        'redirect',
-        window.location.pathname + window.location.search + window.location.hash,
-      )
-      window.location.replace('/')
+      // GitHub Pages SPA 回退：404 页面把原始路径存入 sessionStorage 后回到应用根目录，
+      // 由 index.html 中的配套脚本恢复路由。base 从本文件自身的 URL 派生，兼容任意部署路径。
+      ;(function () {
+        var base = location.pathname.replace(/\/404\.html$/, '/')
+        sessionStorage.setItem('redirect', location.pathname + location.search + location.hash)
+        window.location.replace(base)
+      })()
     </script>
   </head>
   <body></body>

@@ -13,7 +13,7 @@ import './index.css'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <BrowserRouter>
+    <BrowserRouter basename={import.meta.env.BASE_URL}>
       <ErrorBoundary>
         <ThemeProvider>
           <CustomQuestionsProvider>
@@ -38,9 +38,11 @@ createRoot(document.getElementById('root')!).render(
 // 生产环境注册 Service Worker（可安装、离线回退）；开发模式不注册避免热更新干扰
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(() => {
-      // 注册失败（如非安全上下文）时静默降级为普通站点
-    })
+    navigator.serviceWorker
+      .register(`${import.meta.env.BASE_URL}sw.js`)
+      .catch(() => {
+        // 注册失败（如非安全上下文）时静默降级为普通站点
+      })
   })
 }
 

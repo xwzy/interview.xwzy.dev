@@ -38,7 +38,7 @@ export default class ErrorBoundary extends Component<Props, State> {
               刷新页面
             </button>
             <a
-              href="/"
+              href={import.meta.env.BASE_URL}
               className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600 hover:border-slate-400 dark:border-white/20 dark:text-slate-300"
             >
               返回首页
