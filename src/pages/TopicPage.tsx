@@ -294,6 +294,7 @@ export default function TopicPage() {
           className="w-44 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:border-white/10 dark:bg-white/5 dark:text-slate-100 dark:focus:border-blue-500/50 dark:focus:ring-blue-500/20"
         />
         <Segmented<DiffFilter>
+          ariaLabel="按难度筛选"
           value={diff}
           onChange={setDiff}
           options={[
@@ -304,6 +305,7 @@ export default function TopicPage() {
           ]}
         />
         <Segmented<StatusFilter>
+          ariaLabel="按掌握状态筛选"
           value={status}
           onChange={setStatus}
           options={[

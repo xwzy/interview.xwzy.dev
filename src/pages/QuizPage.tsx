@@ -32,6 +32,45 @@ const COUNT_OPTIONS = [5, 10, 15, 20, 30]
 
 const VERDICT_ORDER = ['pass', 'fail', 'maybe'] as const
 
+/** 进行中考察的现场快照（sessionStorage，防误刷新丢失） */
+interface ResumeState {
+  candidate: string
+  queueIds: string[]
+  current: number
+  notes: Record<string, string>
+  savedAt: string
+}
+
+const RESUME_KEY = 'interview.quiz-resume.v1'
+
+function loadResume(): ResumeState | null {
+  try {
+    const raw = sessionStorage.getItem(RESUME_KEY)
+    if (!raw) return null
+    const data = JSON.parse(raw) as Partial<ResumeState>
+    if (!Array.isArray(data.queueIds) || data.queueIds.length === 0 || typeof data.current !== 'number') {
+      return null
+    }
+    return {
+      candidate: typeof data.candidate === 'string' ? data.candidate : '',
+      queueIds: data.queueIds.filter((id): id is string => typeof id === 'string'),
+      current: Math.max(0, data.current),
+      notes: data.notes && typeof data.notes === 'object' ? data.notes : {},
+      savedAt: typeof data.savedAt === 'string' ? data.savedAt : new Date().toISOString(),
+    }
+  } catch {
+    return null
+  }
+}
+
+function clearResume() {
+  try {
+    sessionStorage.removeItem(RESUME_KEY)
+  } catch {
+    // 忽略存储不可用
+  }
+}
+
 const DIFFICULTY_RANK: Record<Difficulty, number> = { basic: 0, intermediate: 1, advanced: 2 }
 
 /** 面试官模式：选方向 → 随机组卷 → 现场逐题考察、评分、记录 → 自动存档并生成面试小结 */
@@ -52,6 +91,7 @@ export default function QuizPage() {
   const [copied, setCopied] = useState(false)
   const [saved, setSaved] = useState(false)
   const [confirmExit, setConfirmExit] = useState(false)
+  const [resumable, setResumable] = useState<ResumeState | null>(null)
   const startRef = useRef(Date.now())
   const durationsRef = useRef<Record<string, number>>({})
   const { getVerdict, setVerdict } = useVerdicts()
@@ -94,8 +134,38 @@ export default function QuizPage() {
     setSummary(null)
     setCopied(false)
     setSaved(false)
+    clearResume()
+    setResumable(null)
     setPhase('running')
     window.scrollTo(0, 0)
+  }
+
+  /** 从现场快照恢复进行中的考察（题目可能已被删除的自动跳过） */
+  const resumeQuiz = () => {
+    if (!resumable) return
+    const restored = resumable.queueIds
+      .map((id) => questionById.get(id))
+      .filter((item): item is NonNullable<ReturnType<typeof questionById.get>> => Boolean(item))
+    if (restored.length === 0) {
+      clearResume()
+      setResumable(null)
+      return
+    }
+    setCandidate(resumable.candidate)
+    setNotes(resumable.notes)
+    setQueue(restored)
+    setCurrent(Math.min(resumable.current, restored.length - 1))
+    setRevealed(false)
+    setSummary(null)
+    setCopied(false)
+    setSaved(false)
+    setPhase('running')
+    window.scrollTo(0, 0)
+  }
+
+  const discardResume = () => {
+    clearResume()
+    setResumable(null)
   }
 
   /** 把当前题的停留时长累计进用时表（切题/结束时调用） */
@@ -127,6 +197,7 @@ export default function QuizPage() {
       items,
     })
     setSaved(true)
+    clearResume()
     setPhase('done')
     window.scrollTo(0, 0)
   }
@@ -167,6 +238,27 @@ export default function QuizPage() {
     if (phase !== 'running') return
     startRef.current = Date.now()
   }, [phase, current])
+
+  // 回到组卷页时读取现场快照（供“恢复上次考察”）；进行中每次状态变化自动续存
+  useEffect(() => {
+    if (phase === 'setup') setResumable(loadResume())
+  }, [phase])
+
+  useEffect(() => {
+    if (phase !== 'running' || queue.length === 0) return
+    try {
+      const data: ResumeState = {
+        candidate,
+        queueIds: queue.map((item) => item.question.id),
+        current,
+        notes,
+        savedAt: new Date().toISOString(),
+      }
+      sessionStorage.setItem(RESUME_KEY, JSON.stringify(data))
+    } catch {
+      // 存储不可用时静默跳过
+    }
+  }, [phase, candidate, queue, current, notes])
 
   // 考察进行中离开页面（刷新/关闭）前给出挽留提示，避免评分与备注丢失
   useEffect(() => {
@@ -237,6 +329,29 @@ export default function QuizPage() {
             </label>
           </div>
         </header>
+
+        {resumable && (
+          <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-amber-300 bg-amber-50/70 p-4 dark:border-amber-500/30 dark:bg-amber-500/10">
+            <p className="min-w-0 flex-1 text-sm text-amber-800 dark:text-amber-200">
+              检测到未完成的考察{resumable.candidate ? `（${resumable.candidate}）` : ''}：共{' '}
+              {resumable.queueIds.length} 题，进行到第 {Math.min(resumable.current + 1, resumable.queueIds.length)} 题
+            </p>
+            <button
+              type="button"
+              onClick={resumeQuiz}
+              className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-amber-600"
+            >
+              恢复考察 →
+            </button>
+            <button
+              type="button"
+              onClick={discardResume}
+              className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-500 transition-colors hover:border-slate-400 dark:border-white/20 dark:text-slate-400"
+            >
+              放弃
+            </button>
+          </div>
+        )}
 
         <div className="space-y-4">
           {tracks.map((track) => {
@@ -319,6 +434,7 @@ export default function QuizPage() {
               </select>
             </label>
             <Segmented<DiffFilter>
+              ariaLabel="按难度抽题"
               value={diff}
               onChange={setDiff}
               options={[

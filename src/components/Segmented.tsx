@@ -10,6 +10,8 @@ interface SegmentedProps<T extends string> {
   value: T
   onChange: (value: T) => void
   className?: string
+  /** 无障碍分组描述 */
+  ariaLabel?: string
 }
 
 export default function Segmented<T extends string>({
@@ -17,9 +19,12 @@ export default function Segmented<T extends string>({
   value,
   onChange,
   className,
+  ariaLabel,
 }: SegmentedProps<T>) {
   return (
     <div
+      role="group"
+      aria-label={ariaLabel}
       className={cx(
         'inline-flex rounded-lg border border-slate-200 bg-slate-100 p-0.5 dark:border-white/10 dark:bg-white/5',
         className,
