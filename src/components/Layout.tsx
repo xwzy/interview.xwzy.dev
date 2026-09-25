@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router'
 import { useState, type FormEvent } from 'react'
-import { useTheme } from '../context/ThemeContext'
+import { useTheme, themeModeMeta } from '../context/ThemeContext'
 import { cx } from '../lib/utils'
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
@@ -15,7 +15,8 @@ const navLinkClass = ({ isActive }: { isActive: boolean }) =>
 function Header() {
   const [keyword, setKeyword] = useState('')
   const navigate = useNavigate()
-  const { theme, toggle } = useTheme()
+  const { mode, cycleMode } = useTheme()
+  const themeMeta = themeModeMeta[mode]
 
   const handleSearch = (e: FormEvent) => {
     e.preventDefault()
@@ -66,12 +67,12 @@ function Header() {
           </Link>
           <button
             type="button"
-            onClick={toggle}
-            aria-label="切换深色模式"
-            title="切换深色模式"
+            onClick={cycleMode}
+            aria-label={`主题：${themeMeta.label}（点击切换）`}
+            title={`主题：${themeMeta.label}，点击切换`}
             className="rounded-lg p-2 text-slate-500 transition-colors hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-white/10"
           >
-            {theme === 'dark' ? '☀️' : '🌙'}
+            {themeMeta.icon}
           </button>
         </div>
       </div>
