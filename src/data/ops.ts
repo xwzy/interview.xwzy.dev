@@ -317,6 +317,27 @@ export const opsTrack: Track = {
           ],
         },
         {
+          id: 'ops-k8s-gateway-api',
+          title: 'K8s 的 Ingress 有什么问题？Gateway API 解决了什么？',
+          difficulty: 'intermediate',
+          tags: ['Kubernetes', 'Gateway API', 'Ingress', '流量管理'],
+          points: [
+            '**Ingress 的历史包袱**：核心 API 只有"host + path → service"这一种表达，**所有高级能力（金丝雀、权重分流、header 匹配、重写、超时）都靠 annotation 塞**——而 annotation 是各控制器自定义方言（nginx 一个写法、ALB 另一个），不可移植、无法校验、多团队共用一个 Ingress 对象互相踩；与 Service/Ingress 原理题分工：那题讲 Service 转发与 Ingress 基础，本题讲**入口标准的演进**。',
+            '**Gateway API 的模型重构（答题主线）**：把一个大对象拆成**角色分工的三层**——**GatewayClass**（基础设施团队：定义实现类型，如 nginx/envoy/云厂商）、**Gateway**（平台团队：实例化一个入口，绑定 VIP/域名与证书策略）、**HTTPRoute/GRPCRoute/TCPRoute**（业务团队：自己的路由规则挂到 Gateway 上）——**角色分离 + 权限分离**（业务只能改自己的 Route，不能再碰全站入口对象），这是 Ingress 时代"所有人共改一个 YAML"痛点的根治。',
+            '**表达能力原生化的要点**：**跨命名空间的路由挂载**（Route 可挂到别的 Namespace 的 Gateway，平台统一管入口、业务散管路由）；**原生字段**：header/path 多重匹配、**后端权重**（金丝雀 90/10 不再是 annotation）、**请求重写/镜像/超时/重试**进 API 规范；**GatewayClass 的实现生态**已是事实标准（Envoy Gateway、NGINX Gateway Fabric、Cilium、云厂商 CRD 纷纷落地）。',
+            '**迁移与共存（工程判断力）**：Ingress 不会消失（存量巨大）；迁移路径：**控制器双读**（同时支持两种 API 的实现，如 NGINX Ingress → NGINX Gateway Fabric 分批迁）或 **Ingress-Translation 工具**批量转换；决策因素：是否需要多团队分权、是否重度依赖某控制器特有 annotation（迁移 = 重写这些方言）。收束：Gateway API 的本质是**把"入口"从单一资源对象升级为可组合的角色协议**——与 RBAC、CRD 一样，都是 K8s "API 即平台合同"哲学的延伸。',
+          ],
+          followUps: [
+            {
+              question: '灰度发布在 Gateway API 上怎么做？和 Nginx annotation 时代比强在哪？',
+              points: [
+                '**权重后端原生支持**：一个 HTTPRoute 挂两个 backendRef（stable 服务 weight 90、canary 服务 weight 10），**规范字段意味着任何实现行为一致**——迁移实现不再重写灰度逻辑；再叠 **header 匹配做定向灰度**（内部员工 header=x 走 canary，其余走 stable），两段规则声明即得。',
+                '强在哪的总结口径：annotation 时代的灰度是"某控制器的私有方言"（换实现全重来、无法用 kubectl 校验、权重与匹配规则没法做 GitOps 的 schema 校验）；Gateway API 是**可校验、可移植、可分权**的标准——把灰度从运维技巧变成平台能力。若再用 **Argo Rollouts/Flagger** 联动（分析指标自动推进或回滚），就是"声明式流量 + 渐进式交付"的完整现代答案（与发布策略题衔接）。',
+              ],
+            },
+          ],
+        },
+        {
           id: 'ops-cicd-dockerfile-optimize',
           title: '怎么把一个 1GB 的 Docker 镜像优化到 200MB？写出优化后的 Dockerfile 要点。',
           difficulty: 'intermediate',

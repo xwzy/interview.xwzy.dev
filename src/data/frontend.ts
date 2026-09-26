@@ -1393,6 +1393,28 @@ export const frontendTrack: Track = {
           ],
         },
         {
+          id: 'fe-react-actions',
+          title: 'React 19 的 Actions 解决了什么？useActionState 和 useOptimistic 怎么用？',
+          difficulty: 'intermediate',
+          tags: ['React 19', 'Actions', 'useActionState', 'useOptimistic'],
+          points: [
+            '**Actions 是什么**：把"表单提交/异步变更"这类动作的**pending、错误、乐观状态管理**内置成一等公民——`<form action={fn}>` 的 fn 可以是异步函数，React 自动管理提交期间状态；配套三个 Hook：`useActionState`（状态 + action 函数 + pending）、`useOptimistic`（乐观 UI）、`use()`（读取 Promise/context 挂起渲染）。与并发特性题分工：那题讲 startTransition 的渲染机制，本题讲 Actions 这套**异步动作的状态范式**。',
+            '**useActionState 的形态**：`const [state, formAction, pending] = useActionState(async (prevState, formData) => {...}, initialState)`——**prevState 链式传递**让错误/结果自然成为下一次提交的输入（替代手写 useState + try/catch + finally 的样板）；**pending 由 React 跟踪**，按钮禁用/loading 不再需要自己维护标志位（且天然避免竞态：React 知道哪个 action 是当前的）。',
+            '**useOptimistic 的正确心智**：提交瞬间渲染"假定成功"的 UI（点赞立刻 +1），`useOptimistic(realState)` 在**transition 期间**返回乐观值、失败或结束后自动回滚到真实值——注意它**只该用于"回滚不伤人"的场景**（点赞、关注），金额、库存这类需要真实确认的不适合乐观；与手写乐观更新对比：手写要处理回滚、乱序、清理三件事，Hook 把"乐观区间"的生命周期交给了 React。',
+            '**渐进增强加分点**：`<form action>` 在**JS 还没加载时也能提交**（纯 HTML 表单行为，配 Server Actions 时服务端直接处理）——弱网/慢设备的首个可用时间提前；这是"JS 优先"时代的回摆，与 RSC 的理念一脉相承（见 RSC 题）。',
+            '什么时候不用：复杂多步流程（向导式表单）的联动状态用 reducer/状态机更清晰；Actions 的甜区是**"一个异步动作 + pending + 结果/错误 + 可选乐观"** 这个形状——能识别出这个形状并知道边界，比无脑套新 API 更显水平。',
+          ],
+          followUps: [
+            {
+              question: '乐观更新失败回滚时，用户已经看到了成功 UI，体验上怎么处理？',
+              points: [
+                '回滚是技术动作，**体验要靠沟通**：回滚时给明确的失败反馈（toast/inline 错误），而不是默默弹回让用户困惑"我刚才点了吗"；已聚焦的输入框回滚后保持焦点与草稿（乐观 UI 只覆盖展示层，不动用户输入源）。',
+                '进阶：**乐观队列**——连续快速操作（连点多个赞）时乐观状态要按序叠加、失败只回滚该笔而不是整批；再考虑服务端最终态与乐观态的合并冲突（别人同时改了同一条数据，回滚后要不要重新拉取）——乐观 UI 的复杂度全在"失败之后"，面试官问这个就是在探你的实际深度。',
+              ],
+            },
+          ],
+        },
+        {
           id: 'fe-react-fiber',
           title: 'React Fiber 是什么？它解决了什么问题？',
           difficulty: 'advanced',
@@ -1794,6 +1816,27 @@ export const frontendTrack: Track = {
           ],
         },
         {
+          id: 'fe-vue-3-5',
+          title: 'Vue 3.5 更新了什么？响应式 props 解构为什么不丢响应性了？',
+          difficulty: 'intermediate',
+          tags: ['Vue 3.5', '响应式', 'useTemplateRef'],
+          points: [
+            '**Reactive Props Destructure 转正**：Vue 3.5 前解构 props 会断开响应（解构发生在 setup 一次，拿到的是当时的值快照），必须 `toRefs(props)`；3.5 编译器把解构**编译回 `props.x` 访问**（编译期转换，零运行时开销）——`const { count = 0, onDone } = defineProps<...>()` 直接可用且保持响应式，默认值也由编译器处理。能讲出"**是编译宏魔法不是运行时代理**"这点，说明理解了实现本质。',
+            '**响应式系统重写（内存降约 56%）**：3.5 重构了响应式内核——依赖用**双向链表 + 版本计数**替代原来的 Map/Set 结构（effect 的依赖清理不再遍历删除，断链即删），大幅减少对象与 Map 开销；这是"响应式原理"题（见响应式系统题）在最新版本的落点，老资料讲的 dep.subs 结构已经换代——用旧八股答新版本会被识破。',
+            '**新 API 三件**：`useTemplateRef()`（模板引用的响应式写法，替代"ref 变量名与模板字符串精确匹配"的脆弱约定——重命名重构不再静默失效）；`onWatcherCleanup()`（watcher 竞态清理：新回调触发前清理上一次的副作用，如 abort 上一个请求——解决"快速切换选项时旧请求晚到覆盖新结果"的经典竞态，思想与 React 的 cleanup 一致）；`useId()`（SSR/CSR 一致的稳定 id，hydration 友好——与 SSR 题的 mismatch 主题呼应）。',
+            '**Lazy Hydration 与延迟传送**：3.5+ 支持 `hydrate-on-visible` 等策略（组件可见才注水）与 Teleport 的 defer——同构应用的 TTI 优化补齐了与 React 流式注水对齐的能力（与 SSR 题衔接）。答题结构建议：按"**开发者体验（props 解构/useTemplateRef）→ 内核性能（响应式重写）→ 同构能力（useId/lazy hydration）**"三层讲，展示的是版本演进的理解框架而不只是背 changelog。',
+          ],
+          followUps: [
+            {
+              question: '为什么 Vue 官方说 3.5 的响应式"内存占用降低 56%"？链表结构好在哪？',
+              points: [
+                '旧结构的两个开销：dep（属性）与 effect（副作用）之间用 Map/Set 双向登记，**依赖变化时要集合删除操作**（key 遍历、hash 计算），且每个依赖关系都是对象级开销；组件大量响应式属性 × 大量 effect 时内存与清理成本线性放大。',
+                '新结构把依赖关系做成**链表节点**（dep 与 sub 互指），清理 = 断开指针 O(1)；配合**版本号/脏检查**跳过未变化的属性通知（track 时记版本，trigger 时比对）——"该通知的才通知、该清理的 O(1) 清理"。用数据结构视角讲框架优化（对照 React 的 fiber 链表化）是高级感的来源：**框架演进的共同主线是用链表/版本换 Map/Set 与重复计算**。',
+              ],
+            },
+          ],
+        },
+        {
           id: 'fe-vue-diff',
           title: 'Vue3 的 diff 算法是怎么做的？key 的作用与注意点？',
           difficulty: 'advanced',
@@ -2105,6 +2148,35 @@ export const frontendTrack: Track = {
               points: [
                 '三层机制：**线性内存隔离**（wasm 模块只能读写自己的线性内存，无法越界访问宿主内存——访问都经边界检查）；**能力模型**（拿不到任何系统 API 与文件句柄，只能调用显式导入的函数）；无系统调用（网络/文件全靠宿主注入）。它隔离的是**内存与能力**，而 iframe/Worker 隔离的是**执行环境与源**（同源策略、postMessage 通信）。',
                 '组合用法：在线运行器常见"wasm 跑不可信代码 + Worker 限时执行 + 主线程只收结果"的多层沙箱——每层防不同维度的风险（内存越界 / 死循环 / 数据泄露）。能对比三层各自的威胁模型，说明安全思维成体系。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'fe-browser-streaming-ai',
+          title: 'AI 对话的前端为什么普遍用 SSE 而不是 WebSocket？流式渲染有哪些工程细节？',
+          difficulty: 'advanced',
+          tags: ['SSE', '流式渲染', 'AI 应用', 'ReadableStream'],
+          points: [
+            '**SSE（Server-Sent Events）与生成式 AI 的天然匹配**：LLM 输出本质是**服务端单向持续推流**（token 逐个生成），SSE 正是为"服务端→客户端单向流"设计的——基于**普通 HTTP**（过代理/网关/CDN 无障碍，复用鉴权头与 CORS 语义）、协议文本极简（`text/event-stream`，`data:` 行 + 空行分隔事件）、**浏览器原生 `EventSource` 自带断线重连与 Last-Event-ID 续传**。对比 WebSocket：需要**协议升级握手**（101）、代理与负载均衡配置更复杂、断线重连要自己实现、而双向能力在"客户端只发请求"的场景纯属浪费——**用 WebSocket 做 AI 对话是拿对讲机干收音机的活**。',
+            '**但生产级实现几乎都用 fetch 而不是 EventSource**：EventSource 有硬伤——**只能 GET**（对话要 POST 长 prompt 与上下文）、**不能自定义请求头**（Authorization）、错误信息有限；所以主流是 `fetch` + **`ReadableStream` 手动消费**：`response.body.getReader()` 循环 `read()`，按 SSE 格式（或厂商的分块协议）切分事件，把 delta 增量 append 到状态里。这道"为什么不用原生 API"是流式前端的第一道区分题。',
+            '**取消与中断的细节（高频追问）**：用户点"停止生成"——`AbortController.abort()` 中断 fetch；**reader 的 `cancel()` 要显式调用释放流锁**，否则流挂着不释放；abort 后 `read()` 会抛 AbortError，catch 里要区分"用户主动取消"（不算错误，保留已生成内容）与网络异常（进入重试逻辑）；服务端也要能感知断开停止计费生成（连接断开事件向上游传播）。',
+            '**渲染层的工程难点**：**Markdown 增量渲染**——半截的 Markdown（未闭合代码块、半个表格）解析会闪烁，方案是"稳定前缀缓存 + 只有尾部最后一段重渲染"（react-markdown 配 memo 粒度控制）；打字机效果用定时器平滑 token 突发（视觉速率与生成速率解耦）；**长对话性能**——消息列表虚拟化 + 只渲染视口内的富文本；代码块高亮用增量 tokenizer。',
+            '**断线恢复与重连（生产必考）**：网络闪断后不能丢已生成内容——方案：**按消息 id + 序号请求续传**（服务端把生成结果也落库，客户端带 offset 拉 delta）、或重连后整段重发（幂等由服务端保证）；自动重连配指数退避，重连期间 UI 显示"连接中断，重试中"而不是白屏。收束口径：流式体验的分水岭不在"能流式"，在**断点续传、可取消、半成品渲染**这三件脏活。',
+          ],
+          followUps: [
+            {
+              question: '流式响应下前端状态怎么组织？多条消息并发生成怎么处理？',
+              points: [
+                '状态形态：消息列表里每条消息带 **status（streaming/done/aborted/error）**，streaming 中的消息内容用**不可变更新**（每次 append 生成新数组/新对象）——配合 React 的并发特性天然可中断渲染；把"网络层解析"（SSE 切分）与"UI 状态"（store 更新）解耦成两层，解析层纯函数化可单测。',
+                '多路并发（并行问多个模型/多个会话）：每路流一个 AbortController 注册到管理表，按消息 id 路由 delta 到对应消息；注意**全局 loading 与单消息 streaming 状态分离**、一路失败不拖垮其他路；对话类 SDK（useChat/streamText 这类抽象）本质就是把上面这些模式封装成 hooks。',
+              ],
+            },
+            {
+              question: 'SSE 经过 Nginx/CDN/代理时为什么会"卡住一次性吐出"？怎么修？',
+              points: [
+                '根因是**中间层缓冲**：Nginx 的 proxy_buffering 会攒够 buffer 再转发、gzip 攒块压缩、CDN 默认缓冲响应——流被攒成大块，前端表现为"等半天突然蹦一大段"。',
+                '修复清单：响应头 **`X-Accel-Buffering: no`**（Nginx 透传禁用缓冲）或 nginx 配置 `proxy_buffering off`；`Content-Type: text/event-stream` + **`Cache-Control: no-cache`**；关掉该路径的 gzip 或确认其流式模式；HTTP/2 下还要注意某些代理对长连接的超时（`proxy_read_timeout` 调大）。能报出"三个缓冲点：代理缓冲、压缩缓冲、CDN 缓冲"说明真排查过。',
               ],
             },
           ],

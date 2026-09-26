@@ -338,6 +338,28 @@ export const backendTrack: Track = {
           ],
         },
         {
+          id: 'be-java-graalvm',
+          title: 'GraalVM 原生镜像（Native Image）为什么启动只要几十毫秒？代价是什么？',
+          difficulty: 'advanced',
+          tags: ['GraalVM', 'AOT', '云原生', 'Java'],
+          points: [
+            '**原理一句话：把"运行时才做的工作"全部提前到构建期**——传统 JVM 启动要加载类、初始化、JIT 边跑边编译（预热期吞吐低）；Native Image 在**构建时做封闭世界分析（closed-world）**：从 main 出发静态可达的代码全部 AOT 编译成机器码，类初始化与堆初始状态**快照（heap snapshot）**进镜像——启动 = 把镜像映射进内存，几十毫秒级、**内存占用常降一半以上**、峰值性能无预热期（没有 JIT 也有 C2 级别的静态优化 + PGO 配合）。',
+            '**代价清单（这题的区分度全在代价上）**：① **封闭世界假设与动态字节码冲突**——反射、动态代理、JNI、动态类加载（ServiceLoader）、字节码增强（CGLIB/ASM）运行时才确定类型，AOT 看不见 → 需要**reachability metadata 配置**（手动登记反射类/方法，社区仓库 spring-native-config 就是干这个的），漏配 = 运行时 ClassNotFound/Raycasting 玄学错误，**配置成本是迁移的主要工作量**；② 构建慢（分钟级）且要大内存；③ **无 JIT 的峰值反优化风险**：激进去虚化、Profile-Guided Optimization（PGO）能补，但极端动态场景仍可能落后 JIT；④ 调试/监控工具链差异（堆 dump 格式、JFR 支持逐步完善）。',
+            '**适用场景的清醒判断**：**Serverless/FaaS**（冷启动就是钱，按毫秒计费的场景 native 是质变）、**CLI 工具与本地脚本**（Java 做 CLI 一直被启动慢劝退，native 后与 Go 同台）、**K8s 弹性扩缩容密集**的场景（扩容快、镜像密度高）；**不适合**：长时间运行的重型服务（JIT 预热后的峰值与 GC 成熟度更优，收益小配置成本大）、强依赖运行时动态性的系统（老 ORM、老 RPC 框架）。',
+            '**生态现状口径**：Spring Boot 3+ 的 **Spring AOT**（构建期做 bean 冗余消除与代理提示，为 native 做准备，`spring-boot:build-image` 一键）、Micronaut/Quarkus（从设计之初就少反射、编译期 DI，对 native 更友好——这也是它们诞生的重要动机）；**虚拟线程与 native 的关系**：虚拟线程解决"阻塞 IO 的吞吐"，native 解决"启动与内存"，两者正交可组合——把它们放在一起对比说明懂两条线的分工。',
+            '收束格局：Java 在云原生时代对 Go 的劣势项（启动、内存、镜像大小）被 GraalVM 补齐，代价是放弃一部分"动态性自由"；判断标准回到业务形态——**生命周期越短（函数级）、实例越密（弹性扩缩），native 收益越大；生命周期越长（常驻服务），JIT 越香**。',
+          ],
+          followUps: [
+            {
+              question: '听说过 CRaC（Coordinated Restore at Checkpoint）吗？它和 AOT 是什么关系？',
+              points: [
+                '**CRaC 是另一条路线：运行时快照恢复**——先把应用在 JVM 上完整启动并预热（JIT 已优化、连接池已建好），然后**检查点转储整个 JVM 状态**（CRIU 技术），之后每次"启动"都是恢复快照——兼得"启动即预热"与 JIT 峰值性能，且**不需要封闭世界**（运行时动态性不受影响）；代价：依赖 Linux CRIU、快照恢复时机敏感（网络连接、时间相关状态要处理）。',
+                '对比口径：AOT = 构建期优化（静态、可预测、丢动态性）；CRaC = 运行时快照（保留 JIT、依赖 OS 能力）；还有 **Leyden 项目**（OpenJDK 官方把 AOT 渐进引入 JVM 的长期路线）。三条路线并进说明"启动慢"是 JVM 的战略级补课——能把这个版图讲清楚，是 JVM 生态视野的直接证明。',
+              ],
+            },
+          ],
+        },
+        {
           id: 'be-java-gc',
           title: '主流垃圾收集器的演进脉络是怎样的？CMS 为什么被 G1 取代？',
           difficulty: 'advanced',
