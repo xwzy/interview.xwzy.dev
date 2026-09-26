@@ -1,0 +1,5 @@
+# 全站响应头：禁止索引/禁止被嵌入框架/不泄露 referrer（Cloudflare Pages 原生支持）
+/*
+  X-Robots-Tag: noindex, nofollow
+  X-Frame-Options: DENY
+  Referrer-Policy: no-referrer

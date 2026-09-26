@@ -5,6 +5,7 @@ import { useSessions } from '../context/SessionContext'
 import { useCustomQuestions } from '../context/BankContext'
 import { useBank } from '../context/BankContext'
 import { useFavorites } from '../context/FavoritesContext'
+import { useAuth } from '../context/AuthContext'
 import { buildTracksMarkdown } from '../lib/exportMd'
 import { BACKUP_VERSION, sanitizeBackup, type BackupFile } from '../lib/backup'
 import { cx } from '../lib/utils'
@@ -28,6 +29,7 @@ export default function SettingsPage() {
   const { sessions, removeSession } = useSessions()
   const { customQuestions, removeCustom } = useCustomQuestions()
   const { favorites, toggleFavorite } = useFavorites()
+  const { logout } = useAuth()
   const { tracks } = useBank()
   const fileRef = useRef<HTMLInputElement>(null)
   const [message, setMessage] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null)
@@ -80,7 +82,9 @@ export default function SettingsPage() {
   }
 
   /** 双击确认式清空：category 唯一标识 */
-  const clearAll = (category: 'mastery' | 'verdicts' | 'sessions' | 'custom' | 'favorites') => {
+  const clearAll = (
+    category: 'mastery' | 'verdicts' | 'sessions' | 'custom' | 'favorites' | 'auth',
+  ) => {
     if (confirmClear !== category) {
       setConfirmClear(category)
       setTimeout(() => setConfirmClear((c) => (c === category ? null : c)), 3000)
@@ -98,15 +102,18 @@ export default function SettingsPage() {
     } else if (category === 'custom') {
       ;[...customQuestions].forEach((q) => removeCustom(q.id))
       flash('ok', '自定义题目已清空')
-    } else {
+    } else if (category === 'favorites') {
       ;[...favorites].forEach((id) => toggleFavorite(id))
       flash('ok', '收藏记录已清空')
+    } else if (category === 'auth') {
+      logout()
+      window.location.reload()
     }
     setConfirmClear(null)
   }
 
   const clearButton = (
-    category: 'mastery' | 'verdicts' | 'sessions' | 'custom' | 'favorites',
+    category: 'mastery' | 'verdicts' | 'sessions' | 'custom' | 'favorites' | 'auth',
     count: number,
   ) => (
     <button
@@ -215,6 +222,10 @@ export default function SettingsPage() {
           <li className="flex flex-wrap items-center gap-3">
             <span className="w-40 text-slate-600 dark:text-slate-300">收藏题目</span>
             {clearButton('favorites', favorites.size)}
+          </li>
+          <li className="flex flex-wrap items-center gap-3">
+            <span className="w-40 text-slate-600 dark:text-slate-300">访问登录状态</span>
+            {clearButton('auth', 1)}
           </li>
         </ul>
       </section>

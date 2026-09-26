@@ -3,6 +3,8 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router'
 import App from './App'
 import ErrorBoundary from './components/ErrorBoundary'
+import AuthGate from './components/AuthGate'
+import { AuthProvider } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
 import { MasteryProvider } from './context/MasteryContext'
 import { VerdictProvider } from './context/InterviewContext'
@@ -15,21 +17,25 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter basename={import.meta.env.BASE_URL}>
       <ErrorBoundary>
-        <ThemeProvider>
-          <CustomQuestionsProvider>
-            <BankProvider>
-              <FavoritesProvider>
-                <MasteryProvider>
-                  <VerdictProvider>
-                    <SessionProvider>
-                      <App />
-                    </SessionProvider>
-                  </VerdictProvider>
-                </MasteryProvider>
-              </FavoritesProvider>
-            </BankProvider>
-          </CustomQuestionsProvider>
-        </ThemeProvider>
+        <AuthProvider>
+          <AuthGate>
+            <ThemeProvider>
+            <CustomQuestionsProvider>
+              <BankProvider>
+                <FavoritesProvider>
+                  <MasteryProvider>
+                    <VerdictProvider>
+                      <SessionProvider>
+                        <App />
+                      </SessionProvider>
+                    </VerdictProvider>
+                  </MasteryProvider>
+                </FavoritesProvider>
+              </BankProvider>
+            </CustomQuestionsProvider>
+          </ThemeProvider>
+        </AuthGate>
+        </AuthProvider>
       </ErrorBoundary>
     </BrowserRouter>
   </StrictMode>,
