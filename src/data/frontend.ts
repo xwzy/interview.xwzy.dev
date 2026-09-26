@@ -202,6 +202,27 @@ export const frontendTrack: Track = {
           ],
         },
         {
+          id: 'fe-css-margin-collapse',
+          title: '外边距合并（margin 塌陷）是怎么回事？怎么解决？',
+          difficulty: 'basic',
+          tags: ['CSS', 'margin', 'BFC'],
+          points: [
+            '两种典型场景：① **相邻兄弟元素**的上下 margin 取较大值而不是相加（上 20px + 下 30px = 30px）；② **父子元素**：父元素没有 border/padding/内容隔开时，子元素的 margin-top 会"穿透"到父元素外面，表现为父元素整体被推下去（经典"margin-top 不生效"）。',
+            '根本原因：**垂直方向上处于同一 BFC 的普通流块级盒**，相邻 margin 会折叠成一个（取正值的最大值；有负 margin 时正负相加）。**只有垂直方向折叠，水平 margin 永不折叠**——这也是面试常问的分界线。',
+            '**父子塌陷的解法**（任选其一，触发条件是"隔开或新建 BFC"）：父元素加 `overflow: hidden`（新建 BFC）、加 padding-top/border-top 隔开、子元素改用 padding 替代 margin、父元素改用 Flex/Grid 布局（**Flex/Grid 容器内子项 margin 不折叠**，现代项目最省心的答案）。',
+            '相邻兄弟的解法：统一 margin 规范（只定义 margin-bottom 或只定义 margin-top）、用 gap（Flex/Grid 的 gap 就是为此而生）、或包一层触发 BFC 的容器。',
+          ],
+          followUps: [
+            {
+              question: 'BFC 是什么？除了解决 margin 塌陷还有哪些应用？',
+              points: [
+                '**BFC（块级格式化上下文）**是一块独立的渲染区域，内部布局不影响外部。触发方式：根元素、`overflow: hidden/auto/scroll`（非 visible）、`float` 非 none、`position: absolute/fixed`、`display: flow-root`（**专门为创建 BFC 发明的无副作用写法，首选**）、Flex/Grid 容器。',
+                '四大应用：① 包含内部 margin 塌陷；② **清除浮动**（BFC 容器能包住浮动的子元素，高度不塌陷）；③ **两栏自适应布局**（侧栏浮动 + 主栏 BFC，不与浮动重叠）；④ 隔离 margin 折叠。`display: flow-root` 没有overflow 裁剪的副作用，是现代答案的加分点。',
+              ],
+            },
+          ],
+        },
+        {
           id: 'fe-css-grid',
           title: 'Grid 布局和 Flex 有什么区别？Grid 的核心用法是什么？',
           difficulty: 'intermediate',
@@ -1351,6 +1372,27 @@ export const frontendTrack: Track = {
           ],
         },
         {
+          id: 'fe-react-error-boundary',
+          title: 'React 的 Error Boundary 是什么？哪些错误它捕获不到？',
+          difficulty: 'intermediate',
+          tags: ['React', 'Error Boundary', '异常处理'],
+          points: [
+            '**Error Boundary** 是一种 React 组件，用 `static getDerivedStateFromError()`（渲染备用 UI）+ `componentDidCatch(error, errorInfo)`（记录日志）捕获**子组件树**里的渲染期错误，兜住"白屏"这种最伤可用性的故障。类组件实现，或用 react-error-boundary 库；函数组件没有对应 Hook，社区方案的内部仍是类组件。',
+            '**边界粒度是设计题**：不能整页一个 EB 包到底（一处错全页换兜底图），要按**故障域分包**——路由级包一层、独立卡片/侧栏/图表各包各的，局部崩了局部降级，主流程照常。兜底 UI 要给"重试"出口（重新渲染 key 或重置状态）。',
+            '**捕获不到的错误（必考）**：① **事件处理函数**里的异常（try-catch 自己包，或全局 window.onerror 兜底）；② **异步代码**（setTimeout、Promise 链，用 window.onunhandledrejection / 统一请求层捕获）；③ 服务端渲染（SSR）错误；④ **Error Boundary 自身及其子组件的事件回调**；⑤ React 19 起 `onUncaughtError`/`onCaughtError` root 回调可作为全局补充。能主动列全"捕获不到"清单，才是真的用过。',
+            '与监控联动：componentDidCatch 里上报 **组件栈（componentStack）+ 版本号 + 用户操作路径**，配合 sourcemap 还原——这是前端监控体系里渲染错误的数据源头。',
+          ],
+          followUps: [
+            {
+              question: '生产环境的全局异常监控体系怎么搭？',
+              points: [
+                '分层捕获：**渲染错误**（Error Boundary + componentDidCatch 上报）→ **异步/运行时错误**（window.onerror、unhandledrejection）→ **资源加载错误**（error 捕获阶段监听 script/img）→ **接口错误**（统一请求层拦截，区分业务码与 HTTP 错误）→ **跨域脚本错误**（script 加 crossorigin + CORS 响应头，否则只有 "Script error."）。',
+                '治理要点：**sourcemap 还原**（map 文件只上传监控平台不下发生产）、**聚合与降噪**（同错误指纹聚合计数，参考 ops 方向的告警治理思路）、**采样与配额**（高频错误限流上报避免打爆）、**版本维度看板**（新版本错误率环比，回归发版前发现劣化）。',
+              ],
+            },
+          ],
+        },
+        {
           id: 'fe-react-fiber',
           title: 'React Fiber 是什么？它解决了什么问题？',
           difficulty: 'advanced',
@@ -1452,6 +1494,27 @@ export const frontendTrack: Track = {
       ],
       questions: [
         {
+          id: 'fe-react-rsc',
+          title: 'React Server Components 是什么？它和 SSR 有什么本质区别？',
+          difficulty: 'advanced',
+          tags: ['React', 'RSC', 'Next.js'],
+          points: [
+            '**RSC（服务端组件）是"组件在服务端运行、产物不是 HTML 而是序列化的 UI 描述"**：Server Component 只在服务端执行一次，把渲染结果（React Server Format，一种类 RSC Payload 的中间描述）流式发给客户端，客户端按描述 hydrate/拼装。它**不进入客户端 bundle**——组件代码、依赖库全部留在服务端。',
+            '**与 SSR 的本质区别（高频混淆点）**：SSR 是**首屏渲染策略**——组件仍要下载到客户端、重新执行、hydrate 成可交互应用（"在服务端渲染一遍再在客户端渲染一遍"）；RSC 是**组件的运行位置划分**——Server Component 根本不下载不 hydrate，天然零客户端 JS 成本。SSR 交付的是"更快的 HTML"，RSC 交付的是"更小的 bundle + 直接访问服务端能力"。',
+            '**Server Component 的能力与限制**：能直接 `async/await` 取数据库、读文件、调内部服务（fetch 免走公网）、用 API 密钥不泄露；**不能**用 state/effect/浏览器 API、不能绑定事件——需要交互的部分标 `\'use client\'` 拆成 Client Component，二者可在组件树里**交错嵌套**（Client Component 的 children 可以是 Server Component）。',
+            '**为什么大方向是对的**：数据获取从"客户端瀑布"（先下载 JS → 发请求 → 再渲染）变成"服务端直连数据源一次完成"；markdown 解析器、语法高亮这类重依赖只在服务端跑，客户端只收结果。Next.js App Router 是 RSC 的主流落地，Meta 的做法是**按"是否需要交互/状态"划组件归属**，而不是按页面一刀切。',
+          ],
+          followUps: [
+            {
+              question: 'RSC 下数据怎么传给 Client Component？序列化有什么限制？',
+              points: [
+                'props 从 Server 传向 Client 必须可被 **React 序列化协议**编码：支持普通对象、数组、字符串、数字、Date、Map/Set、Promise、BigInt；**不支持**函数（包括事件处理器）、class 实例（自定义原型会丢）、Symbol。想要服务端能力就传"数据"，行为留在客户端定义。',
+                '进阶约定：Server 侧可以传 **Promise 作为 prop**（客户端用 `<Suspense>` 接住，流式到达），传函数的反向需求用 **Server Actions**（`\'use server\'`：客户端调用的函数在服务端执行，本质是一个 RPC 端点，常配 `useActionState` 做表单提交）。能讲到"RSC Payload + Server Actions = 客户端和服务端的双向通道"，这道题就到顶了。',
+              ],
+            },
+          ],
+        },
+        {
           id: 'fe-vue-vif-vshow',
           title: 'v-if 和 v-show 有什么区别？分别适用什么场景？',
           difficulty: 'basic',
@@ -1526,6 +1589,28 @@ export const frontendTrack: Track = {
             '**TypeScript 支持更好**：不再依赖 this 上下文推导类型，纯函数签名天然可标注。',
             '两种 API 在 Vue3 中共存且底层一致（都是响应式系统 + 渲染函数）；Options API 未废弃，简单小组件依然直观。',
             '`<script setup>` 是 Composition API 的编译糖：更少样板、顶层 await、常量提升，是官方推荐写法。',
+          ],
+        },
+        {
+          id: 'fe-vue-lifecycle',
+          title: 'Vue 组件的生命周期有哪些？每个阶段适合做什么？',
+          difficulty: 'basic',
+          tags: ['Vue', '生命周期'],
+          points: [
+            '**创建阶段**：`setup()`（Composition API 的入口，替代 beforeCreate/created，此时还没有 this 与响应式视图）→ 组件实例初始化完成、props/事件就绪，**数据请求常放这里**（最早发起，省一个生命周期的时间）。',
+            '**挂载阶段**：`onBeforeMount`（模板编译完还未渲染，很少用）→ `onMounted`（**DOM 就绪**：测量尺寸、初始化需要 DOM 的第三方库、图表/编辑器实例、焦点管理都在这）。',
+            '**更新阶段**：`onBeforeUpdate`（数据变了、DOM 还没变，可取旧 DOM）→ `onUpdated`（DOM 已按新数据更新；**注意不要在这里改响应式数据**，会死循环）。',
+            '**销毁阶段**：`onBeforeUnmount`（实例还在，清理还来得及）→ `onUnmounted`（清理定时器、事件监听、WebSocket、取消未完成请求）。**清理不彻底 = 内存泄漏**，是生命周期题的落点：`onMounted` 里注册的每一项，都要在卸载钩子里注销。',
+          ],
+          followUps: [
+            {
+              question: '父组件和子组件的生命周期执行顺序是怎样的？',
+              points: [
+                '挂载：**父 beforeMount → 子 beforeMount → 子 mounted → 父 mounted**——父先开始渲染，遇到子组件递归完成，最后父的 mounted 才触发（"父等待子"）。更新同理：父 beforeUpdate → 子 beforeUpdate → 子 updated → 父 updated。',
+                '销毁：**父 beforeUnmount → 子 beforeUnmount → 子 unmounted → 父 unmounted**。记忆口径：钩子触发总是"父的 before 先到，子的完成先到"。',
+                '引申：keep-alive 缓存的组件不触发 unmounted，而是 activated/deactivated——这是 KeepAlive 题的入口，能连起来讲说明生命周期是真的理解了。',
+              ],
+            },
           ],
         },
         {
@@ -1640,6 +1725,70 @@ export const frontendTrack: Track = {
               points: [
                 '官方姿势：pinia-plugin-persistedstate 声明式配置 **paths 只持久化需要的字段**，序列化与写入时机由插件统一管理。',
                 '整 store 直存的坑：localStorage 同步 IO 阻塞主线程、响应式对象/函数无法序列化、临时 UI 状态被持久化成脏数据；token 类敏感信息进 localStorage 另有 XSS 风险。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'fe-vue-vmodel',
+          title: 'v-model 的实现原理是什么？组件上怎么自定义 v-model？',
+          difficulty: 'intermediate',
+          tags: ['Vue', 'v-model', '双向绑定'],
+          points: [
+            'v-model 是**语法糖**，本质是"value 绑定 + input 事件回写"两件事：`<input v-model="text">` 编译成 `:value="text"` + `@input="text = $event.target.value"`。**它不是双向数据流**——数据到视图是响应式更新，视图到数据是事件回写，单向数据流原则并没有被破坏。',
+            '**不同元素绑定的事件不同**：原生 input/textarea 是 input 事件；checkbox/radio 用 checked + change；组件上默认是 `modelValue` prop + `update:modelValue` 事件（Vue 3），Vue 2 是 value + input。',
+            '**自定义组件 v-model（Vue 3）**：组件内 `defineProps<{ modelValue: string }>()` 接收，更新时 `emit(\'update:modelValue\', 新值)`；`<script setup>` 里有捷径——`defineModel<string>()` 返回一个读写即同步的 ref，宏内部替你做了 props + emit 样板。',
+            '**修饰符原理**：`.lazy` 把 input 事件换成 change（失焦才同步）；`.number` 用 parseFloat 转型；`.trim` 去首尾空格。Vue 3 还支持**多个 v-model**（`v-model:title="t"` 对应 modelValue 换名）与自定义修饰符（`modelModifiers` prop 里判断），能讲出"绑定名可参数化"说明理解到协议层。',
+          ],
+          followUps: [
+            {
+              question: 'v-model 和 sync 修饰符、单向数据流有什么关系？为什么子组件不能直接改 props？',
+              points: [
+                'Vue 2 的 `.sync` 是 v-model 的多路版本（`:title.sync` 语法糖 = `:title` + `@update:title`），Vue 3 已合并进参数化的 v-model——说得出这段演进史，能体现版本理解。',
+                '**单向数据流的原因**：props 的变更是父组件触发的重新渲染，子组件直接改 props 会破坏"数据只有一个写入口"的契约，父子各自改同一份数据时**变更不可追溯**（谁改的、什么顺序，完全失控）。子组件想改的正确姿势：emit 事件让父改，或用 v-model 把"改"的通道显式声明出来。',
+                '对象/数组 prop 的坑：直接改对象内部属性"能生效"（引用没换），但这仍是反模式——监控不到、约定崩坏，code review 一票否决。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'fe-vue-router',
+          title: 'Vue Router 的 hash 模式和 history 模式有什么区别？导航守卫怎么用？',
+          difficulty: 'intermediate',
+          tags: ['Vue Router', '路由', 'SPA'],
+          points: [
+            '**hash 模式**：URL 里 `#/path`，路由变化只改 **# 后面的部分**——hash 变化**不会发请求**，靠 `hashchange` 事件监听。优点：无需服务端配置，任何静态托管都能跑；缺点：URL 带 # 不美观，且 SEO 与锚点语义受限。',
+            '**history 模式**：用 **History API**（`pushState/replaceState` 改 URL 不刷新页面 + `popstate` 监听前进后退）。URL 干净；代价是**直接访问/刷新深层路径会 404**——浏览器真向服务器发起了 `/user/123` 请求，服务端必须把所有路径**回退到 index.html**（nginx `try_files $uri /index.html`），即所谓"fallback/重写"配置。',
+            '**导航守卫三级**：**全局**（`beforeEach` 鉴权拦截、`afterEach` 埋点/改标题）、**路由独享**（`beforeEnter`）、**组件内**（`beforeRouteEnter/Update/Leave`——Leave 里做"表单未保存拦截"）。异步鉴权用 `next()`/返回值控制：返回 `false` 取消、返回路由对象重定向，Vue Router 4 支持 Promise 风格。',
+            '工程要点：路由**懒加载**（`() => import(\'...\')` 按需分包，首屏优化标配）；守卫里的**异步竞态**（快速切换路由时旧鉴权结果回来污染新页面，用路由元信息比对或取消旧请求）；404 用 `/:pathMatch(.*)*` 兜底。',
+          ],
+          followUps: [
+            {
+              question: 'history 模式的 404 问题在 nginx 里具体怎么配？静态托管还有别的方案吗？',
+              points: [
+                'nginx 标准写法：`location / { try_files $uri $uri/ /index.html; }`——先找真实文件（JS/CSS 资源命中即返回），找不到统一回退 index.html 交给前端路由。注意**只对页面路径回退**，接口路径（/api）绝不能回退，否则错误被吞成 200 的 HTML，前端解析出一堆玄学问题。',
+                '其他方案：静态托管平台（Vercel/Netlify/GitHub Pages）配 SPA rewrite 规则；或干脆 hash 模式零配置。工程判断：有 SEO 要求或 URL 美观要求选 history + 服务端 fallback，纯内部工具 hash 最省事。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'fe-vue-keepalive',
+          title: 'KeepAlive 缓存组件的原理是什么？activated 和 deactivated 什么时候触发？',
+          difficulty: 'intermediate',
+          tags: ['Vue', 'KeepAlive', '性能优化'],
+          points: [
+            '**KeepAlive 是抽象组件**：包裹动态组件时，组件切换**不销毁实例**，而是把 vnode 从真实 DOM 摘下后存入**缓存容器**（内部 Map + LRU 淘汰策略），再次渲染时直接从缓存取回并重新插入 DOM——状态（表单、滚动位置、数据）完整保留。',
+            '**一对专属生命周期钩子**：被缓存的组件**进入**视口时触发 `onActivated`，**离开**时触发 `onDeactivated`——替代 mounted/unmounted 承担"进入刷新数据、离开暂停轮询"的职责。**首次进入 activated 与 mounted 都触发**；组件被真正销毁（缓存淘汰或 KeepAlive 卸载）时才走 unmounted。',
+            '**三个属性控制缓存面**：`include`（匹配才缓存）/ `exclude`（匹配不缓存）/ `max`（上限 + **LRU 淘汰**最久未访问的实例，防内存无限涨）。匹配依据是组件的 name 选项——这也是"组件要显式命名"的一个工程理由。',
+            '典型场景与边界：列表页 ↔ 详情页往返保留列表筛选状态（配路由 meta 决定哪些页缓存）；**注意**：缓存组件里的定时器/事件监听不会自动暂停，"离开页继续轮询"是 KeepAlive 场景的经典 bug——暂停逻辑必须挂在 onDeactivated。',
+          ],
+          followUps: [
+            {
+              question: 'KeepAlive 和 v-if/v-show 在"保留状态"上有什么本质区别？什么场景不该用 KeepAlive？',
+              points: [
+                '**v-show** 只是 display 切换，实例常驻、始终活着，适合**频繁显隐的小块 UI**（tab 面板）；**KeepAlive** 面向**路由/组件级切换**——实例从渲染树摘除（不占渲染开销）、按需缓存，适合"页面级"的往返场景。v-if 则完全销毁重建，什么都不保留。',
+                '不该用的场景：数据必须每次新鲜的页面（缓存了反而是 bug，要么不缓存要么 activated 里强制刷新）；表单敏感页（后台切回要重新鉴权）；内存敏感的移动端长列表（缓存的实例连着大 DOM 树，配 max 收敛）。能用"缓存 = 用内存换交互连续性"的口径收尾，说明取舍讲清了。',
               ],
             },
           ],

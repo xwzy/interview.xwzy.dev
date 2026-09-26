@@ -358,6 +358,48 @@ export const qaTrack: Track = {
           ],
         },
         {
+          id: 'qa-automation-appium',
+          title: 'App UI 自动化怎么做？Appium 的原理和局限是什么？',
+          difficulty: 'intermediate',
+          tags: ['Appium', 'App 自动化', 'UI 自动化'],
+          points: [
+            '**Appium 的架构是"翻译官"模式**：测试脚本（任意语言，走 WebDriver/W3C 协议）→ **Appium Server** → 平台驱动把指令翻译成系统原生协议——Android 走 **UIAutomator2**（Google 官方 instrumentation），iOS 走 **XCUITest**（Apple 官方框架）。本质：**协议统一 + 原生执行**，所以一套脚本可以跑双端，但也因此多了一层，稳定性与速度都受制于各平台驱动。',
+            '元素定位是 App 端的第一痛点：web 端有稳定 DOM，App 端只能靠 **accessibility-id（无障碍标识）/ id / xpath**。工程纪律是**推动开发给关键控件加 accessibility-id**（语义化且最稳），xpath 是最后手段（层级一变全断）；页面结构用 W3C inspector 或 uiautomatorviewer 探查。',
+            '**局限要主动讲清**（这是面试官想听的）：**慢**（每步操作跨 HTTP → Server → 驱动 → 设备多跳，一条用例秒级起步）；**脆**（弹窗、系统升级、WebView 混合页、跨 App 场景都易挂）；**环境重**（真机/模拟器管理、驱动版本与 OS 版本强绑定、iOS 还受签名与并行数限制）。所以工程共识是**金字塔模型**：能用接口自动化覆盖的逻辑不上 UI 层，App UI 自动化只覆盖**核心冒烟路径**（登录、下单主链路），追求覆盖面是投入产出崩塌的开始。',
+            '落地框架设计：页面对象模型（Page Object）封装控件与操作（与 Web 端 PO 模式同构）、**多设备并行**（Appium 支持多 server 实例 + STF/Sonic 设备管理平台）、失败自动截图 + 录屏 + Appium 日志三件套留证（App 端失败原因不截图基本无法复盘）。',
+          ],
+          followUps: [
+            {
+              question: '混合开发（H5 + Native）的 App，自动化要怎么处理 WebView 部分？小程序呢？',
+              points: [
+                'WebView 部分的正确姿势：Appium 驱动把混合页切到 **webview context**（`getContextHandles` 列出所有上下文，切到 WEBVIEW_xxx），之后就可以用 web 那套定位器（css/selector）操作页面元素——本质是 Appium 在 WebView 里接了个 chromedriver；iOS 的 WKWebView 同理。常见坑：Android 要开 `setWebContentsDebuggingEnabled(true)`，webview 版本碎片化导致定位漂移。',
+                '小程序没有官方自动化协议，走折中方案：**微信官方的 miniprogram-automator**（独立协议驱动小程序逻辑层与渲染层）或 Appium 的 webview 模式近似覆盖（小程序本质是运行在定制 WebView 里的页面）。能说清"上下文切换是混合自动化第一公民"，这题就有工程味了。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'qa-automation-stability',
+          title: 'UI 自动化用例总是不稳定（flaky），你的系统性治理思路是什么？',
+          difficulty: 'intermediate',
+          tags: ['Flaky', 'UI 自动化', '稳定性治理'],
+          points: [
+            '先给定义与代价：flaky = **代码没改、结果时对时错**。它是自动化团队的头号杀手——假失败消耗人力排查、狼来了效应让真失败被无视、最终整个套件失去信任被弃用。治理目标不是"消灭"（做不到）而是**把 flaky 率压到可接受（如 <1%）并持续度量**。',
+            '按根因分层治（大部分 flaky 是测试代码的错，不是被测系统的错）：**等待问题占大半**——sleep 写死是万恶之源，改成**显式等待**（等元素可见/可点/接口返回，Playwright 的自动等待、Appium 的 webdriver wait）；**用例间依赖**——用例必须自洽：自己造数、自己清理、顺序无关（与接口自动化框架同一纪律，见框架设计题的分工：那道讲 API 层框架，本题聚焦 UI 层与环境层）；**异步竞态**——前端渲染/动画未完成就断言，用状态驱动断言而不是时间驱动。',
+            '**环境与数据层**：环境不稳（第三方服务、脏数据、配置漂移）是隐形大户——外部依赖挡板化（mock 挡板固定返回）、测试账号池隔离（防撞车）、灰度配置固定；**被测产品的可测性**要反向推动：加 data-testid、提供测试钩子（隐藏弹窗的开关、时间冻结接口）、消除随机动画——**自动化建设是测试与开发的双向工程**，只改测试侧是治不好的。',
+            '机制化收尾：**flaky 度量进报表**（用例级成功率趋势，连续 N 次失败的用例自动隔离 quarantine，不阻塞主流程但进入修复队列）；**重试要克制**（失败自动重试 1 次可缓解偶发抖动，但重试治标不治本且掩盖真实问题，要留重试记录定期回查根因）；失败证据链（截图 + 录屏 + console/network 日志 + trace）自动化留存。这套讲下来，是从"写脚本"到"经营自动化资产"的认知跃迁。',
+          ],
+          followUps: [
+            {
+              question: '被隔离（quarantine）的 flaky 用例越来越多，团队开始质疑自动化价值，怎么办？',
+              points: [
+                '先救信任：**公开 flaky 率与隔离名单的看板**，让"不稳定"变成可度量的工程指标而不是玄学感受；对隔离用例**定修复 SLA**（如两周内修好或删除）——删除也是治理，留着长期红的用例比没有用例更糟（它提供的是噪音不是信心）。',
+                '再救投入产出：回到**金字塔原则重新分层**——flaky 重灾区（UI 层）的断言下移到接口层验证（UI 只验证渲染和关键链路，业务正确性交给接口层），把最脆的断言从最脆的层里挪走；同时向管理层展示**修正后的 ROI**（核心冒烟套件的拦截事故数、回归工时节省），主动收缩到高价值用例集。主动做减法 + 用数据说话，是自动化负责人的答卷。',
+              ],
+            },
+          ],
+        },
+        {
           id: 'qa-automation-perf-bottleneck',
           title: '压测发现 TPS 上不去、RT 暴涨，你的性能瓶颈定位思路是什么？',
           difficulty: 'advanced',

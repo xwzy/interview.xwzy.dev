@@ -317,6 +317,27 @@ export const backendTrack: Track = {
           ],
         },
         {
+          id: 'be-java-virtual-thread',
+          title: 'Java 虚拟线程是什么？它和平台线程、Go 协程有什么区别？',
+          difficulty: 'intermediate',
+          tags: ['虚拟线程', 'Java 21', '并发'],
+          points: [
+            '**虚拟线程（Java 21 正式，Project Loom）**是 JVM 管理的轻量线程：不再 1:1 映射操作系统线程，而是由 JVM 把大量虚拟线程**调度到少量载体线程（carrier，平台线程）**上运行。创建成本从"约 1MB 栈 + 内核调用"降到可百万级并发，`Thread.ofVirtual().start()` 或 `Executors.newVirtualThreadPerTaskExecutor()` 即可用。',
+            '**解决的问题：阻塞的成本**。传统服务端"一请求一线程"受限于线程数（几百上千就到顶），于是催生了响应式编程（WebFlux/CompletableFuture 链）——性能好但代码难写难调。虚拟线程让**同步阻塞写法拥有异步的吞吐**：阻塞点由 JVM 感知，把虚拟线程**从载体线程上挂起（unmount）**，载体继续跑别人，恢复时再挂回来。',
+            '**与 Go 协程的异同**：同为用户态调度的 M:N 模型；差异在**抢占与阻塞面**——Go 调度器有基于信号的**异步抢占**（防长循环饿死），且 runtime 把网络 IO 全部做成非阻塞集成进调度；**虚拟线程目前是协作式的**：I/O 与 JDK 阻塞点会让出载体，但 CPU 密集循环不让出（会占住载体线程），且 pinned 场景（synchronized 块内阻塞、native 方法，JDK 24 已大幅修复 synchronized pinning）不会释放载体。',
+            '**适用与不适用**：适合 **IO 密集、高并发阻塞**场景（网关、爬虫、聚合调用、迁移老的 Thread-Per-Request 应用）；不适合 CPU 密集（就给核数那么多平台线程），也**不是"越多越好"**——下游连接池、数据库连接数才是新的瓶颈，无限并发只是把压垮点后移。',
+          ],
+          followUps: [
+            {
+              question: '有了虚拟线程还需要响应式编程（WebFlux）吗？ThreadLocal 在虚拟线程下还有效吗？',
+              points: [
+                '**绝大多数场景不需要了**：响应式的核心卖点是"用少量内核线程扛阻塞 IO"，虚拟线程用同步写法达成同样吞吐，可读性、调试、JVM 生态（阻塞式 JDBC/HTTP client）全面占优；响应式退守到**背压流处理**（真正需要 reactive streams 语义的数据流）这一细分场景。这是官方也认可的口径。',
+                '**ThreadLocal 有效且更便宜**：每个虚拟线程有自己的 ThreadLocalMap，行为不变；而且虚拟线程海量创建，"池化复用 + ThreadLocal 脏状态"的老问题消失——新任务新线程，天然干净。跨虚拟线程传递仍用 ScopedValue（Scoped Values，不可变、有作用域，是 ThreadLocal 的现代替代）——能提到 ScopedValue 是 Java 21+ 的加分项。',
+              ],
+            },
+          ],
+        },
+        {
           id: 'be-java-gc',
           title: '主流垃圾收集器的演进脉络是怎样的？CMS 为什么被 G1 取代？',
           difficulty: 'advanced',
@@ -502,6 +523,27 @@ export const backendTrack: Track = {
           ],
         },
         {
+          id: 'be-springboot-autoconfig',
+          title: 'Spring Boot 的自动配置（@EnableAutoConfiguration）是怎么工作的？',
+          difficulty: 'intermediate',
+          tags: ['Spring Boot', '自动配置', '条件注解'],
+          points: [
+            '入口是 **@SpringBootApplication**，它是三个注解的组合：@SpringBootConfiguration（配置类）、@ComponentScan（扫当前包及子包）、**@EnableAutoConfiguration**——自动装配的核心在第三个。',
+            '**加载机制**：@EnableAutoConfiguration 通过 @Import 引入 AutoConfigurationImportSelector，它从所有 jar 包的 **`META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports`** 文件（Boot 2.7 前是 spring.factories）里读出**候选配置类全名列表**，再逐一筛选。',
+            '**筛选靠条件注解**：@ConditionalOnClass（类路径有这个类才生效——这就是"引入 starter 依赖即自动配置"的机制）、@ConditionalOnMissingBean（用户没自己定义才生效——**保证用户配置优先**）、@ConditionalOnProperty（开关属性）。最终只有满足条件的配置类里被 @Bean 标注的方法会注册进容器。',
+            '**starter 的本质**：一个"依赖聚合 + 自动配置"包——引入 `spring-boot-starter-web` 就把 spring-mvc、tomcat、jackson 拉进来，对应的 WebMvcAutoConfiguration 因 @ConditionalOnClass(Servlet.class) 满足而生效。面试落地题：**自定义 starter** = 写配置类 + 条件注解 + 配置属性类（@ConfigurationProperties）+ 在 imports 文件登记。',
+          ],
+          followUps: [
+            {
+              question: '自动配置和自己写的 @Bean 冲突了怎么办？怎么排查某个自动配置没生效？',
+              points: [
+                '设计上**用户配置永远赢**：自动配置类都标了 @ConditionalOnMissingBean，容器先处理用户的 @Component/@Bean（@ComponentScan 阶段），再处理自动配置（按条件跳过已存在的）。真冲突时排查思路：看条件评估报告——启动加 **--debug** 输出**条件评估报告**（哪些自动配置匹配/不匹配、原因），或用 Spring Actuator 的 conditions 端点。',
+                '加载顺序细节：@AutoConfigureBefore/After 控制自动配置之间的顺序；@Order/@AutoConfigureOrder 影响同类型 Bean 的优先级。能说出"先用户后自动配置"这条总原则加"conditions 报告"这个排查工具，基本就是生产经验答案。',
+              ],
+            },
+          ],
+        },
+        {
           id: 'be-java-threadlocal',
           title: 'ThreadLocal 的实现原理是什么？为什么会内存泄漏？跨线程传递怎么解决？',
           difficulty: 'intermediate',
@@ -643,6 +685,27 @@ export const backendTrack: Track = {
               points: [
                 'Go 没有 kill goroutine 的机制：取消是**协作式**的——协程不主动检查 Done() 就永远运行。一个泄漏的 goroutine 会一直持有栈与引用。',
                 '治理：所有长生命周期协程必须"出生即挂 context"并在 select 里响应；用 errgroup 管理成组生命周期；监控 runtime.NumGoroutine 趋势，泄漏用 pprof goroutine profile 按创建栈定位。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'be-go-escape',
+          title: 'Go 的内存逃逸分析是什么？哪些写法会导致变量逃逸到堆？',
+          difficulty: 'intermediate',
+          tags: ['Go', '内存逃逸', '性能优化'],
+          points: [
+            '**逃逸分析是编译器的静态分析**：在编译期判断变量的生命周期是否能被函数外感知——确定"栈上活得到函数结束"就分配在**栈**（分配释放只是挪动栈指针，纳秒级，GC 不管），否则**逃逸到堆**（分配找 mcache/mheap，靠 GC 回收，带来分配开销与 GC 压力）。',
+            '常见逃逸场景清单：① 返回**局部变量的指针**（生命周期超出函数）；② 赋值给**interface{} 参数**（fmt.Println、error 包装，接口里存指针且大小不可知）；③ **闭包捕获**被外部引用的变量；④ 变量大小**编译期不可知**（`make([]int, n)` 的 n 是变量）或超**栈分配上限**（约 64KB，大对象直接堆）；⑤ 存入 channel、被 map/slice 容器持有（容器本身可能在堆上）；⑥ 被 goroutine 闭包引用（生命周期无法静态界定）。',
+            '**怎么验证**：`go build -gcflags="-m"` 输出 `escapes to heap` / `moved to heap`；压测配 `benchmem` 看 **allocs/op**——优化分配次数往往比优化单次大小收益更大。',
+            '**优化的正确姿势与边界**：高 QPS 热路径减少无谓逃逸（预分配 slice 容量、避免不必要的接口装箱、strings.Builder 替代 fmt.Sprintf 拼接、sync.Pool 复用临时对象）；但要警惕**过度优化**——逃逸分析牺牲可读性换纳秒级收益，先有 profile 证据（pprof alloc_space）再动手，这是"性能优化要有数据支撑"的典型题眼。',
+          ],
+          followUps: [
+            {
+              question: 'sync.Pool 为什么能减少分配？它有什么坑？',
+              points: [
+                '**sync.Pool 是对象复用池**：Put 归还、Get 取出（可能新建），适合**高频创建的临时对象**（[]byte 缓冲、编解码上下文），把"反复分配"变"反复借用"，直接压 allocs/op 与 GC 扫描量。',
+                '三个坑：① Get 出来的对象**状态不保证干净**，要 reset 再用；② 池会在 **GC 时清空**（无持久性），不能当缓存用——它是"临时对象再生"，不是存储；③ 存大对象反而增加 GC 根扫描负担。标准用法是配 `runtime.GC` 周期敏感的压测验证收益，而不是想当然上池。',
               ],
             },
           ],

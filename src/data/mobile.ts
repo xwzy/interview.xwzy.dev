@@ -186,6 +186,48 @@ export const mobileTrack: Track = {
           ],
         },
         {
+          id: 'mo-android-coroutine',
+          title: 'Kotlin 协程的挂起是什么原理？结构化并发解决了什么问题？',
+          difficulty: 'intermediate',
+          tags: ['Kotlin 协程', '结构化并发', 'Flow'],
+          points: [
+            '**挂起的本质是"回调的语法糖 + 状态机"**：suspend 函数被编译器改写成**状态机（CPS 变换）**——每个挂起点是状态机的一个分支，函数被"挂起"时其实是 `suspendCancellableCoroutine` 注册了 continuation 回调并**返回**（不阻塞线程），恢复时调度器拿着结果**重新进入状态机的下一个分支**。所以协程写起来是同步风格，跑起来是异步调度，线程没有被占用。',
+            '**协程三件套的关系**：`CoroutineScope` 管生命周期，`CoroutineContext` 管调度（Dispatchers.Main/IO/Default——IO 是为阻塞 IO 优化的较大线程池，Default 对应 CPU 核数）与 Job；`launch`（不关心返回值）与 `async`（返回 Deferred 要 await）是两个启动入口。**和 Handler 的分工**：协程不替代主线程消息机制，而是替代"异步任务的编排层"——回调地狱变成顺序代码，异常与取消变成结构化的。',
+            '**结构化并发（核心考点）**：协程必须在 Scope 里启动，**父子形成树**——父协程取消则所有子协程自动取消（页面销毁时 viewModelScope 自动取消全部网络请求，杜绝泄漏）；子协程异常按策略传播给父级（Job 默认一损俱损，SupervisorJob 允许子级独立失败）。它回答的问题是：**"谁负责取消和等待一个异步任务"**——在没有结构化并发的时代，这两件事全靠人肉记，漏了就是泄漏和竞态。',
+            '工程配套：**Flow 是响应式数据流**（冷流，配 stateIn/sharedIn 进 ViewModel），suspend + Flow 替代 RxJava 成为主流；异常用 CoroutineExceptionHandler + runCatching；**取消是协作式的**（循环里要检查 ensureActive/isActive，不检查的 CPU 密集循环不会被取消——与 Go goroutine 的取消哲学一致）。',
+          ],
+          followUps: [
+            {
+              question: 'viewModelScope 是怎么做到"页面销毁协程全停"的？如果用 GlobalScope 会怎样？',
+              points: [
+                'viewModelScope 是绑定 ViewModel 的 CoroutineScope（SupervisorJob + Dispatchers.Main.immediate）；ViewModel.clear() 时调用 scope.cancel()，**Job 树整体取消**——所有挂起中的子协程收到 CancellationException 恢复并结束。这就是结构化并发的标准落地：**生命周期组件持有 Scope，而不是任务各自漂移**。',
+                'GlobalScope 的问题：它没有父、永不取消——协程随进程存活，持有 Activity/ViewModel 引用就是**内存泄漏**，回调回来还可能操作已销毁的视图崩溃；"一次请求泄漏一个协程"在列表页反复刷新时是真实事故源。规范口径：**永远从有生命周期的 Scope 启动协程，GlobalScope 只留给真正全局的守护任务并单独管理**。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'mo-android-compose',
+          title: 'Jetpack Compose 和传统 View 体系的区别是什么？声明式 UI 为什么能提效？',
+          difficulty: 'intermediate',
+          tags: ['Compose', '声明式 UI', 'Android'],
+          points: [
+            '**范式转变是第一层**：View 体系是**命令式**——开发者持有 View 引用，状态变化后手动 find/setText/notify（"怎么改"）；Compose 是**声明式**——UI 只是 `@Composable` 函数对状态的映射 `UI = f(state)`，状态变了就**重新执行相关函数**（重组 Recomposition）生成新 UI 树，框架负责 diff 出最小变更（"要什么"）。React/Vue/SwiftUI 全是同一范式，前端经验可平移。',
+            '**性能模型变了**：View 体系每个控件是一个 Java 对象 + 一棵深 View 树，measure/layout 两趟递归，层级深了就慢（嵌套 layout 权重问题）；Compose 的 Composable 函数执行生成**轻量的 LayoutNode 树**，智能重组只重跑**读取了变化状态**的函数（作用域最小化），且支持**跳过未变参数**（@Stable/@Immutable 稳定性推断）。会答"**重组范围怎么缩小**"（状态下沉、lambda 延迟读取、derivedStateOf、remember 缓存）才是性能题的得分点。',
+            '**为什么能提效（工程视角）**：① **无适配器/无 XML**——列表直接 `LazyColumn` 写 Kotlin，消灭 Adapter/ViewHolder 模板代码；② **状态单一数据源**——UI 状态机化（MVI 风格顺理成章），界面错乱类 bug 大幅减少；③ **组合优于继承**——复用靠函数组合而不是继承 View/自定义控件；④ **预览与工具链**——@Preview 所见即所得。代价也要会讲：学习曲线（重组心智模型）、部分老 API/库仍需 View 互操作（AndroidView/ComposeView 桥接）。',
+            '与 SwiftUI/Flutter 对比收束：三者是声明式 UI 在三个平台的实现——**SwiftUI 原生绑定 Apple 生态，Compose 自绘引擎（Skia）与 Flutter 思路相同但接入 Android 系统能力更深**；跨端选型见 Flutter/RN 对比题，本题重点是把"声明式 + 重组 + 状态驱动"讲透。',
+          ],
+          followUps: [
+            {
+              question: '重组什么时候会被跳过？为什么"在组合中直接读 List 并修改它"是反模式？',
+              points: [
+                '跳过（skip）的条件：**参数全部稳定且未变化**——稳定类型指基本类型、String、不可变数据类等，编译器推断不出来就用 @Stable/@Immutable 注解承诺；参数是 unstable 类型（如普通 interface/可变集合）则每次都可能重组不跳过。所以**状态设计成不可变数据类 + 用 ImmutableList**，是 Compose 性能的第一原则。',
+                '反模式解析：直接改 List 不会触发任何重组（**Compose 靠 State 对象的变化感知**，普通变量改了框架不知道）；正确做法是用 `mutableStateListOf`/`mutableStateMap`（快照系统的可观察容器）或改 state 驱动重算。能讲到 **Snapshot 快照系统**（全局唯一状态版本管理，类似 MVCC）就是这道题的天花板。',
+              ],
+            },
+          ],
+        },
+        {
           id: 'mo-android-binder',
           title: '为什么 Android 的跨进程通信用 Binder 而不是 socket 或共享内存？Binder 一次拷贝是怎么做到的？',
           difficulty: 'advanced',
@@ -651,6 +693,27 @@ export const mobileTrack: Track = {
           ],
         },
         {
+          id: 'mo-cross-harmonyos',
+          title: '鸿蒙（HarmonyOS）应用开发与 Android 有什么异同？ArkTS/ArkUI 是什么思路？',
+          difficulty: 'intermediate',
+          tags: ['鸿蒙', 'HarmonyOS', 'ArkTS'],
+          points: [
+            '**架构层面最大的差异：分布式与统一生态**——HarmonyOS 从设计上面向"全场景"（手机/平板/手表/车机/IoT），应用天然按**多设备形态自适应**（一多开发：一套工程适配多端）；分布式软总线让跨设备协同（接续、协同调用其他设备能力）是系统级能力，而 Android 是以手机为中心、跨设备靠云同步/投屏等外挂方案。',
+            '**开发范式 ArkTS/ArkUI：声明式 UI + 状态驱动**——ArkTS 是 TypeScript 的超集（静态化加强，禁用部分动态特性换取 AOT 性能），ArkUI 用 **@Component + build() + @State/@Prop/@Link** 的声明式写法，与 SwiftUI/Compose 同构（UI = f(state)），前端工程师迁移成本相对低。对比 Android：Java/Kotlin + View/XML（命令式）或 Compose（声明式）——范式演进方向一致，但鸿蒙**原生就是声明式起步**。',
+            '**工程结构差异**：HarmonyOS 的应用是 **HAP 包**（Ability 是最小调度单元：UIAbility 管界面、ExtensionAbility 管后台场景），Stage 模型下由 **UIAbility + WindowStage** 组织页面路由；权限模型、后台任务管控比 Android 更收紧（重续_statless 后台策略），安全上按 ACL 精细授权。与 Android 的"四大组件"映射着学：Activity ≈ UIAbility，Service ≈ 后台任务/ExtensionAbility，但不能机械套用语义。',
+            '**生态与就业视角收束**：技术决策上鸿蒙要回答"多端触达 + 国产生态要求"是否成立；工程师视角它是"**移动端第三平台**"——ArkTS 声明式、方舟编译器 AOT、ArkUI-X 跨端（同一套 ArkUI 出 Android/iOS 版），能把它与 Compose/SwiftUI/Flutter 放在同一个声明式坐标系里对比，就是这道题的完整答案。',
+          ],
+          followUps: [
+            {
+              question: 'HarmonyOS NEXT 不再兼容 Android APK，对开发与跨端策略意味着什么？',
+              points: [
+                '历史背景：早期 HarmonyOS 为平滑过渡**兼容 AOSP**（可装 APK），NEXT 起移除 AOSP 层、只跑**原生鸿蒙应用（HAP/ArkTS）**——意味着双端策略从"一套代码两端跑"变成**真正的第三端**：要么原生重写（ArkTS），要么依赖跨端框架覆盖（Flutter/RN 的鸿蒙适配、ArkUI-X）。',
+                '工程决策框架：用户价值（鸿蒙设备覆盖率与目标人群重合度）× 维护成本（三端并行发版、特性对齐、双倍测试矩阵）× 政策/生态要求（国内应用市场与政企场景的合规驱动力）。能从"跨端矩阵从 2×N 变 3×N 的成本曲线"角度分析，是移动负责人视角的答案。',
+              ],
+            },
+          ],
+        },
+        {
           id: 'mo-cross-flutter-vs-rn',
           title: 'Flutter 和 React Native 深度对比：自绘引擎和原生控件映射各自意味着什么？',
           difficulty: 'advanced',
@@ -704,6 +767,27 @@ export const mobileTrack: Track = {
               points: [
                 '**域名白名单是第一道闸**：只有可信域名的页面才能调用完整 API，敏感接口（支付、用户信息、登录态）再做**接口级鉴权与二次确认**；来源不可信的调用直接拒绝并记录。',
                 '纵深防御：Android 的 addJavascriptInterface 在 API 17 以下有反射 RCE 漏洞，必须**最低版本约束 + @JavascriptInterface 白名单方法**；H5 传入的参数一律当不可信输入做 schema 校验，防止构造畸形数据攻击原生层；scheme 拦截方案还要防恶意页面伪造 URL。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'mo-ios-swiftui',
+          title: 'SwiftUI 和 UIKit 的区别是什么？声明式 UI 在 iOS 上怎么落地？',
+          difficulty: 'intermediate',
+          tags: ['SwiftUI', 'UIKit', '声明式 UI'],
+          points: [
+            '**范式差异**：UIKit 是**命令式**——UIViewController 持有 UIView 树，生命周期回调（viewDidLoad/viewWillAppear）里手动布局（Frame 或 AutoLayout 约束）、手动更新控件；SwiftUI 是**声明式**——`var body: some View` 描述"状态到界面的映射"，状态（@State/@StateObject/@Published）变化自动触发 body 重算与最小化 diff 更新（与 React/Compose 同构，前端范式可平移）。',
+            '**声明式的核心机制**：**属性包装器决定数据的"所有权与流向"**——@State 组件私有可变状态，@Binding 子视图获得可写引用，@ObservableObject/@EnvironmentObject 跨组件共享（Combine 发布订阅），观测到变化就重算 body。生命周期从"回调序列"变成"任务修饰符"（.onAppear/.task——后者自动随视图销毁取消 Swift Task，结构化并发与 UI 生命周期绑定的典范）。',
+            '**UIKit 没死（工程判断）**：存量代码、深度自定义（复杂转场动画、自定义容器 Controller）、底层能力（UIGestureRecognizer 细粒度手势、某些系统级 API）仍是 UIKit 主场；SwiftUI 提供 **UIViewRepresentable/UIViewControllerRepresentable** 桥接，混编是常态。选型口径：**新项目/新页面 SwiftUI 优先**（代码量减半起步、预览提效、Apple 全平台一套技术栈），复杂老页面渐进迁移。',
+            '辩证收尾：SwiftUI 的短板要主动说——**细粒度性能控制不如 UIKit 直白**（黑盒 diff，Profiler 才能定位重绘）、老系统版本兼容、超大列表/复杂编辑器仍有坑（UICollectionView 在超重型场景仍是性能天花板）。能把"声明式提效"与"命令式可控"讲成权衡，比站队高一档。',
+          ],
+          followUps: [
+            {
+              question: '@State、@Binding、@StateObject、@EnvironmentObject 分别用在什么场景？选错会发生什么？',
+              points: [
+                '**所有权决定选型**：@State——视图私有的值类型状态（SwiftUI 自己管理存储，重算 body 不丢）；@Binding——把父视图状态的"写权限"传给子视图（双向绑定）；@StateObject——视图**创建并拥有**引用类型模型（ObservableObject，随视图生命周期初始化一次）；@EnvironmentObject——沿环境注入的共享依赖（不关心谁创建，只订阅）。',
+                '选错的典型事故：把 @StateObject 写成 @ObservedObject——模型随视图重建**反复重新初始化**（列表页返回后状态丢失的经典 bug）；把 @State 存引用类型——SwiftUI 只感知值变化，对象内部属性变了不会触发刷新。这道题实际考"SwiftUI 的数据流是否真的用过"，比背概念狠得多。',
               ],
             },
           ],
