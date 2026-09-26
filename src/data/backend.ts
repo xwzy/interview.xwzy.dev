@@ -19,6 +19,27 @@ export const backendTrack: Track = {
       ],
       questions: [
         {
+          id: 'be-general-python',
+          title: 'Python 的 GIL 是什么？为什么 IO 密集多线程还有效，CPU 密集要换多进程？',
+          difficulty: 'intermediate',
+          tags: ['Python', 'GIL', 'asyncio', '并发'],
+          points: [
+            '**GIL（全局解释器锁）**：CPython 里**同一时刻只允许一个线程执行 Python 字节码**的互斥锁（存在原因：CPython 的内存管理（引用计数）非线程安全，加细粒度锁的改造代价远大于收益）；推论一：**多线程无法利用多核跑 Python 代码**（4 核机器 CPU 密集多线程 ≈ 单核还更慢——切换开销）；推论二：**不是所有时间都握着 GIL**——IO（网络/文件/sleep）与多数 C 扩展（NumPy 的重计算、加密库）会**释放 GIL**，这就是 IO 密集多线程仍有效的原因。',
+            '**三套并发模型怎么选（答题主干）**：**多线程**——IO 密集且不想改代码结构（阻塞库友好；GIL 在等 IO 时让出，吞吐照样涨）；**asyncio（协程）**——超高并发 IO（万级连接），但要求**全链路异步库**（aiohttp/asyncpg——混入一个阻塞调用就卡住整个事件循环，与 Node 单线程同病同药）；**多进程（multiprocessing）**——CPU 密集（绕开 GIL 各进程独立解释器；代价：内存与 IPC 序列化开销）；一句话速记：**IO 密集线程/协程、CPU 密集进程、两者混合用进程池 + 各自内协程**。',
+            '**与 AI 工程的关联（AI 应用岗的高频引申）**：训练/推理的重活全在 **C/C++/CUDA 的原生扩展**里——NumPy/torch 的矩阵运算**持有 GIL 的时间极短**，所以 Python 是"指挥语言"时 GIL 不是瓶颈（数据加载与预处理环节除外——dataloader 用多进程正是为此）；GPU 推理同理（GIL 在等 GPU 时释放）；**FastAPI/uvicorn** 的高并发配方 = asyncio + uvloop + 异步驱动——能讲清"我的服务哪段握 GIL、哪段不握"，说明并发理解是结构化的。',
+            '**工程细节与演进视野（加分）**：GIL 的经典坑——**CPU 密集线程拖慢所有线程**（长计算不释放 GIL，IO 线程也饿死；解法：计算切片主动让出或换进程）；subprocess/线程池混用的死锁陷阱；**PEP 703 的 free-threaded Python（no-GIL 分支）已进入主线实验**（3.13+ 可选构建）——单锁改细粒度，多线程终于能吃多核，代价是单线程略慢与扩展生态适配——知道这个演进方向说明跟得住语言动态。',
+          ],
+          followUps: [
+            {
+              question: 'asyncio 的事件循环里调了一个同步阻塞的库函数（比如 requests），会发生什么？怎么排查？',
+              points: [
+                '后果：**整个事件循环被这一个调用卡住**——所有协程、健康检查、超时定时器全部停摆（服务表现为整体 RT 尖刺、探活失败重启——"一个慢请求拖死全服"的经典事故）；根因：事件循环是**协作式调度**，协程不 await 让出就没人能跑（与 Rust async 题的"阻塞任务"同构、与 Node 同病）。',
+                '排查与修复：py-spy dump 看事件循环线程卡在哪个栈帧（一眼定位阻塞调用）；修复三板斧——换异步库（requests → aiohttp/httpx async）、**loop.run_in_executor / asyncio.to_thread**（把阻塞调用丢线程池）、CPU 重活丢进程池；预防：**依赖评审卡同步库**（异步项目里引入同步 IO 库要过审）+ 事件循环卡顿监控（loop 每心跳检测延迟告警）。',
+              ],
+            },
+          ],
+        },
+        {
           id: 'be-general-restful',
           title: '如何设计一套规范的 RESTful API？哪些地方最容易做错？',
           difficulty: 'basic',
