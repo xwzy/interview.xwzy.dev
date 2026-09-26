@@ -3300,6 +3300,27 @@ export const frontendTrack: Track = {
       ],
       questions: [
         {
+          id: 'fe-coding-big-number-add',
+          title: '手写大数相加（字符串模拟）：为什么 Number 会丢精度，怎么一遍写对？',
+          difficulty: 'basic',
+          tags: ['手写题', '大数', '精度', '字符串'],
+          points: [
+            '**为什么会出这道题（场景驱动）**：JS 的 Number 是 **64 位双精度浮点**，安全整数上限 **2^53 - 1（Number.MAX_SAFE_INTEGER，约 9 千万亿）**——超过就**静默丢精度**（`9007199254740993 === 9007199254740992` 为 true）；后端返回的订单号/雪花 ID/金额一超过 16 位，JSON.parse 后**末几位已经错了**（根治要在传输层用字符串——axios/json-bigint；本题是端上兜底的手写实现，也是校招手撕高频）。',
+            '**算法骨架（三指针从末位对齐）**：`i = a.length-1, j = b.length-1, carry = 0`——循环取两位求和 `sum = +a[i] + +b[j] + carry`，**结果头插 `sum % 10`，进位 `carry = Math.floor(sum / 10)`**，较长的串继续走完，最后 **carry > 0 要补一位**（最容易漏的边界——99 + 1 = 100）；结果反转（或直接 unshift 头插）输出字符串。复杂度 O(max(m,n))。',
+            '**一遍写对的检查清单**：① 两串**长度不等**（短的那边补 0 或判空继续走长串）；② **最后进位**别忘了；③ **输入是字符串不是数字**（数字已经精度丢了，救不回来——审题就问清输入类型）；④ 别用 `parseInt` 整串转（溢出）——**逐位转**；⑤ 前导零（"007" 场景是否要清洗，问清约定）；扩展问：大数相乘（模拟竖式乘法，O(n·m)，结果数组按位累加）用同样套路。',
+            '**语言生态对照（延伸加分）**：**BigInt**（原生任意精度整数，`10n + 20n`——注意不能与 Number 混算、不能 JSON.stringify（要转字符串）、性能低于 Number）；Java 的 BigInteger、Go 的大数库、Python 原生支持任意精度（int 无上限——Python 面试会追问"为什么 Python 不需要这题"）；金额场景的根治方案仍是**整数分运算**（与支付系统题呼应），大数运算只是通用工具。',
+          ],
+          followUps: [
+            {
+              question: '后端返回 19 位的订单号，前端拿到就已经错了，怎么办？',
+              points: [
+                '**病根在传输层**：JSON 数字 → JS Number 的转换发生在 JSON.parse，**精度丢了就不可逆**——所以解法都在"别让它变成 Number"：① 后端序列化时 Long → String（Jackson 配置，根治）；② 前端用 **json-bigint / lossless-json** 替代 JSON.parse（把大整数解析成字符串/BigInt——axios 拦截器统一换 parser）；③ 响应改成字符串字段（接口约定改造）。',
+                '排查思路的迁移价值：看到"末几位变 0"就条件反射浮点精度（2^53）——同类症状还有 `0.1+0.2 !== 0.3`（IEEE 754 二进制小数，见组成原理方向）；**先定位丢精度发生在哪一层（传输/解析/运算），再选对应层的方案**，别在运算层做无用的 BigInt 补救（输入已经错了）。',
+              ],
+            },
+          ],
+        },
+        {
           id: 'fe-coding-debounce-throttle',
           title: '手写防抖（debounce）与节流（throttle）',
           difficulty: 'basic',
