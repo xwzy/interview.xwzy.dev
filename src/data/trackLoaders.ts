@@ -13,9 +13,11 @@ export const trackLoaders: TrackLoader[] = [
   () => import('./os').then((m) => m.osTrack),
   () => import('./computer-organization').then((m) => m.computerOrganizationTrack),
   () => import('./system-design').then((m) => m.systemDesignTrack),
+  () => import('./big-data').then((m) => m.bigDataTrack),
   () => import('./mobile').then((m) => m.mobileTrack),
   () => import('./ai').then((m) => m.aiTrack),
-  () => import('./qa-ops').then((m) => m.qaOpsTrack),
+  () => import('./qa').then((m) => m.qaTrack),
+  () => import('./ops').then((m) => m.opsTrack),
   () => import('./career').then((m) => m.careerTrack),
 ]
 

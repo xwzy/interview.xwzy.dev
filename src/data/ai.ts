@@ -2,10 +2,10 @@ import type { Track } from '../types';
 
 export const aiTrack: Track = {
   id: 'ai',
-  name: 'AI 与算法',
+  name: 'AI 与大模型',
   icon: '🤖',
   tagline: '机器学习、深度学习到大模型应用',
-  description: '算法岗与传统研发转型 AI 的面试考点：机器学习基础、深度学习原理，以及大模型应用工程实践。',
+  description: '算法岗与传统研发转型 AI 的面试考点：机器学习基础、深度学习原理，以及大模型应用工程实践（数据结构与算法题见"计算机基础"方向）。',
   color: 'cyan',
   topics: [
     {

@@ -1,0 +1,565 @@
+import type { Track } from '../types';
+
+export const opsTrack: Track = {
+  id: 'ops',
+  name: '运维与云原生',
+  icon: '☸️',
+  tagline: 'Linux 生产排障、容器编排、CI/CD 与可观测性',
+  description: '运维 / SRE / DevOps 岗位的面试考点：Linux 排障肌肉记忆、Docker 与 Kubernetes 核心机制、CI/CD 流水线、监控告警与 SRE 实践。',
+  color: 'teal',
+  topics: [
+    {
+      id: 'ops-linux',
+      name: 'Linux 与常用运维',
+      description: '从 CPU/内存/磁盘/端口排查到日志分析、Nginx 配置，考察生产环境动手排障的肌肉记忆。',
+      references: [
+        { label: 'Linux man pages（man7.org）', url: 'https://man7.org/linux/man-pages/' },
+        { label: 'Nginx 官方文档', url: 'https://nginx.org/en/docs/' },
+        { label: 'GNU Bash Reference Manual', url: 'https://www.gnu.org/software/bash/manual/' },
+      ],
+      questions: [
+        {
+          id: 'ops-linux-permission',
+          title: 'Linux 文件权限 rwx 怎么理解？chmod 755、644 分别是什么意思？',
+          difficulty: 'basic',
+          tags: ['文件权限', 'chmod'],
+          points: [
+            '三组角色：**属主（u）/ 属组（g）/ 其他（o）**，每种角色三种权限：**r=4（读）、w=2（写）、x=1（执行）**，相加得到三位八进制。`ls -l` 第一列如 `-rwxr-xr--`：第一个字符是类型（- 文件，d 目录，l 软链），后面九位就是三组 rwx。',
+            '**755 = rwxr-xr-x**：属主全权，组和其他人只读+执行——常用于目录和可执行程序；**644 = rw-r--r--**：属主可读写，其他人只读——常用于普通文件；**600**：仅属主可读写——私钥文件的正确姿势。',
+            '目录的 **x 权限是“进入”**：目录没有 r 无法列内容，没有 x 无法 cd 进入或访问其中文件——“能看目录名但打不开”的现象就是缺 x。改属主属组用 `chown user:group file`，递归加 `-R`。',
+            '实用补充：**umask** 决定新建文件的默认权限（默认 022 → 文件 644、目录 755）；`chmod +x script.sh` 给脚本加执行权是“Permission denied”最常见解法；生产环境纪律——**最小权限原则**，应用不用 root 跑，配置文件 640 且收敛属组。',
+          ],
+          followUps: [
+            {
+              question: '用 root 启动的服务写了文件，普通用户删不掉或覆盖不了，通常是什么原因？',
+              points: [
+                '删除/覆盖文件看的是**所在目录的 w 权限**而不是文件本身——目录属主是你就能删；覆盖写（vim 保存、> 重定向）可能触发文件本身的 w 限制或产生新 inode。',
+                '另一种常见情况是**文件被进程占用**且位于只读挂载或被 chattr +i 锁定，用 `lsattr` 查看隐藏属性，`chattr -i` 解锁。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'ops-linux-cpu-high',
+          title: '服务器 CPU 使用率飙高，你怎么排查？top 里的 us、sy、wa 分别是什么意思？',
+          difficulty: 'basic',
+          tags: ['CPU', 'top', '排查'],
+          points: [
+            '排查路径：`top`（按 P 按 CPU 排序）找到**进程** → `top -Hp <pid>` 或 `ps -mp <pid> -o THREAD,tid,time` 找到**线程** → 若是 Java，`printf "%x\\n" <tid>` 转十六进制后 `jstack <pid> | grep -A 20 <nid>` 精确定位到代码行。',
+            'top 里各列含义是读懂问题的钥匙：**us**（用户态，高 = 业务代码在算，死循环/正则回溯/序列化）、**sy**（内核态，高 = 系统调用频繁/上下文切换，配合 `vmstat 1` 看 cs 列）、**wa**（等待 IO，高 = CPU 在等磁盘，瓶颈在 IO 不在 CPU）、**si/st**（软中断/被虚拟化偷走的 CPU，云主机 st 高说明宿主机超卖）。',
+            '**load average 与 CPU 使用率的区别**必考：load 是“**正在运行 + 等待运行 + 不可中断等待（D 状态）**”的任务数，对比核数判断拥挤程度（4 核 load 长期 > 4 就是过载）；CPU 100% 但 load 不高可能是算力型任务，load 高但 CPU 低常见于大量 D 状态（IO 卡住）。',
+            '常见元凶清单：代码死循环、低效正则、频繁 Full GC（us 高且伴随 GC 线程活跃）、大文件序列化、log4j 同步刷盘、密码/加密计算；**恶意场景**：挖矿病毒（陌生进程、CPU 长期满载）——查 `crontab -l`、陌生启动项。',
+          ],
+          followUps: [
+            {
+              question: 'load 很高但 CPU 使用率很低，可能是什么情况？',
+              points: [
+                'load 统计的是“**运行 + 等待运行 + 不可中断睡眠（D 状态）**”的任务数——大量线程卡在 **D 状态**（磁盘/NFS/存储挂起）时 load 飙高而 CPU 空闲；用 `ps -eo stat,pid,cmd | grep "^D"` 或 `vmstat 1` 的 b 列确认。',
+                '这类场景的排查方向是**存储层**：`iostat -x 1` 看 util 与 await、`dmesg` 看磁盘报错、检查 NFS 挂载是否僵死——“load 高 CPU 低”恰恰提醒不能只盯着 CPU 指标看问题。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'ops-linux-memory',
+          title: 'free 命令的输出怎么读？内存不足时怎么排查？available 和 free 有什么区别？',
+          difficulty: 'basic',
+          tags: ['内存', 'free', '排查'],
+          points: [
+            '关键看 **available** 而不是 free：`free` 是完全未被使用的内存；`buff/cache` 是内核拿来缓存磁盘数据的内存，**应用需要时可以回收**；available ≈ free + 可回收的 cache，才是“还能给新进程用多少”。所以“free 很小”本身不说明内存不足，Linux 拿空闲内存做缓存是正常且良性的。',
+            'top/ps 里的内存列：**VIRT** 虚拟地址空间（可能远大于实际占用，Java 尤其夸张）、**RES** 常驻物理内存（真正关注的数字）、**SHR** 共享内存；`%MEM`、以及 `pmap -x <pid>` 看进程内存分布。',
+            '内存不足的信号链：available 持续走低 → 系统开始 **swap**（`vmstat 1` 的 si/so 列持续非零，性能急剧劣化）→ 仍不够时触发 **OOM Killer**（`dmesg | grep -i "killed process"` 或 `/var/log/messages` 找到被杀进程与当时的内存快照）。',
+            '排查思路：先分辨**谁在吃内存**（top 按 M 排序 / `ps aux --sort=-rss | head`）；再分辨是**泄漏还是水位高**——观察 RSS 趋势：只涨不跌且持续增长是泄漏（Java 用 jmap dump 堆分析，Native 用 valgrind/ASan），水位高但稳定可能只是缓存配置过大（如 JVM 堆外、数据库 buffer pool）。',
+            '常用处置：临时释放页缓存 `echo 3 > /proc/sys/vm/drop_caches`（生产慎用，治标）；调小应用内存配置；**加内存或限流**才是根治；swap 建议保留但 swappiness 调低（数据库机器通常 `vm.swappiness=1`）。',
+          ],
+          followUps: [
+            {
+              question: 'swap 里有数据就说明内存不足吗？swappiness 到底在调什么？',
+              points: [
+                '不一定：swappiness 较高时内核会**主动把不活跃页换出**给页缓存腾地方；判断真缺内存要看 `vmstat 1` 的 **si/so 是否持续非零**、available 是否持续走低——偶发换入换出无需紧张。',
+                'swappiness（0~100）调节的是“倾向用 swap 还是回收缓存”：**数据库/延迟敏感服务调到 10 甚至 1**，宁可回收页缓存也别换出热页；设成极端值不如配套做好**应用内存上限与容量规划**——swap 是安全垫，不是堆内存的续命手段。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'ops-linux-disk',
+          title: '磁盘满了怎么排查？为什么删了大文件空间还不释放？',
+          difficulty: 'basic',
+          tags: ['磁盘', 'df', 'du'],
+          points: [
+            '标准三连：`df -h` 看整体使用率与挂载点 → `du -sh /* 2>/dev/null` 逐层下钻找大目录（或 `du -h --max-depth=1 . | sort -rh | head`）→ `find / -size +1G -type f 2>/dev/null` 定位大文件。日志目录、临时目录、docker 占用（`docker system df`）是三大惯犯。',
+            '**删了文件空间不释放**的经典原因：文件**仍被进程持有句柄**，删除只是移除目录项，inode 与数据块要等进程关闭才释放。定位：`lsof | grep deleted` 或 `lsof +D /var/log`；处置：重启/重载对应进程（nginx 日志场景用 `kill -USR1` 配合 logrotate），或对还在写的大文件用 `> bigfile.log` 清空而非 rm。',
+            '**df 和 du 对不上的两个原因**：① 上面说的已删除未释放文件（du 看不到但 df 占着）；② **inode 耗尽**——海量小文件（邮件队列、session 文件、图片缩略图）把 inode 用光，`df -h` 还有空间但写入报 “No space left on device”，用 `df -i` 确认，清理小文件或格式化时调大 inode 数。',
+            '预防机制（答出这层体现生产意识）：**logrotate 轮转压缩日志**（按天切割 + 保留 N 份 + copytruncate 或信号重载）、磁盘告警阈值（80% 预警 90% 告警）、临时文件与上传目录的定期清理脚本、容器环境的镜像/卷清理（`docker system prune`）。',
+          ],
+          followUps: [
+            {
+              question: 'df -h 显示还有空间但写入报 No space left on device，怎么排查？',
+              points: [
+                '第一嫌疑是 **inode 耗尽**：`df -i` 看 IUse%，接近 100% 就是它——海量小文件（邮件队列、session、缩略图、crontab 输出堆积）是惯犯；逐目录数文件量下钻定位。',
+                '处理分两层：**应急**清理小文件目录（批量 find -delete 前先抽样确认）；**根治**改应用写法（合并小文件、轮转清理）或重新格式化时调大 inode 密度（mkfs.ext4 -i），XFS 动态管理 inode 通常无此困扰。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'ops-linux-port-process',
+          title: '怎么查一个端口被哪个进程占用？netstat 和 ss 有什么区别？',
+          difficulty: 'basic',
+          tags: ['端口', 'ss', 'lsof'],
+          points: [
+            '三条常用命令：`ss -tlnp | grep 8080`（-t TCP -l 监听 -n 数字端口 -p 进程）、`lsof -i:8080`（最直观，直接给出进程名/PID/用户）、老系统用 `netstat -tlnp | grep 8080`。**“Address already in use” 起不来服务**就用这三条查，还要注意 IPv6（`*:8080` 可能是 :::8080）与 TIME_WAIT 占用。',
+            '**ss 优于 netstat**：netstat 走 /proc 逐个读取，连接量大时很慢；ss 直接通过 **netlink 接口与内核通信**，快几个数量级，且信息更全（`ss -s` 总览各状态连接数）。面试金句：“netstat 是历史遗产，ss 是现在进行时”。',
+            '看连接状态分布排障：`ss -ant | awk \'{print $1}\' | sort | uniq -c`——**TIME_WAIT 大量堆积**通常是本机主动发起大量短连接（该上连接池或长连接）；**CLOSE_WAIT 堆积是代码 bug**（对端关闭后本机没调 close，句柄泄漏）；SYN_RECV 高可能是半连接攻击。',
+            '进程排查配套：`ps aux | grep xxx`（aux 含 CPU/内存/启动时间，ef 看父子关系）、`pgrep -f` / `pkill -f`、`lsof -p <pid>` 看进程打开的所有文件与端口；僵尸进程（STAT 为 Z）：父进程没 wait 子进程，杀父进程或修代码回收，`ps -ef | grep defunct` 可发现。',
+          ],
+          followUps: [
+            {
+              question: '线上出现大量 TIME_WAIT，要不要紧张？怎么缓解？',
+              points: [
+                '先定性：TIME_WAIT 是**主动关闭方**的必经状态（停留 2MSL），单机几千个通常无害；要警惕的是它**耗尽本地端口**（默认范围约 3 万个）或集中在网关/代理层——用 `ss -ant | awk \'{print $1}\' | sort | uniq -c` 看分布再下结论。',
+                '缓解按层来：应用层**上连接池或长连接**（治本，先定位谁在大量短连接）；内核层 `net.ipv4.tcp_tw_reuse=1` 配合时间戳安全复用出方向端口——**不要开 tcp_tw_recycle**（NAT 环境丢包，新内核已移除）。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'ops-linux-log-analysis',
+          title: '给你一个几百 GB 的访问日志，怎么用命令行快速分析？grep、awk、sed 的典型组合用法？',
+          difficulty: 'intermediate',
+          tags: ['日志分析', 'awk', 'grep'],
+          points: [
+            'grep 精确检索：`-c` 只数数量、`-v` 反选、`-E` 扩展正则、`-A/-B/-C` 带上下文（异常堆栈必用）、`-r` 递归目录、`-i` 忽略大小写；大文件用 **zgrep** 直接搜 .gz，避免解压占盘。先缩小时间范围（按天滚动的日志先选对文件）再搜，是几百 GB 场景的第一原则。',
+            'awk 做统计（按列处理，Nginx 默认日志 $1=IP、$7=URI、$9=状态码）：',
+            '```bash\n# 访问量 top10 的 IP\nawk \'{print $1}\' access.log | sort | uniq -c | sort -rn | head\n\n# 5xx 状态码的占比\nawk \'$9 >= 500 {n++} END {printf "%.2f%%\\n", n/NR*100}\' access.log\n\n# 每分钟的请求量分布\nawk \'{print substr($4, 2, 17)}\' access.log | sort | uniq -c\n```',
+            'sed 做提取与替换：`sed -n \'5,10p\'` 打印区间、`sed \'s/old/new/g\'` 替换（配合 `-i` 直接改文件，改配置前先备份）；提取时间片段日志 `sed -n \'/10:00:00/,/10:05:00/p\'`。',
+            '组合拳思路与性能意识：管道顺序影响速度——**先用 grep 过滤掉 99% 的行再做 awk 统计**；`sort | uniq -c | sort -rn` 是计数统计万能模板；不需要完整分析时用 `tail -n 100000` 抽样近似。这些命令是面试现场手写的高频题，练习到不查资料能写。',
+          ],
+          followUps: [
+            {
+              question: '统计 499 状态码最多的前 20 个 URL（去掉查询参数），写出命令。',
+              points: [
+                '管道拆解：先 `grep " 499 "` 预过滤（大文件先砍掉 99% 的行），再用 awk 去参并取 URL、计数排序：`grep " 499 " access.log | awk \'{split($7, a, "?"); print a[1]}\' | sort | uniq -c | sort -rn | head -20`。',
+                '要点：**split 按 ? 切**去掉查询参数才能正确聚合；`sort | uniq -c | sort -rn` 是计数万能模板；现场手写时先说思路（过滤 → 提取 → 聚合 → 排序）再落命令，比直接背命令更稳。',
+              ],
+            },
+            {
+              question: '日志是按天滚动的 .gz 压缩包，怎么高效跨文件分析？',
+              points: [
+                '**z 系列工具直接操作压缩文件**，不解压落盘：`zgrep -c "ERROR" app.log.2026-*.gz` 计数、`zcat *.gz | awk ...` 管道串联统计——避免“先全量解压”的磁盘峰值与等待。',
+                '注意口径：gzip 不支持随机读，**跨文件统计要按文件粒度合并**（每个文件单独算再加总）；如果这类分析是常态，正确解法是把日志进 ELK/Loki 建索引——命令行是应急利器，不是长期方案。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'ops-linux-process-signal',
+          title: 'kill -9 和 kill -15 有什么区别？僵尸进程是什么、怎么处理？',
+          difficulty: 'intermediate',
+          tags: ['进程', '信号', 'kill'],
+          points: [
+            '`kill` 发的是**信号**不是强制杀死：**-15（SIGTERM）**是默认信号，“请你退出”——进程可捕获，执行**清理逻辑**（释放锁、落盘、关闭连接、通知注册中心下线）后退出；**-9（SIGKILL）**内核直接终止，**不可捕获不可忽略**——数据可能没落盘、临时文件残留、注册中心要等心跳超时才发现节点下线。正确姿势：**先 -15，等待宽限期（如 30s）没退再 -9**。这也是 K8s 的 terminate 流程（SIGTERM → terminationGracePeriodSeconds → SIGKILL）。',
+            '常用信号补充：**SIGHUP**（老守护进程用之重载配置，nginx reload 的底层机制）、SIGINT（Ctrl+C）、SIGSTOP/SIGCONT（暂停/恢复）；`kill -l` 查全部。优雅重启服务 = 发 TERM + 健康检查确认，而不是无脑 -9。',
+            '**僵尸进程（Zombie）**：子进程已退出，但**父进程没有调用 wait() 回收它的退出状态**，进程表项残留（STAT 为 Z，命令名带 <defunct>）。它不占 CPU/内存但**占用 PID**，大量堆积会耗尽 PID 空间。',
+            '处理：杀掉僵尸的**父进程**（僵尸会被 init/systemd 接管并回收）——`ps -ef | grep defunct` 找到 PPID 后 `kill <ppid>`；根治是修复父进程代码（wait/waitpid、信号处理 SIGCHLD）。容器里还有个经典坑：**PID 1 进程不转发信号、不回收子进程**，所以应用镜像要用 `tini`/`dumb-init` 或让应用自己当好 PID 1。',
+            '后台运行三件套：`nohup cmd &`（挂断不退出，输出到 nohup.out）、`disown`、`setsid`；临时会话用 tmux/screen；生产服务统一交给 **systemd** 管理（自动重启、日志 journald、依赖编排），这是“运维规范”层面的标准答案。',
+          ],
+          followUps: [
+            {
+              question: 'K8s 里 Pod 停机时应用没处理完请求就被 SIGKILL，可能是什么原因？',
+              points: [
+                '两个高频原因：① **terminationGracePeriodSeconds（默认 30s）内没退完**——优雅停机（排空连接、处理存量请求）耗时超过宽限期；② 应用**根本没收到信号**——shell 形式的 CMD（脚本里再启动 java）会让 SIGTERM 发给 shell 而不是业务进程。',
+                '解决组合：镜像用 **exec 形式 CMD 或 tini** 保证信号直达；调大宽限期匹配真实停机时长；配 **preStop 钩子**先等 endpoints 摘除传播——这几件事凑齐，滚动发布才能零错误。',
+              ],
+            },
+            {
+              question: '为什么有时 kill -9 也杀不死一个进程？',
+              points: [
+                'SIGKILL 由内核处理、进程无法拦截——但如果进程卡在**不可中断的系统调用（D 状态）**（NFS/存储 IO、某些驱动操作），要等系统调用返回后内核才能处理信号，表现为“kill -9 无反应”。',
+                '处理路径：`ps` 确认 D 状态 → `cat /proc/<pid>/stack`、`lsof` 看卡在哪个挂载或设备——多数只能等 IO 超时或重启；**僵死的 NFS/存储链路**是这类问题的惯犯，这也解释了“load 高 CPU 低”的另一种成因。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'ops-linux-nginx',
+          title: 'Nginx 的 location 匹配优先级是怎样的？502、504 分别代表什么问题？',
+          difficulty: 'intermediate',
+          tags: ['Nginx', '反向代理'],
+          points: [
+            'location 匹配优先级（高频考点，要能按序说出）：① `=` **精确匹配**，命中即停；② `^~` **前缀匹配**，命中后**不再尝试正则**；③ `~` / `~*` **正则匹配**（区分/不区分大小写），按配置文件**顺序**取第一个命中的；④ 普通前缀 `location /xxx/`——都没命中时取**最长前缀**。一句话记忆：**精确 > ^~ 前缀 > 正则 > 最长前缀**。',
+            '反向代理最小配置要会手写：',
+            '```nginx\nupstream app {\n  server 10.0.0.1:8080 weight=2;\n  server 10.0.0.2:8080;          # 默认轮询；备选 ip_hash/least_conn\n}\nserver {\n  location / {\n    proxy_pass http://app;\n    proxy_set_header Host $host;                 # 透传域名\n    proxy_set_header X-Real-IP $remote_addr;     # 透传真实客户端 IP\n    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n    proxy_read_timeout 60s;                      # 默认 60s，长接口要调\n  }\n}\n```',
+            '**错误码诊断**（排障高频）：**502 Bad Gateway**——Nginx 连不上上游：应用挂了/端口不对/防火墙，看 upstream 报错 `connect() failed`；**504 Gateway Timeout**——连上了但上游在 `proxy_read_timeout` 内没回包：慢查询、接口阻塞；**499**——客户端（或上游 LB）等不及主动断开，常见于用户狂点刷新或前置超时小于后端耗时。',
+            '负载均衡策略与要点：轮询（默认）、weight 加权、ip_hash（会话粘滞，破坏均匀性，最好用 Redis session 替代）、least_conn；健康检查用 `max_fails` + `fail_timeout`（开源版被动探测）。运维要点：改配置先 `nginx -t` 语法检查再 `nginx -s reload`（平滑重载，老 worker 处理完存量请求再退出）；**client_max_body_size** 默认 1M，上传大文件必调；access_log 按天切割防止单文件过大。',
+          ],
+          followUps: [
+            {
+              question: '线上突然大面积 502，你的排查顺序是什么？',
+              points: [
+                '第一步看 **Nginx error_log** 定方向：`connect() refused`——上游进程没了（应用崩溃/发布中/端口不对）；`connect() timeout`——上游不响应（卡死/防火墙）；`upstream prematurely closed connection`——应用处理中崩溃重启。三种报错指向三个方向。',
+                '第二步验证上游：登录上游机器 `curl 127.0.0.1:8080/healthz` 直接探活、`ss -tlnp | grep 8080` 确认监听；常见根因还有 OOM 被杀、线程池/连接池打满拒绝连接——**error_log 定性 + 上游探活定位**，两步解决九成 502。',
+              ],
+            },
+            {
+              question: 'nginx -s reload 为什么能不断流？配置写错了 reload 会怎样？',
+              points: [
+                '基于 **master-worker 多进程模型**：master 先用新配置 fork 新 worker 接流量，通知老 worker **处理完存量连接后退出**——新旧并存、平滑过渡；长连接（WebSocket、keepalive）会拖住老 worker，可用 `worker_shutdown_timeout` 兜底。',
+                '配置错误的保护：reload 前会先做**语法检查，失败则继续用旧配置运行**，不影响线上——所以正确姿势是 `nginx -t` 先行、再 reload、再 curl 验证；systemd 下 `systemctl reload nginx` 走同一机制。',
+              ],
+            },
+          ],
+        },
+      ],
+    },
+    {
+      id: 'ops-cicd',
+      name: '容器与 CI/CD',
+      description: 'Docker 分层与镜像优化、K8s 核心对象与发布策略，覆盖从代码到上线的交付全链路。',
+      references: [
+        { label: 'Docker 官方 · Dockerfile 最佳实践', url: 'https://docs.docker.com/build/building/best-practices/' },
+        { label: 'Kubernetes 官方 · 概念文档', url: 'https://kubernetes.io/docs/concepts/' },
+      ],
+      questions: [
+        {
+          id: 'ops-cicd-image-layers',
+          title: 'Docker 镜像的分层原理是什么？为什么它能做到多处共享、秒级启动？',
+          difficulty: 'basic',
+          tags: ['Docker', '镜像分层', 'UnionFS'],
+          points: [
+            '镜像由一系列**只读层（layer）**堆叠而成，每条 Dockerfile 指令生成一层；运行时在顶部加一个**可写层（container layer）**，容器销毁可写层即丢弃，镜像不变——这就是“**镜像不可变**”的基础。',
+            '底层技术是 **UnionFS（overlay2）**：把多层目录联合挂载成一个视图，**同名文件上层覆盖下层**；**写时复制（Copy-on-Write）**——修改下层文件时先把它拷到可写层再改，所以容器内改文件会越用越慢、镜像内的文件原则上不该改。',
+            '共享与传输的收益：多个镜像共用同一基础层（如都是 node:20-alpine），**磁盘上只存一份**；拉取镜像时本地已存在的层跳过，只下载差异层；推送同理按层去重。每层有内容寻址的 hash（DiffID/ChainID），内容变则 hash 变。',
+            '**层缓存与构建的关系**（衔接 Dockerfile 优化）：构建时 Docker 逐层比对缓存——**某层失效，它之后的所有层全部重建**。所以指令顺序要按“变化频率”排：依赖清单 → 装依赖 → 源码 → 构建，改一行代码不该触发重装 npm 包。',
+            '辨析题备用：容器不是“轻量虚拟机”，镜像 ≠ 虚拟机磁盘（分层共享 + COW）；可写层数据不持久，持久化用 **Volume**；`docker commit` 手工做镜像不可复现，生产必须用 Dockerfile 构建产出不可变制品。',
+          ],
+          followUps: [
+            {
+              question: '容器里改了文件，重启容器还在吗？删除重建呢？怎么正确持久化？',
+              points: [
+                '**重启（stop/start）保留**可写层；**删除重建（docker rm 后 run、K8s 重建 Pod）可写层丢弃**——“改了配置重启就好、一重建就没了”的疑惑都源于可写层的生命周期。',
+                '正确姿势：持久数据用 **Volume/挂载**，配置外置到 ConfigMap/环境变量；原则上**容器内一切状态视为临时**、有状态数据落存储层——这也是“不可变基础设施”的核心含义：变的是新镜像/新配置，不是容器现场。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'ops-cicd-container-vs-vm',
+          title: '容器和虚拟机的区别是什么？Docker 靠什么实现隔离？',
+          difficulty: 'basic',
+          tags: ['Docker', 'namespace', 'cgroups'],
+          points: [
+            '核心区别：**虚拟机通过 Hypervisor 虚拟出一整套硬件，每个 VM 跑独立内核**，隔离强但重（GB 级、分钟级启动）；**容器共享宿主机内核**，只隔离进程视图，MB 级镜像、秒级启动、密度高一个数量级。宿主机内核版本即容器的内核版本（所以 Linux 容器不能原生跑在 Windows 内核上，需要 VM 中转）。',
+            '隔离靠两大内核机制：**Namespace**——让进程“看不见”系统其他部分，常用六种：**PID**（进程号隔离，容器内自己的 1 号进程）、**NET**（独立网卡/端口/路由）、**MNT**（挂载点/文件系统）、**UTS**（主机名）、**IPC**（信号量/共享内存）、**USER**（用户映射）。',
+            '**Cgroups**——管“能用多少”：限制 CPU 配额、内存上限（超限触发 OOM kill）、块设备 IO、PID 数量等，是资源配额与防“邻居噪声”的基石。K8s 的 requests/limits 最终也落在 cgroups 上。',
+            '安全边界要能说清：容器隔离**弱于 VM**（共享内核，内核漏洞可能容器逃逸），所以生产要——**不以 root 运行**、最小镜像、只读根文件系统、seccomp/AppArmor 加固，强隔离场景用 **Kata/gVisor**（容器体验 + 独立内核/拦截层）。答题落点：容器 = **进程级隔离 + 资源限额 + 不可变交付**，虚拟机 = 硬件级隔离，两者解决不同威胁模型。',
+          ],
+          followUps: [
+            {
+              question: '容器里的进程能看到宿主机的其他进程吗？宿主机怎么进入容器的网络空间排查？',
+              points: [
+                '默认不能——**PID Namespace 隔离**：容器内的 1 号进程是它自己的主进程，`ps aux` 只能看到容器内视图；宿主机则能看到全部（`docker top`、`ps auxf`）。',
+                '宿主机排查利器 **nsenter**：`nsenter -t <容器主进程pid> -n ss -antp` 进入容器的网络命名空间看连接，`-m` 进挂载空间——容器里没装工具时，从宿主机借道 namespace 排查是容器网络排障的常用招。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'ops-cicd-k8s-core',
+          title: 'K8s 的 Pod、Deployment、Service 分别是什么？它们怎么协作？',
+          difficulty: 'basic',
+          tags: ['Kubernetes', 'Pod', 'Deployment'],
+          points: [
+            '**Pod**：最小调度单元，包含**一个或多个共享网络与存储的容器**（同 Pod 容器共享 IP、可 localhost 互访、共享 Volume）；多容器用于 **sidecar 模式**（日志收集、代理、init 容器做前置检查）。Pod 是**易逝的（ephemeral）**——被调度、被重建后 IP 变，所以不能直接依赖 Pod IP。',
+            '**Deployment**：声明“我要 N 个副本的某版本应用”，通过管理 **ReplicaSet** 实现副本数维持（挂了自动拉起）与**滚动更新**（新版 ReplicaSet 逐步扩、旧版逐步缩）；配套 **revision 历史支持回滚（rollout undo）**。它体现 K8s 的核心思想：**声明式 API + 控制循环**——用户声明期望状态，控制器持续把实际状态向期望状态调谐（reconcile）。',
+            '**Service**：给一组（标签选择的）Pod 提供稳定的**虚拟 IP + DNS 名**，解决“Pod 会死会漂移”的访问问题；类型：**ClusterIP**（集群内访问，默认）、**NodePort**（每节点开端口）、**LoadBalancer**（接云厂商 LB）。转发由 kube-proxy 用 **iptables/IPVS 规则**实现。',
+            '串起来的协作链路（答题收尾必说）：Deployment 创建 ReplicaSet → ReplicaSet 拉起 Pod → **Service 通过 label selector 选中这批 Pod**，自动维护 endpoints（Pod 上下线动态增删）→ 客户端访问 Service 域名（CoreDNS 解析）被转发到健康 Pod。配置用 **ConfigMap/Secret** 注入，与镜像解耦。',
+            '常见追问：Pod 为什么不直接用（缺副本管理/自愈/更新编排）；label 与 selector 是 K8s 一切关联的粘合剂；探针（liveness/readiness）属于 Pod spec，衔接下一题。',
+          ],
+          followUps: [
+            {
+              question: 'Pod 重建后 IP 变了，客户端靠什么稳定访问？中间有哪些环节可能出错？',
+              points: [
+                '靠 **Service 的稳定 VIP + DNS**：Pod 上下线时 endpoints 自动增删、kube-proxy 同步更新 iptables/IPVS 规则，客户端只认 Service 域名——这就是“永远不要直连 Pod IP”的原因。',
+                '可能出错的环节：**label 与 selector 不匹配**（Service 找不到 Pod，endpoints 为空）、**readiness 未通过**（Pod 存在但不接流量）、CoreDNS 解析异常——排查口诀是先看 `kubectl get endpoints` 有没有地址，再往前查 label 与探针。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'ops-cicd-dockerfile-optimize',
+          title: '怎么把一个 1GB 的 Docker 镜像优化到 200MB？写出优化后的 Dockerfile 要点。',
+          difficulty: 'intermediate',
+          tags: ['Dockerfile', '多阶段构建', '镜像优化'],
+          points: [
+            '**换更小的基础镜像**：`ubuntu/debian` → `alpine` 或 `distroless/slim`，基础层从几百 MB 降到几 MB；语言运行时选官方 slim 变体（python:3.12-slim）。**多阶段构建**是最大杀器——编译期装全套工具链，运行期只拷贝**构建产物 + 运行时依赖**，gcc、node_modules 的 devDependencies 全部留在 builder 层。示例：',
+            '```dockerfile\nFROM node:20-alpine AS builder\nWORKDIR /app\nCOPY package*.json ./\nRUN npm ci                       # 先拷清单再装依赖，命中层缓存\nCOPY . .\nRUN npm run build\n\nFROM node:20-alpine\nWORKDIR /app\nENV NODE_ENV=production\nCOPY --from=builder /app/dist ./dist\nCOPY --from=builder /app/node_modules ./node_modules\nUSER node                        # 不以 root 运行\nCMD ["node", "dist/main.js"]\n```',
+            '**层缓存友好**：先 COPY 依赖清单（package.json/go.mod）再装依赖、后 COPY 源码——代码热改不触发依赖重装；**合并 RUN**（`apt-get update && apt-get install -y ... && rm -rf /var/lib/apt/lists/*` 同层清理，跨层清理无效——层是只读快照，删除只是覆盖标记）。',
+            '**清理与瘦身细节**：`.dockerignore` 排除 .git、node_modules、日志（构建上下文小，构建才快）；不装推荐包（`--no-install-recommends`）；静态资源、字体、模型文件用对象存储 + 启动时拉取或直接 CDN 化，不塞进镜像。',
+            '度量与纪律：`docker images` + `dive` 分析每层构成，找到“哪一层最大”再针对性砍；镜像优化不仅是省仓库空间——**拉取时间直接决定发布速度与弹性扩容速度**；同时保证“一次构建、多环境部署”：构建产物不可变，配置全部外置（环境变量/配置中心）。',
+          ],
+          followUps: [
+            {
+              question: '为什么 COPY package.json 要放在 COPY . . 之前？层缓存失效怎么传播？',
+              points: [
+                '缓存规则：**某层一旦失效，它之后的所有层全部重建**——把“经常变的源码”放在“很少变的依赖安装”之后，改代码时依赖层照常命中缓存，安装几分钟变秒级。',
+                '细节决定成败：COPY 的缓存按**文件内容 hash** 判断；RUN 层按**指令字符串**判断（`npm install` 字符串不变就永远命中——哪怕 lock 文件变了，所以要 COPY lock 后用 `npm ci`）；这也是“依赖清单先行”写法成为标准的底层原因。',
+              ],
+            },
+            {
+              question: '镜像瘦身后，还能从“分发与启动”角度继续提速吗？',
+              points: [
+                '分发侧：**就近仓库/镜像加速 + P2P 分发**（如 Dragonfly）解决大规模并发拉取；**基础镜像统一精简**让所有业务镜像共享基础层，节点缓存复用率决定实际下载量。',
+                '度量口径：盯**镜像体积、拉取耗时、Pod Ready 时间**三个数——目标是端到端交付最快而不是体积最小；有时粗一点的分层比极限压缩更有效，用数据说话。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'ops-cicd-k8s-service-ingress',
+          title: 'K8s 的 Service 和 Ingress 有什么区别？liveness、readiness、startup 探针分别干什么？',
+          difficulty: 'intermediate',
+          tags: ['Kubernetes', 'Ingress', '健康检查'],
+          points: [
+            '分工：**Service 是四层（TCP/UDP）负载均衡**——给 Pod 组一个稳定 VIP；**Ingress 是七层（HTTP/HTTPS）路由**——按**域名/路径**把外部流量转发到不同 Service（`api.example.com/v1 → svc-a`，`web.example.com → svc-b`），并统一做 **TLS 终止**。Ingress 只是规则声明，需要 **Ingress Controller**（如 ingress-nginx）实际执行；对外暴露的主流方案就是 Ingress + LoadBalancer。',
+            '**为什么不用 NodePort 暴露一切**：端口管理混乱、没有七层路由与统一证书管理；Ingress 是“统一入口 + 路由表”，配合外部 LB 只暴露 80/443。Headless Service（clusterIP: None）常被追问——不分配 VIP，DNS 直接解析出所有 Pod IP，供 StatefulSet/客户端自选节点。',
+            '**探针三兄弟**：**liveness**——活不活着？失败则**重启容器**（防死锁假死）；**readiness**——能不能接流量？失败则**从 Service endpoints 摘除但不重启**（防把流量打进没就绪/过载的实例，滚动发布不 502 靠它）；**startup**——启动保护：慢启动应用（JVM 大堆、大模型加载）在 startup 探针通过前禁用另外两个，避免“启动慢被 liveness 误杀进入重启循环”。',
+            '探针设计要点：liveness 检查项要**只反映进程健康**（比如本地 /healthz 不依赖下游），检查项过重会引发重启风暴；readiness 可以包含依赖检查（DB 可用）；**延迟启动期间靠 startup 而不是把 initialDelaySeconds 调到很大**。失败阈值、间隔、超时是调参三件套。',
+            '衔接加分：graceful shutdown 配置（SIGTERM 后先从 endpoints 摘除再处理完存量请求，preStop sleep 几秒覆盖摘除传播延迟）——这是“滚动发布零 502”的完整答案。',
+          ],
+          followUps: [
+            {
+              question: '滚动发布偶发 502，把根因链完整讲一遍，再给出对应解法。',
+              points: [
+                '根因链三条：① 旧 Pod 收到 SIGTERM **立刻退出**，存量请求被掐断（没做 graceful shutdown）；② 新 Pod **没过 readiness 就进了 endpoints**（探针缺失或过松）；③ **endpoints 摘除有传播延迟**——Service 规则更新慢于 Pod 死亡，流量打进已死实例。',
+                '解法一一对应：应用**处理完存量请求再退**（宽限期匹配）+ **preStop sleep 几秒**等摘除传播 + readiness 只在真正可服务时通过 + maxUnavailable 保守设置——四件事凑齐，滚动发布可以做到零 502。',
+              ],
+            },
+            {
+              question: 'liveness 探针配置过重会引发什么事故？安全的设计原则是什么？',
+              points: [
+                '典型事故：liveness 检查**依赖下游 DB**——DB 抖动导致全部实例 liveness 失败，**全量重启风暴**（重启还叠加预热），把下游抖动放大成全局雪崩；本质是把“依赖不健康”误判为“进程不健康”。',
+                '原则：liveness **只反映进程自身健康**（本地无依赖检查）；依赖健康交给 readiness（摘流量不重启）；慢启动应用用 **startup 探针**兜住，而不是调大 liveness 的 initialDelay——职责分离是探针设计的核心。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'ops-cicd-pipeline',
+          title: '一条合格的 CI/CD 流水线应该怎么设计？有哪些关键阶段和质量门禁？',
+          difficulty: 'intermediate',
+          tags: ['CI/CD', '流水线', 'DevOps'],
+          points: [
+            'CI 阶段（每次提交触发，分钟级反馈）：**代码检查**（lint、静态扫描）→ **编译/构建** → **单元测试 + 覆盖率** → **安全扫描**（依赖漏洞 SCA、镜像扫描 Trivy）→ **构建镜像**（提交即建镜像，tag 用 commit hash，**制品不可变**）。原则：**失败即停、快速反馈**，最贵的阶段放最后。',
+            'CD 阶段（按环境递进）：自动部署 **dev → test/staging → 生产（需审批）**；部署前跑**接口自动化冒烟**，部署后跑**健康检查与冒烟**；staging 尽量与生产同构。**一次构建的制品贯穿所有环境**——禁止各环境重新构建（重新构建 = 不可复现）。',
+            '质量门禁（Gate）：单测覆盖率低于阈值不合并；关键分支强制 Code Review + CI 绿；镜像扫描有高危漏洞拦截；生产发布需要审批人与发布单。门禁的价值是**把规范固化进流水线**，不依赖人的自觉。',
+            '工程效率设计：依赖缓存（npm/maven 缓存层）、并行化（测试分片）、流水线即代码（Jenkinsfile/.gitlab-ci.yaml 进仓库、可评审）、制品库管理（Harbor/Nexus，版本可追溯：镜像 ← commit ← PR 一条线）。',
+            '回答时体现权衡：流水线时长是**反馈速度与检查完备度**的权衡（>15 分钟开发就不愿小步提交）；CD 的自动化程度是**风险与效率**的权衡——核心服务可以“自动部署到预发 + 人工审批生产 + 自动化金丝雀”。',
+          ],
+          followUps: [
+            {
+              question: '流水线越跑越慢、影响小步提交，你会从哪些方向优化？',
+              points: [
+                '**并行与缓存**：无依赖阶段并行、测试按耗时均衡分片、依赖缓存（npm/maven/pip、Docker layer cache）、CI 资源规格与并发匹配——这些是分钟级的直接收益。',
+                '**分层取舍**：提交流水线只跑 lint + 单测 + 编译（目标 10 分钟内），安全扫描、集成测试放合并前或 nightly；**增量思维**——变更影响分析决定跑哪些套件，而不是每次全量；慢的检查往后放，反馈快的留在最前。',
+              ],
+            },
+            {
+              question: '怎么保证“一次构建、处处一致”？从制品角度讲讲可追溯链。',
+              points: [
+                'CI 构建的镜像以 **commit hash tag** 推入制品库（Harbor），所有环境部署**引用同一个 digest**——digest 不可变、比可覆盖的 tag 可靠；禁止任何环境重新构建。',
+                '追溯链要能一口气说出来：**线上镜像 digest ← 制品库 ← CI 构建 ← commit ← PR**——出问题分钟级定位代码版本；再配镜像签名与准入控制（cosign + K8s 准入策略），防未审计镜像进生产。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'ops-cicd-release-strategies',
+          title: '滚动、蓝绿、金丝雀发布各自的原理和优缺点？生产上怎么选？',
+          difficulty: 'advanced',
+          tags: ['发布策略', '金丝雀', '蓝绿部署'],
+          points: [
+            '**滚动发布（Rolling）**：分批替换旧实例（K8s Deployment 默认），资源省、流程简单；缺点：**新旧版本共存**（要求接口/数据结构向后兼容）、出问题影响已切流量的用户、回滚是反向滚动较慢、无流量比例控制。配合 maxSurge/maxUnavailable 与 readiness 探针可以做到基本平滑。',
+            '**蓝绿发布（Blue-Green）**：两套完整环境，新版（绿）验证后**流量一次性切换**，蓝保留待命。优点：**切换与回滚都是秒级**（切回旧 LB 即可）、验证环境与线上一比一；缺点：**资源双倍成本**、数据库 schema 变更是坑（新旧代码要同时兼容两版 schema）、切流是“全量跳变”——问题也是全量暴露。',
+            '**金丝雀发布（Canary）**：把**小比例真实流量**（1% → 10% → 50% → 100%）导到新版，观察**错误率、P99 延迟、业务指标**，达标才继续放量，异常自动回滚。优点：爆炸半径最小、可自动化的渐进式风险控制；缺点：需要**流量精确控制能力**（Istio/网关权重）+ **指标监控闭环**，基础设施成本高。K8s 原生做法是新旧 Deployment 副本数比例模拟，精确控流要上服务网格。',
+            '共同的隐含要求（说出这层是高级感所在）：**API 与数据向后兼容**——新旧版本共存期间，读旧数据、写新字段都要兼容（数据库变更走 expand-contract：先加列兼容发布，回填数据，确认后再删旧列）；**发布 ≠ 部署**：用 feature flag 把“代码上线”与“功能开放”解耦，出问题关开关即可，不用回滚代码。',
+            '选型话术：无状态普通业务 → **滚动 + 健康检查**足够；核心链路/大版本重构 → **金丝雀 + 指标自动分析**；需要秒级回滚能力且资源富余 → 蓝绿。答到“根据业务风险分级选策略，并把回滚演练当日常”即满分姿态。',
+          ],
+          followUps: [
+            {
+              question: '金丝雀发布的“自动回滚”具体怎么实现？',
+              points: [
+                '指标闭环：灰度期间持续对比**新旧版本的错误率、P99、核心业务指标**（Prometheus 查询 + 判定规则，或直接用 Argo Rollouts/Flagger 的 Analysis），任一指标越线**自动把流量权重切回旧版**并告警。',
+                '实现要点：流量权重精确可控（网格/网关）是前提；判定窗口要**长于指标聚合延迟**（避免毛刺误杀）；回滚动作本身要**演练过**——自动回滚失败比没有回滚更可怕；成熟团队还会在放量节点保留人工确认作为双保险。',
+              ],
+            },
+            {
+              question: '数据库 schema 变更怎么和发布策略配合才不翻车？',
+              points: [
+                '**expand-contract 两阶段**：第一版发布只加不改（新列可空或带默认值），旧代码照常运行；灰度完成后**回填数据**；第二版发布切换读写，稳定后再删旧列——任何一步回滚都保持兼容。',
+                '红线清单：schema 变更与代码发布**不同时上线**；大表 DDL 走 online DDL（gh-ost/pt-osc）防锁表；删字段前确认所有消费方（含离线任务/报表）已迁移——记住“**代码可以回滚，删掉的数据回不来**”。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'ops-cicd-pod-troubleshoot',
+          title: 'Pod 起不来或一直重启（Pending / ImagePullBackOff / CrashLoopBackOff / OOMKilled），你的排查思路是什么？',
+          difficulty: 'intermediate',
+          tags: ['Kubernetes', '故障排查'],
+          points: [
+            '第一步永远是 `kubectl describe pod <name>` 看 **Events**——每种状态对应卡在不同环节：**Pending**（调度失败）、**ImagePullBackOff**（拉镜像失败）、**CrashLoopBackOff**（启动即退出）、**OOMKilled**（超内存限额被内核杀）、Running 但不接流量（探针失败）——先定位"卡在哪一环"，再按环下钻。',
+            '**CrashLoopBackOff**：`kubectl logs --previous` 看上一次崩溃日志；高频根因——配置错误（环境变量/配置中心连不上）、依赖不可用（DB/注册中心）、应用启动即 fail、**探针配置不当**（慢启动应用没配 startup 探针被 liveness 误杀，重启循环）。',
+            '**OOMKilled（退出码 137）**：limits < 真实内存峰值，JVM 场景堆外内存（DirectBuffer/元空间/线程栈）最常背锅；压测确认真实水位后再调 limits；反复 OOM 要区分容器级 OOM（cgroup）与节点级（dmesg）。',
+            '**Pending**：describe 事件里看拒绝原因——`Insufficient cpu/memory`（节点资源不足，扩容或调 requests）、nodeSelector/亲和性不匹配、taint 未容忍、PVC Pending（查 StorageClass）；`kubectl top nodes` 验证资源余量。',
+            '方法论收尾：排查链 = **调度 → 拉镜像 → 启动 → 探针**四环，Events 报错文本直接指向对应环节；沉淀成 runbook，并给 CrashLoopBackOff / ImagePullBackOff 配告警。',
+          ],
+          followUps: [
+            {
+              question: '怎么快速区分"应用自己崩"和"liveness 探针误杀"导致的重启循环？',
+              points: [
+                '看日志与退出码：应用崩溃有业务异常栈、退出码非 0；探针误杀则业务日志干净，describe Events 出现 "Killing container ... failed liveness probe"——证据在 kubelet 侧不在应用侧。',
+                '验证与修复：临时放宽/摘掉 liveness 观察是否停止重启；正确解法是 **startup 探针保护慢启动**——误杀放大会把小抖动变成重启风暴。',
+              ],
+            },
+            {
+              question: '容器被 OOM 杀了，但 JVM 从没抛过 OutOfMemoryError，为什么？',
+              points: [
+                'JVM 的 OOM 只管**堆内**；堆外（DirectBuffer/Netty）、Metaspace、线程栈不受 -Xmx 约束，而容器 limits 按**整个进程 RSS** 算——堆内健康但 RSS 超 cgroup 上限，内核直接 OOM kill（137）。',
+                '解法：容器化 JVM 用 `-XX:MaxRAMPercentage` 而非写死 -Xmx，给堆外留额度；开 NativeMemoryTracking 分析分布——"容器内存 = 堆 + 堆外 + Metaspace + 线程栈"一起算账。',
+              ],
+            },
+          ],
+        },
+
+      ],
+    },
+    {
+      id: 'ops-observability',
+      name: '可观测性与 SRE 实践',
+      description: 'Metrics/Logging/Tracing 三支柱的体系化建设、OpenTelemetry 统一埋点与 SLO 错误预算落地——从"能看监控"到"用数据管可靠性"。',
+      references: [
+        { label: 'Google SRE Books', url: 'https://sre.google/books/' },
+        { label: 'Prometheus 官方文档', url: 'https://prometheus.io/docs/introduction/overview/' },
+        { label: 'OpenTelemetry 官方文档', url: 'https://opentelemetry.io/docs/' },
+        { label: 'Grafana Loki 官方文档', url: 'https://grafana.com/docs/loki/latest/' },
+      ],
+      questions: [
+        {
+          id: 'ops-cicd-monitoring',
+          title: 'Prometheus + Grafana 的监控体系怎么搭建？应该监控哪些指标？',
+          difficulty: 'advanced',
+          tags: ['Prometheus', 'Grafana', '可观测性'],
+          points: [
+            '体系架构：**Prometheus 拉模型**——定时抓取各目标的 `/metrics` 端点（exporter 暴露：node_exporter 机器层、kube-state-metrics K8s 对象层、应用埋点用 client 库）；数据存 TSDB；**PromQL** 查询聚合；**Alertmanager** 负责告警的分组、去重、静默、路由（分级发到钉钉/飞书/PagerDuty）；**Grafana** 出大盘。长期存储与高可用用 Thanos/VictoriaMetrics。',
+            '指标方法论（背熟两套就够）：**RED**（服务维度：Rate 请求量、Errors 错误率、Duration 耗时分位）+ **USE**（资源维度：Utilization 使用率、Saturation 饱和度、Errors 错误）；谷歌**四个黄金指标**：延迟、流量、错误、饱和度。应用内部再埋**业务指标**（下单成功率、支付回调延迟）——技术全绿业务挂掉是最痛的教训。',
+            '告警质量是灵魂：告警必须**可行动**（收到后知道该干什么）、有**分级**（P0 电话叫醒、P1 群消息、P2 日报）、防**告警风暴**（依赖告警聚合：机房挂了只报一次根因）、基于**分位数与持续时长**（P99 > 500ms 持续 5 分钟）而不是瞬时毛刺。告警噪音太大等于没有监控。',
+            '三大支柱关联：**Metrics**（Prometheus，知道出问题）+ **Logging**（ELK/Loki，知道为什么）+ **Tracing**（OpenTelemetry/Jaeger/SkyWalking，知道慢在哪一环）；三者用 traceId/requestId 串起来，从告警到根因的路径才是顺畅的。K8s 场景标配：Prometheus Operator + kube-prometheus-stack 一键部署。',
+            '落地回答模板：先盘资源（CPU/内存/磁盘/网络）→ 再盘服务（QPS/错误率/P99）→ 再盘中间件（Redis 命中率、MQ 堆积、DB 连接池）→ 最后业务大盘；新服务上线前**先建监控告警再放流量**，把“可观测性”当交付物的一部分。',
+          ],
+          followUps: [
+            {
+              question: 'PromQL 里 rate 和 irate 有什么区别？为什么告警一般用 rate？',
+              points: [
+                '**irate** 只取区间内最后两个样本算瞬时增速，灵敏但毛刺大，适合看突发；**rate** 对整个区间求平均增速并做**外推与计数器重置补偿**，曲线平滑——告警要的是“持续趋势”而不是瞬时尖峰，所以用 rate。',
+                '配套细节：counter 类型必须先 rate 再看（直接画原始值永远是单调上涨的线）；区间长度要 **≥ 2 倍抓取间隔**（15s 采集配 `rate(x[5m])`），否则算不出数据——新手告警“无数据”的第一原因就在这。',
+              ],
+            },
+            {
+              question: '告警老是半夜误报、团队开始免疫，怎么系统性治理？',
+              points: [
+                '**分级与降噪**：P0 只留“业务受损 + 需要人立即行动”的（电话），其余降级为工作消息；条件用**持续时长 + 分位数**（P99 > 500ms 持续 5 分钟）而非瞬时值；做**根因聚合**——DB 挂了只报 DB，不把它上游 20 个服务的报错各发一遍。',
+                '闭环治理：每条告警必须**可行动**（附 runbook），“收到也不知道干嘛”的告警直接删；每月统计**告警到真实故障的命中率**，持续偏低的规则下线调优——告警质量和代码一样需要持续重构，免疫了的告警等于没有告警。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'ops-obs-logging',
+          title: '日志体系怎么搭建？ELK 和 Loki 怎么选？日志规范与成本治理怎么做？',
+          difficulty: 'advanced',
+          tags: ['日志', 'ELK', 'Loki', '可观测性'],
+          points: [
+            '现代日志链路四段：**采集**（Filebeat/Fluent Bit/Vector，K8s 用 DaemonSet 收节点级 stdout 与文件日志）→ **传输缓冲**（Kafka 削峰，防日志洪峰打挂存储）→ **存储检索**（Elasticsearch/Loki）→ **展示告警**（Kibana/Grafana）。“应用直接写 ES”是反面教材——检索方抖动会反压业务方。',
+            'ELK vs Loki 的本质差异：ELK 对**日志全文建倒排索引**，检索能力强大、生态成熟，代价是索引成本高（存储翻倍、写入重）；Loki 只索引**标签**（服务、实例、级别），日志体不建索引——成本便宜一个数量级、吞吐高，查询是“标签过滤后按时间暴力扫”，匹配“先定服务/时间段、再肉眼找”的真实排障路径。选型：复杂全文检索与存量生态选 ELK；云原生、成本敏感、Grafana 一体化选 Loki。',
+            '日志规范是体系的根基（没有它，存储再好也是垃圾场）：**结构化 JSON 输出**，统一字段（时间戳、级别、服务名、实例、traceId）；**级别语义严格**——ERROR 必须值得被告警、WARN 需要人看、INFO 只描关键路径；**traceId 全链路贯穿**——没有它日志只是散落字符串，有了它才能与 Tracing、Metrics 串成排障路径。',
+            '成本治理（高级感所在）：日志是“写得多、查得少”的数据——**分级保留**（ERROR 30 天、INFO 7 天、冷数据压对象存储）、健康检查与心跳日志不打、大字段截断、按服务的量基线配额；ES 场景配 ILM 索引生命周期。真实教训：**“日志存储比业务数据库还贵”不是段子，是没做治理的必然结果。**',
+          ],
+          followUps: [
+            {
+              question: '日志量突然暴涨、把存储打爆了，应急与根治分别怎么做？',
+              points: [
+                '应急三步：动态把最吵服务的日志级别降到 WARN、检索侧对非核心索引限流保命、扩容存储争取时间——先止血，避免日志存储雪崩连累整条排障链路。',
+                '根治看根因：暴涨十有八九是**异常风暴**（每条请求打全栈异常）或 **Debug 级别误发布到生产**——配“日志量偏离基线”告警、发布流水线加日志配置检查，把日志洪峰当成一类正式故障对待。',
+              ],
+            },
+            {
+              question: 'ERROR 日志该不该直接触发告警？怎么避免告警风暴？',
+              points: [
+                '不能一刀切：正确姿势是基于**基线突增**告警（如 5 分钟错误量超基线 10 倍），单条 ERROR 静默落盘；循环重试场景一个根因能刷出海量 ERROR——按条告警等于告警洪水。',
+                '降噪靠**指纹聚合**：对错误栈/错误码聚类，同指纹 1 万条收敛成 1 条告警并带计数；再靠 traceId 抽样看代表案例——告警的目的让人行动，不是让人麻木。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'ops-obs-otel',
+          title: 'OpenTelemetry 是什么？它解决了可观测性的什么问题？',
+          difficulty: 'advanced',
+          tags: ['OpenTelemetry', '可观测性', '埋点'],
+          points: [
+            '是什么：CNCF 的**可观测性统一标准**，把 **traces/metrics/logs 三种信号**的 API、SDK、数据模型与传输协议（OTLP）统一到一套，由 OpenTracing 与 OpenCensus 合并而来——可观测性领域的“USB 接口”。',
+            '解决的问题——**埋点与厂商解耦**：此前 Jaeger 一套 SDK、Prometheus 一套、换 APM 厂商就要全量改代码；OTel 让代码只面向 OTel API 编写，后端（Jaeger/Tempo/商业 APM）按配置切换——“**埋点一次，任意后端**”，锁定的风险从代码层挪到了配置层。',
+            '架构三件套：**API**（Span/Meter/Logger 接口定义）→ **SDK**（采样、批处理、导出的实现）→ **Collector**（独立代理进程：接收遥测数据，做重试、脱敏、尾采样，再分发到多个后端）。业务服务只管把数据发给本机 Collector，后端切换与采样调整完全不动业务代码。',
+            '自动插桩是普及关键：Java 用 `-javaagent` 零侵入注入、K8s 用 OpenTelemetry Operator 自动注入 SDK 与 sidecar——**存量服务不改一行代码就能出 trace**。落地建议：新服务直接用 OTel API 埋点，trace 优先（排障收益最高）；采样用“头部采样控成本 + 错误与慢请求 100% 保留”的组合。',
+          ],
+          followUps: [
+            {
+              question: '头部采样和尾部采样有什么区别？生产上怎么组合？',
+              points: [
+                '**头部采样**：请求入口处掷骰子决定记不记（如采 10%），实现简单、成本可控，但可能**恰好丢掉出问题的那次请求**；**尾部采样**：全量收集后在 Collector 按**结果**决策——错误请求、P99 慢请求、带特殊标记的请求 100% 保留，可观测价值最高，代价是全量传输成本。',
+                '生产组合拳：常态流量头部采样 10% 控成本 + 尾部规则对 error/slow/关键业务全保；采样策略集中在 Collector 配置，业务无感知——“采样是成本与观测性的杠杆，策略要可运营而不是拍一次完事”。',
+              ],
+            },
+            {
+              question: '三支柱用同一个 traceId 串起来之后，一次真实排障的路径长什么样？',
+              points: [
+                '完整闭环：**Metrics 告警**（下单成功率突降）→ 按服务与时间窗过滤 **Tracing**，看到错误集中在“调库存服务的这一环”、P99 从 20ms 涨到 2s → 拿 traceId 去 **Logging** 精确翻出当时上下文（下游返回超时、重试耗尽）——从“发现问题”到“定位环节”再到“看到现场”，几分钟走完。',
+                '反面对照：三套孤立系统里，同样的排障要分别在 Grafana、Jaeger、Kibana 里手工对时间戳，跨团队猜服务边界——可观测性的价值不是三个工具，是**数据互相关联**这件事本身。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'ops-obs-slo-budget',
+          title: 'SLO 和错误预算怎么从“贴在墙上的数字”变成驱动决策的机制？',
+          difficulty: 'advanced',
+          tags: ['SLO', '错误预算', 'SRE'],
+          points: [
+            '概念链条一口气说清：**SLI**（对用户可测量的指标：下单成功率、P99 延迟）→ **SLO**（目标线：30 天滚动窗口成功率 ≥ 99.9%）→ **错误预算**（1 − SLO = 0.1%，即 30 天约 43 分钟的“可失败额度”）。SLA 是对外违约条款，SLO 是对内工程目标——**SLO 必须严于 SLA**，留出缓冲。',
+            '核心理念：错误预算是**可靠性与迭代速度的兑换券**——预算充足就大胆发布，预算耗尽就踩刹车。它把“开发想多发、SRE 想稳住”的永恒矛盾，从会议室吵架变成看数字决策，这是 Google SRE 最核心的机制设计。',
+            '落地四级响应：**预算充足**（剩余 > 50%）→ 正常迭代；**告急**（< 20%）→ 收紧发布门槛、减少非必要变更；**耗尽** → 冻结非修复类发布，可靠性改进优先，直到预算回补；配合**烧尽率告警**（如 1 小时烧掉 2% 预算）比月底统计更早发现问题。',
+            '落地步骤与常见坑：SLI 从**用户旅程**定义（“用户能成功下单”，而不是 CPU 使用率）；初版 SLO 放宽松（99.5% 起步），跑一个月用真实数据校准再收紧；预算消耗大盘**公开透明**。反面清单：所有服务一刀切同一个 SLO、SLO 定在进程存活率上、只定目标不配预算机制——最后都沦为“贴在墙上的数字”。',
+          ],
+          followUps: [
+            {
+              question: '错误预算耗尽了，业务说“功能必须按时上”，怎么办？',
+              points: [
+                '这是**事先的机制问题**，不是临场的博弈问题：SLO 政策（含预算耗尽后的发布规则）要**提前由管理层签署**，例外流程也预先定义——业务负责人可以显式接受风险强行发布，但必须留痕（谁批准的、接受了什么风险）。机制的尊严来自事先约定，而不是事后翻脸。',
+                'SRE 的正确姿态：提供带预算影响评估的选项（延后 / 灰度小流量 / 带兜底开关发布），决策权交给业务——和测试岗“风险清单 + 决策留痕”是同构的专业主义。',
+              ],
+            },
+            {
+              question: '多服务依赖的链路里 SLO 怎么定？下游故障算谁的错误预算？',
+              points: [
+                '面向用户旅程定**端到端 SLO**（下单成功率），各服务再分解自己的内部 SLO；计账规则：下游故障消耗的是**调用方的预算**——对用户而言没有“是下游的锅”这个选项。',
+                '这个规则的深意：倒逼上游做**熔断、降级、冗余与依赖治理**，而不是把故障外包给下游；配套要求下游提供细粒度错误分类（自身错误 vs 透传上游），让预算消耗可归因——不然上游总在背锅，机制就失去公信力。',
+              ],
+            },
+          ],
+        },
+      ],
+    },
+  ],
+};

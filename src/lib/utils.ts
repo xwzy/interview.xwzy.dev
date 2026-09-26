@@ -113,4 +113,18 @@ export const trackThemes: Record<TrackColor, TrackTheme> = {
     ring: 'group-hover:border-pink-300 dark:group-hover:border-pink-500/40',
     solid: 'bg-pink-500 border-pink-500 text-white',
   },
+  teal: {
+    iconBox: 'bg-teal-100 text-teal-600 dark:bg-teal-500/15 dark:text-teal-300',
+    chip: 'bg-teal-100 text-teal-700 dark:bg-teal-500/15 dark:text-teal-300',
+    bar: 'bg-teal-500',
+    ring: 'group-hover:border-teal-300 dark:group-hover:border-teal-500/40',
+    solid: 'bg-teal-500 border-teal-500 text-white',
+  },
+  fuchsia: {
+    iconBox: 'bg-fuchsia-100 text-fuchsia-600 dark:bg-fuchsia-500/15 dark:text-fuchsia-300',
+    chip: 'bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-500/15 dark:text-fuchsia-300',
+    bar: 'bg-fuchsia-500',
+    ring: 'group-hover:border-fuchsia-300 dark:group-hover:border-fuchsia-500/40',
+    solid: 'bg-fuchsia-500 border-fuchsia-500 text-white',
+  },
 }

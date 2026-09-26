@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { countMastered, cx, formatDuration, shuffle, stripMarkdown, trackThemes } from './utils'
-import type { Question } from '../types'
+import type { Question, TrackColor } from '../types'
 
 describe('cx', () => {
   it('拼接非空类名并跳过假值', () => {
@@ -55,9 +55,12 @@ describe('stripMarkdown', () => {
 
 describe('trackThemes', () => {
   it('每种 TrackColor 都有配套样式', () => {
-    const colors = ['blue', 'emerald', 'violet', 'amber', 'rose', 'cyan', 'orange', 'slate', 'indigo', 'pink']
+    const colors: TrackColor[] = [
+      'blue', 'emerald', 'violet', 'amber', 'rose',
+      'cyan', 'orange', 'slate', 'indigo', 'pink', 'teal', 'fuchsia',
+    ]
     for (const color of colors) {
-      expect(trackThemes[color as keyof typeof trackThemes].bar).toBeTruthy()
+      expect(trackThemes[color].bar).toBeTruthy()
     }
     expect(Object.keys(trackThemes)).toHaveLength(colors.length)
   })

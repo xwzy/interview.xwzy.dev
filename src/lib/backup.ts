@@ -57,6 +57,12 @@ function toCustomQuestion(v: Record<string, unknown>): CustomQuestion | null {
   }
 }
 
+/** 旧版"测试与运维"(qa-ops) 方向拆分为 qa / ops 两个方向：按题目 id 前缀迁移自定义题目的归属 */
+function migrateLegacyTrack(q: CustomQuestion): CustomQuestion {
+  if (q.trackId !== 'qa-ops') return q
+  return { ...q, trackId: q.topicId.startsWith('ops-') ? 'ops' : 'qa' }
+}
+
 /** 清洗导入的备份数据：剔除畸形条目，字段类型逐一收敛（防止垃圾数据进入渲染层） */
 export function sanitizeBackup(raw: unknown): BackupFile | null {
   if (!isRecord(raw) || raw.version !== BACKUP_VERSION) return null
@@ -94,6 +100,7 @@ export function sanitizeBackup(raw: unknown): BackupFile | null {
     .filter(isRecord)
     .map(toCustomQuestion)
     .filter((q): q is CustomQuestion => q !== null)
+    .map(migrateLegacyTrack)
 
   const favorites = (Array.isArray(raw.favorites) ? raw.favorites : []).filter(
     (id): id is string => typeof id === 'string',

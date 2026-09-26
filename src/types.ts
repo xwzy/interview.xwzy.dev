@@ -11,6 +11,8 @@ export type TrackColor =
   | 'slate'
   | 'indigo'
   | 'pink'
+  | 'teal'
+  | 'fuchsia'
 
 export interface Resource {
   label: string
