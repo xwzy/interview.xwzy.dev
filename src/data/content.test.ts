@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { loadAllTracks } from './trackLoaders'
 import { buildBank } from './bank'
 
-/** 各方向允许的题目 id 前缀（qa-ops 方向下测试/运维领域分别使用 qa-/ops-） */
+/** 各方向允许的题目 id 前缀 */
 const allowedPrefixes: Record<string, string[]> = {
   backend: ['be-'],
   frontend: ['fe-'],
@@ -85,6 +85,26 @@ describe('题库内容完整性', () => {
       for (const topic of track.topics) {
         const ranks = topic.questions.map((q) => rank[q.difficulty])
         expect(ranks, `领域 ${track.id}/${topic.id} 难度未升序`).toEqual([...ranks].sort())
+      }
+    }
+  })
+
+  it('题目标题跨方向不重复（防止去重后回潮）', async () => {
+    const bank = buildBank(await loadAllTracks(), [])
+    // 归一化：去空白/标点/符号、转小写，让「手写 LRU 缓存」与「手写LRU缓存！」判等
+    const normalize = (t: string) => t.toLowerCase().replace(/[\s\p{P}\p{S}]+/gu, '')
+    const seen = new Map<string, string>()
+    for (const track of bank.tracks) {
+      for (const topic of track.topics) {
+        for (const q of topic.questions) {
+          const key = normalize(q.title)
+          const prev = seen.get(key)
+          expect(
+            prev,
+            `题目标题重复：「${q.title}」（${track.id}/${q.id} 与 ${prev}）——同一主题应差异化定位或只保留一处`,
+          ).toBeUndefined()
+          seen.set(key, `${track.id}/${q.id}`)
+        }
       }
     }
   })
