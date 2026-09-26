@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { Route, Routes } from 'react-router'
 import Layout from './components/Layout'
 import HomePage from './pages/HomePage'
@@ -19,6 +19,22 @@ function PageLoader() {
     </div>
   )
 }
+
+// 空闲时预取全部路由分包：首次加载后站内切换路由不再出现加载态
+useEffect(() => {
+  const preload = () => {
+    void import('./pages/QuizPage')
+    void import('./pages/TrackPage')
+    void import('./pages/TopicPage')
+    void import('./pages/SearchPage')
+    void import('./pages/HistoryPage')
+    void import('./pages/SettingsPage')
+    void import('./pages/NotFoundPage')
+  }
+  const w = window as unknown as { requestIdleCallback?: (cb: () => void) => number }
+  const idle = w.requestIdleCallback ?? ((cb: () => void) => window.setTimeout(cb, 300))
+  idle(preload)
+}, [])
 
 export default function App() {
   return (
