@@ -4,6 +4,7 @@ import { useBank } from '../context/BankContext'
 import { useFavorites } from '../context/FavoritesContext'
 import { useMastery } from '../context/MasteryContext'
 import { copyText } from '../lib/clipboard'
+import { clearResume, loadResume, saveResume } from '../lib/quizResume'
 import { cx, formatDuration, shuffle, trackThemes } from '../lib/utils'
 import { buildSummaryText, generateId, type SessionItem, type SummaryCounts } from '../lib/summary'
 import { difficultyMeta, type Difficulty, type IndexedQuestion } from '../types'
@@ -40,36 +41,6 @@ interface ResumeState {
   current: number
   notes: Record<string, string>
   savedAt: string
-}
-
-const RESUME_KEY = 'interview.quiz-resume.v1'
-
-function loadResume(): ResumeState | null {
-  try {
-    const raw = sessionStorage.getItem(RESUME_KEY)
-    if (!raw) return null
-    const data = JSON.parse(raw) as Partial<ResumeState>
-    if (!Array.isArray(data.queueIds) || data.queueIds.length === 0 || typeof data.current !== 'number') {
-      return null
-    }
-    return {
-      candidate: typeof data.candidate === 'string' ? data.candidate : '',
-      queueIds: data.queueIds.filter((id): id is string => typeof id === 'string'),
-      current: Math.max(0, data.current),
-      notes: data.notes && typeof data.notes === 'object' ? data.notes : {},
-      savedAt: typeof data.savedAt === 'string' ? data.savedAt : new Date().toISOString(),
-    }
-  } catch {
-    return null
-  }
-}
-
-function clearResume() {
-  try {
-    sessionStorage.removeItem(RESUME_KEY)
-  } catch {
-    // 忽略存储不可用
-  }
 }
 
 const DIFFICULTY_RANK: Record<Difficulty, number> = { basic: 0, intermediate: 1, advanced: 2 }
@@ -250,18 +221,13 @@ export default function QuizPage() {
 
   useEffect(() => {
     if (phase !== 'running' || queue.length === 0) return
-    try {
-      const data: ResumeState = {
-        candidate,
-        queueIds: queue.map((item) => item.question.id),
-        current,
-        notes,
-        savedAt: new Date().toISOString(),
-      }
-      sessionStorage.setItem(RESUME_KEY, JSON.stringify(data))
-    } catch {
-      // 存储不可用时静默跳过
-    }
+    saveResume({
+      candidate,
+      queueIds: queue.map((item) => item.question.id),
+      current,
+      notes,
+      savedAt: new Date().toISOString(),
+    })
   }, [phase, candidate, queue, current, notes])
 
   // 考察进行中离开页面（刷新/关闭）前给出挽留提示，避免评分与备注丢失
