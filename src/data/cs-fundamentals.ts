@@ -11,7 +11,7 @@ export const csTrack: Track = {
     {
       id: 'cs-network',
       name: '计算机网络',
-      description: '考察 TCP/UDP、HTTP/HTTPS、DNS、CDN 等协议栈的理解深度，是后端与全栈岗位的必考区域。',
+      description: '考察 TCP/UDP、HTTP/HTTPS、DNS、CDN 等协议栈的理解深度，是后端与全栈岗位的必考区域。从输入 URL、HTTP 缓存、HTTP 版本等经典题在前后端方向都会出现：本领域聚焦**网络与协议本身**（链路、握手、报文语义），前端方向的同题侧重渲染路径与工程实践。',
       references: [
         { label: 'MDN HTTP 文档', url: 'https://developer.mozilla.org/zh-CN/docs/Web/HTTP' },
         { label: '小林 coding · 图解网络', url: 'https://xiaolincoding.com/network/', note: '中文面试向的网络知识体系整理' },

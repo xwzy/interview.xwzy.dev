@@ -1708,7 +1708,7 @@ export const frontendTrack: Track = {
     {
       id: 'fe-browser',
       name: '浏览器原理',
-      description: '渲染流水线、同源策略与存储体系——理解浏览器，才能理解前端的一切约束。',
+      description: '渲染流水线、同源策略与存储体系——理解浏览器，才能理解前端的一切约束。与"计算机基础 → 计算机网络"的同题分工：输入 URL、HTTP 版本等经典题在此聚焦**浏览器渲染进程与前端配合**，网络链路与协议细节在计算机基础方向。',
       references: [
         { label: 'MDN Web API 参考', url: 'https://developer.mozilla.org/en-US/docs/Web/API' },
         { label: 'MDN CORS 文档', url: 'https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS' },
@@ -2344,7 +2344,7 @@ export const frontendTrack: Track = {
     {
       id: 'fe-perf',
       name: '性能优化',
-      description: '以 Core Web Vitals 为纲的加载与运行时优化，大厂面试的高频综合题。',
+      description: '以 Core Web Vitals 为纲的加载与运行时优化，大厂面试的高频综合题。HTTP 缓存与"计算机基础 → 计算机网络"的同题分工：网络方向讲强缓存/协商缓存的报文语义，本领域聚焦**前端缓存策略设计与性能实践**。',
       references: [
         { label: 'Core Web Vitals 官方指南', url: 'https://web.dev/articles/vitals' },
         { label: 'web-vitals 测量库', url: 'https://github.com/GoogleChrome/web-vitals' },

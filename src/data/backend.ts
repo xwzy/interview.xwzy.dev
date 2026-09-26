@@ -1613,7 +1613,7 @@ export const backendTrack: Track = {
     {
       id: 'be-distributed',
       name: '分布式系统',
-      description: 'CAP、一致性哈希、分布式事务与共识——中高级后端的分水岭主题。',
+      description: 'CAP、一致性哈希、分布式事务与共识——中高级后端的分水岭主题。限流/熔断等稳定性主题在多个方向出现，本领域的分工：**分布式算法与机制**（限流算法、一致性、选主）；Redis 具体实现见 Redis 领域，系统设计整题见系统设计方向，发布保障见高可用领域。',
       references: [
         { label: 'MIT 6.824: Distributed Systems 课程', url: 'https://pdos.csail.mit.edu/6.824/' },
         { label: 'The Google File System 论文', url: 'https://research.google/pubs/the-google-file-system/' },
