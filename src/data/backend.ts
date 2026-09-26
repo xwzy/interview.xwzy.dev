@@ -61,6 +61,27 @@ export const backendTrack: Track = {
           ],
         },
         {
+          id: 'be-general-graphql',
+          title: 'GraphQL 是什么？它和 REST 怎么选？N+1 问题怎么解？',
+          difficulty: 'intermediate',
+          tags: ['GraphQL', 'REST', 'DataLoader', 'BFF'],
+          points: [
+            '**核心模型**：客户端用**类 Schema 的查询语言**声明"要哪些字段"，服务端的 **Resolver 函数**按字段组织（每个字段一个解析函数）——响应 JSON 与查询**形状同构**；一次请求拿全多资源数据（客户端自定义聚合），天然适合"多端差异大"的场景（App 要 5 个字段、Web 要 20 个）。',
+            '**最大工程坑：N+1 查询（必考）**：GraphQL 按字段解析——返回 100 篇文章、每篇的 author 字段都触发一次 Resolver，**默认打 100 次 DB 查询**；解法是 **DataLoader**：把同 tick 内的 100 个 author 请求**收集、按 key 去重、合并成一次 `WHERE id IN (...)`** 批查再分发（批处理 + 请求级缓存）——本质是把"字段级解析"的便利与"批量 IO"的效率缝合起来。',
+            '**与 REST 的对比要讲透两面**：GraphQL 优势——**按需取字段**（移动端省流量）、一次请求免多跳、类型自省（Schema 即文档、代码生成友好）、前端迭代不用等后端加接口；劣势——**HTTP 缓存失效**（POST + 查询体，吃不到 GET 的 CDN/浏览器缓存语义，要自建 persisted query/网关缓存）、**复杂度与安全治理**（查询深度不限可能被恶意深嵌套打爆——要 depth limit、cost analysis、超时）、服务端实现与观测更复杂。',
+            '**定位与选型口径**：GraphQL 的甜区是 **BFF 层**（聚合多个微服务/数据源，屏蔽前端多端差异——GraphQL for frontend 思想）；内部服务间通信 REST/gRPC 更直接（强契约、缓存友好、protobuf 二进制高效——与 RPC 题分工）；现实判断：**多数团队不需要全站 GraphQL**，一个聚合层 + REST 后端是务实组合；接口简单、端单一的场景上 GraphQL 是给自己找事。',
+          ],
+          followUps: [
+            {
+              question: 'GraphQL 的查询怎么缓存？persisted query 是什么？',
+              points: [
+                '**Persisted Queries**：构建期把查询文本注册到服务端拿一个**哈希 ID**，运行时只发 ID（GET 请求）——重新获得 HTTP GET 语义：**CDN 可缓存、请求体变小、白名单校验**（没注册的查询直接拒，顺带解决任意查询的安全面）；这是 Apollo 等生态的标准实践，答不出缓存方案的 GraphQL 讨论是不完整的。',
+                '应用层补充：**响应缓存**按 query + 变量粒度（网关/服务端做）、**字段级 DataLoader 请求缓存**（同请求内去重）、订阅（Subscription）走 WebSocket 单独通道——GraphQL 的缓存是"每一层自己想辙"，这个治理成本正是它没通吃的根本原因。',
+              ],
+            },
+          ],
+        },
+        {
           id: 'be-general-oauth2',
           title: 'OAuth 2.0 的授权码模式流程是怎样的？为什么说它解决了"不给密码也能授权"？',
           difficulty: 'intermediate',
@@ -1031,6 +1052,28 @@ export const backendTrack: Track = {
               points: [
                 '多继承：对象里有**多个 vptr**（每个带虚函数的基类子对象一个），cast 到不同基类时指针可能需要偏移（this 调整）；跨基类调用经 **thunk**（调整 this 再跳转）。',
                 '**菱形继承**（D 继承 B、C，B/C 继承 A）：数据与函数**冗余两份 + 二义性**；虚继承让 A 子对象**共享一份**（虚基表指针间接定位），代价是访问虚基成员多一层间接、对象更大——所以准则仍是"优先组合，多继承只用于纯接口类（Java 风格）"。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'be-rust-async',
+          title: 'Rust 的 async/await 是怎么工作的？为什么标准库没有运行时？',
+          difficulty: 'advanced',
+          tags: ['Rust', 'async', 'Future', 'tokio'],
+          points: [
+            '**Future 是惰性的状态机（与 JS Promise 的第一区别）**：`async fn` 编译成**匿名状态机类型**——每个 `.await` 点是一个状态分叉，字段保存跨 await 的局部变量；创建 future **什么都不执行**，直到被 executor **poll**；而 JS Promise 构造即执行、Go goroutine spawn 即跑——三种执行模型里 Rust 选了"显式驱动"。',
+            '**poll 与 Waker 的契约**：`poll()` 返回 `Ready` 或 `Pending`——返回 Pending 时**必须登记 Waker**（异步事件的回调句柄），事件就绪时 executor 被 Waker 唤醒、重新 poll；**合同：没登记 Waker 就返回 Pending = 永远没人再叫醒你（死等）**——手写 Future 时最经典的 bug；这套"你告诉我怎么叫醒你"的回调式协作，正是零成本抽象：没事件时一个字节都不多花（对比 goroutine 每个几 KB 起步的栈）。',
+            '**为什么标准库不带执行器（设计哲学题眼）**：Rust 支撑的场景横跨内核、嵌入式、WASM、服务端——**没有一种调度器适合所有场景**，所以标准库只定义 Future trait 与语法（编译器做状态机转换），执行器交给生态：**tokio** 事实标准（多线程 work-stealing）、async-std、embedded 专用单线程 executor——"语言管抽象、生态管策略"与 Go runtime 全家桶是两种哲学。',
+            '**与 Go 的对比要成对地讲**：Go 无色并发（普通函数随便阻塞，runtime 调度一切，心智简单、生态无分裂）vs Rust 有色并发（async fn 与 sync fn 是两个世界，**传染性**——同步调用异步要 block_on、异步里禁长阻塞（会饿死 worker），跨界的痛苦真实存在）；换来的：**无 GC、确定性内存、单机百万连接级内存占用**——io 密集的极致场景（代理、数据库、边缘服务）Rust async 的密度优势才兑现。选型口径与 be-rust-tradeoff 题衔接：默认 Go，性能与内存密度是硬需求再上 Rust。',
+            '**实用深水区清单**：**Send future**（跨 await 持有非 Send 类型如锁 guard 会让整个 future 非 Send——编译错误离根源很远，经典劝退点，解法 tokio 专用锁或缩小作用域）；**select! 与取消**（分支被 drop 即取消，注意清理副作用—— cancellation safety 是 tokio 使用的高频面试词）；block_in_place/block_on 的使用边界；async trait 的演进（async fn in trait 已稳定）。',
+          ],
+          followUps: [
+            {
+              question: '「在 async 里调用了一个阻塞函数（比如同步 IO 或重 CPU 循环）」会发生什么？怎么发现与修复？',
+              points: [
+                '后果：tokio 的 worker 线程被这个阻塞调用占住——**同队列的所有任务都跟着卡**（表现为整个服务 RT 尖刺、心跳超时，且监控上 CPU 不高——"看起来闲却卡死"的迷惑现场）；阻塞函数不会通知 executor，Waker 机制对它完全无效。',
+                '发现：tokio-console / 任务级监控（task 运行时长分布）；修复三板斧：**spawn_blocking**（丢到专用阻塞线程池）、**rayon** 等 CPU 池（计算型）、换真正的异步库（std::fs → tokio::fs）；预防纪律：**第三方库是不是 async-native 要进依赖评审**（同步 DB 驱动进 async 服务 = 埋雷）——能主动提"阻塞审计"，说明真在生产踩过。',
               ],
             },
           ],
