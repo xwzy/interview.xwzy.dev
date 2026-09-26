@@ -19,7 +19,7 @@
 - **考察记录**（`/history`）：历次出卷存档（候选人、评分、备注），可随时回看整卷、再次复制小结、删除记录。
 - **数据管理**（`/settings`）：刷题进度、评分、考察记录与自定义题目的导出备份 / 导入恢复 / 分类清空；支持把整站题库（含自定义题目）**一键导出为 Markdown 文档**，方便打印或导入笔记工具。
 - **十二大数据方向**：后端开发、前端开发、计算机基础、**操作系统**、**计算机组成原理**、系统设计、**大数据与数据工程**、移动端、AI 与大模型、**测试与质量**、**运维与云原生**、职业发展。
-- **深度追问链**：全站 466 题中 98% 配有层层递进的追问链（共 667 步），追问自带参考要点，按"原理 → 边界场景 → 方案权衡"展开；追问内容已纳入全局搜索。
+- **深度追问链**：全站 484 题中 98% 配有层层递进的追问链（共 698 步），追问自带参考要点，按"原理 → 边界场景 → 方案权衡"展开；追问内容已纳入全局搜索。
 - **首页随机一题**：一键从全站题库抽题直达，适合碎片时间背题。
 - **全局搜索**（`/search`）：跨方向检索题目、要点、追问与标签；支持「☆ 只看收藏」过滤与关键词高亮。
 - **三态主题**：默认**深色**，可切浅色 / 跟随系统（OS 切换实时联动），选择持久化。
@@ -46,10 +46,28 @@ npm run preview   # 预览构建产物
 站点已部署至 **Cloudflare Pages**：生产地址 https://interview.xwzy.dev（自定义域名已激活），
 预览地址 https://interview-xwzy-dev.pages.dev/（每次部署生成唯一预览 URL）
 
-- 部署方式：`npx wrangler pages deploy dist --project-name=interview-xwzy-dev --branch=main`
-- 首次配置：`npx wrangler login` 后 `npx wrangler pages project create interview-xwzy-dev --production-branch=main`
-- 自定义域名：Pages 项目 → Custom domains → 激活 `interview.xwzy.dev`（同账号 zone 自动创建 DNS 与证书）
-- SPA 说明：Cloudflare Pages 在无 `404.html` 时自动以 `index.html` 兜底未命中路径，深链直接可用
+### 常规更新部署（三步）
+
+```bash
+npm run verify                                          # 1. 质量门禁：lint + test + build（dist 已生成并自检）
+git add -A && git commit && git push                    # 2. 提交推送（触发 GitHub CI 跑同样的校验）
+npx wrangler pages deploy dist --project-name=interview-xwzy-dev --branch=main   # 3. 更新线上
+```
+
+部署完成后等 1~2 分钟生效，访问 https://interview.xwzy.dev 验证（浏览器强刷 Cmd+Shift+R；
+PWA 有 Service Worker 缓存，旧缓存会在新版次访问时后台更新）。
+
+### 部署机制说明
+
+- **部署通道**：wrangler 直传 `dist`（Direct Upload），**不与 GitHub 集成自动部署**——push 只触发
+  CI 质量门禁（`.github/workflows/ci.yml`：lint → test → build），线上更新必须手动执行第 3 步。
+- **首次配置**（新环境）：`npx wrangler login` 授权后 `npx wrangler pages project create interview-xwzy-dev --production-branch=main`，再执行常规三步。
+- **构建产物**：`npm run build` = `tsc -b && vite build && node scripts/check-dist.mjs`，check-dist 会校验
+  资源引用与 PWA 文件完整性，构建失败时不会产出可部署的 dist——**永远部署 verify/build 通过的产物**。
+- **自定义域名**：Pages 项目 → Custom domains → 激活 `interview.xwzy.dev`（同账号 zone 自动创建 DNS 与证书）。
+- **SPA 说明**：Cloudflare Pages 在无 `404.html` 时自动以 `index.html` 兜底未命中路径，深链直接可用。
+- **回滚**：Cloudflare 控制台 → Workers & Pages → interview-xwzy-dev → Deployments，任意历史部署可一键
+  Rollback（也可以用 `npx wrangler pages deployment list` 查看）；代码级回滚则 git revert 后重新走三步。
 
 ## 如何补充题库
 
