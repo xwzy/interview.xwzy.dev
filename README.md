@@ -1,6 +1,6 @@
 # 面试宝典 · interview.xwzy.dev
 
-线上地址：<https://interview-xwzy-dev.pages.dev/>（生产）· 自定义域名 interview.xwzy.dev（DNS 激活后启用）
+线上地址：<https://interview.xwzy.dev/>（生产，自定义域名已启用）· <https://interview-xwzy-dev.pages.dev/>（Pages 预览域）
 
 互联网技术面试知识库（纯前端站点）：把各岗位的面试知识按方向 → 领域 → 题目三层组织好，
 **面试官出题** 与 **个人刷题** 共享同一套题库。
@@ -43,8 +43,8 @@ npm run preview   # 预览构建产物
 
 ## 部署
 
-站点已部署至 **Cloudflare Pages**：生产地址 https://interview.xwzy.dev（自定义域名，DNS 生效后可访问），
-预览地址 https://interview-xwzy-dev.pages.dev/
+站点已部署至 **Cloudflare Pages**：生产地址 https://interview.xwzy.dev（自定义域名已激活），
+预览地址 https://interview-xwzy-dev.pages.dev/（每次部署生成唯一预览 URL）
 
 - 部署方式：`npx wrangler pages deploy dist --project-name=interview-xwzy-dev --branch=main`
 - 首次配置：`npx wrangler login` 后 `npx wrangler pages project create interview-xwzy-dev --production-branch=main`
