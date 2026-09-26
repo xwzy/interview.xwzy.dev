@@ -82,6 +82,27 @@ export const computerOrganizationTrack: Track = {
           ],
         },
         {
+          id: 'co-data-char-encoding',
+          title: '字符编码是怎么回事？ASCII、GBK、Unicode、UTF-8/UTF-16 是什么关系？',
+          difficulty: 'basic',
+          tags: ['字符编码', 'Unicode', 'UTF-8', '乱码'],
+          points: [
+            '三层概念先分清（乱码问题的万恶之源就是混着说）：**字符集**（给每个字符编个号：Unicode 码点 U+4E2D）与**编码方式**（号码怎么存成字节：UTF-8/UTF-16/GBK）是两回事——Unicode 是字符集标准，UTF-8/16 是它的编码实现。',
+            '**演进史一条线**：**ASCII**（7 位 128 个，英文够用）→ 各国自造扩展（中文 **GBK**：两字节表汉字，与日文 Shift-JIS 等互不兼容——"锟斤拷"这类乱码就是多字节解码错位叠加 � 产生的连锁错）→ **Unicode**（统一字符表，目前 15 万+ 字符）+ **UTF-8/16/32** 三种存储方案。',
+            '**UTF-8（变长 1~4 字节）的精妙**：ASCII 完全兼容（英文 1 字节）；首字节前导位自报长度（0xxxxxxx / 110xxxxx 10xxxxxx…），**解析无歧义且容错**（错一个字节不污染后续字符）；字节序无关（无 BOM 争议）。**UTF-16**：基本平面 2 字节、增补平面（emoji、生僻字）用**代理对**4 字节；Windows/Java/JS 内部字符串是 UTF-16。选型现实：**网络与存储事实标准是 UTF-8**（HTML、JSON、协议默认）。',
+            '**乱码的原理一句话：用 A 编码写入、用 B 编码解读**——文件本身没有"自带编码标签"（除非 BOM/charset 声明），解码端猜错就花。排乱码的顺序：确认**存储编码**（hexdump 看字节）→ 确认**解码声明**（HTML charset / HTTP Content-Type / DB 连接字符集 / 文件 BOM）→ 让两端对齐；"中文变问号"（有损转码丢信息）与"变锟斤拷"（可修复的双向错位）要能区分。',
+          ],
+          followUps: [
+            {
+              question: '为什么 JS 里 emoji 的 length 是 2？"𝕏".length 呢？',
+              points: [
+                'JS 字符串是 **UTF-16 码元序列**，`length` 数的是 16 位码元：增补平面字符（emoji、𝕏）用**代理对**（两个码元）表示，所以 length = 2——"一个字符两种长度"是 UTF-16 的历史包袱；同理 `str[i]` 取半个字符会得到乱码、`substring` 可能切在代理对中间。',
+                '正确姿势：按**码点**遍历用 `for...of` 或 `[...str]`（按码点迭代），`Array.from(str).length` 才是"人眼字符数"；再进一步，组合字符（é 可由 e + 重音符号合成）与 ZWJ 组合 emoji（👨‍👩‍👧 是多个码点）连码点计数也不等于视觉字符——要 **Intl.Segmenter** 按字素簇切分。前端处理用户输入长度校验时这三个层次的事故都真实存在。',
+              ],
+            },
+          ],
+        },
+        {
           id: 'co-data-bitwise',
           title: '有哪些必须掌握的位运算技巧？它们的数学原理是什么？',
           difficulty: 'intermediate',

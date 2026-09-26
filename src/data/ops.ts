@@ -447,6 +447,28 @@ export const opsTrack: Track = {
           ],
         },
         {
+          id: 'ops-k8s-operator',
+          title: 'K8s Operator 和 CRD 是什么？为什么说「一切皆 reconcile」？',
+          difficulty: 'advanced',
+          tags: ['Operator', 'CRD', '控制循环', 'Kubernetes'],
+          points: [
+            '**两个概念一句话**：**CRD（自定义资源定义）**让你向 K8s API 注册自己的资源类型（`MySQLCluster` 这样的对象，kubectl get 直接能看）；**Operator = CRD + 控制器**——一个死循环程序 watch 你的自定义资源，**不断把实际状态向声明里的期望状态拉齐（reconcile）**。K8s 本身的一切（Deployment 调 Pod 副本数、Node 控制器摘除坏节点）都是这个模式，Operator 把它开放成了**平台扩展的官方姿势**——把运维知识（怎么部署、扩容、备份、故障转移一个数据库/中间件）代码化成控制器。',
+            '**reconcile 循环的正确写法（与写普通 Web 服务的思维差异）**：你的函数会被**随时、可能重复地**调用（水平触发的，不是事件只来一次）——所以必须**幂等**：不假设"上次跑到哪"，每次都从 API 读实际状态 → diff 期望 → 补差 → 更新 status；**不要在 reconcile 里做长操作**（超过阈值没返回会重入，你应该发起一个 Job 再返回，下轮 reconcile 检查 Job 结果）；**错误要区分**（可重试的错误返回 error 让 controller-runtime 退避重试，不可重试的要打事件让人看见）。',
+            '**Day-2 运维是 Operator 的真正价值**：装个软件 Helm 就够（一次性渲染模板），Operator 管的是**生命周期**——扩缩容改 replicas 字段即生效、**故障转移**（主挂了自动提升从库 + 改服务指向）、**备份恢复**（CronJob 定期备份 + 声明 Restore 对象一键恢复）、版本升级（逐个滚动替换带检查点）；**与 Helm 的分工**：Helm 管"装"，Operator 管"活着的每一天"，两者常配合（Helm 装 Operator，Operator 管自定义资源）。',
+            '**开发路径与选型**：kubebuilder / Operator SDK 生成脚手架（CRD 的 Go 类型 → OpenAPI schema → 深拷贝/informer 全套生成）；成熟度五级（ Helm → 基础安装 → 无缝升级 → 备份恢复 → 自动扩容 → 自动故障转移）用来评估**用别人的 Operator 还是自研**——数据库类优先用厂商/社区成熟 Operator（etcd/Prometheus/云数据库），业务特有编排才自写；**权限最小化**（RBAC 只给需要的资源操作）与 Webhook 校验（CRD 写错字段在准入时就拦）是生产必配。',
+            '收束格局：Operator 的哲学是**声明式 API + 水平触发 + 收敛循环**——把"运维操作手册"变成"持续运行的纠偏程序"；这个模式已溢出 K8s（Argo CD 的 GitOps reconcile、控制平面设计的通用范式）——能说出「我在任何期望状态 vs 实际状态的场景都会想到 reconcile」，说明吃到精髓了。',
+          ],
+          followUps: [
+            {
+              question: 'reconcile 里发起的 Job 还没跑完，下一轮 reconcile 又被触发了，怎么办？',
+              points: [
+                '**用 status 字段做状态机而非内存状态**：第一次发现"该备份了"→ 创建 Job 并把 `status.backupJob = jobName` 写回 CR → 下一轮 reconcile 看到 status 里有 Job 就**查它状态**：Running 就直接 return（什么都不做等下轮）、Succeeded 就清理并记录时间、Failed 就按策略重试——**循环每轮都从零判断，status 是唯一记忆**。',
+                '这正是"幂等 + 水平触发"的活用：不记住"我做过什么"，只比较"现在是什么、该是什么"；进阶细节：**OwnerReference** 让 Job 随 CR 删除自动清理、**finalizer** 处理删除前的清理（先把外部资源注销再允许删除）——这两个机制答出来，就是写过 Operator 的人。',
+              ],
+            },
+          ],
+        },
+        {
           id: 'ops-cicd-release-strategies',
           title: '滚动、蓝绿、金丝雀发布各自的原理和优缺点？生产上怎么选？',
           difficulty: 'advanced',

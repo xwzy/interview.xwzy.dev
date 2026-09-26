@@ -275,6 +275,27 @@ export const backendTrack: Track = {
           ],
         },
         {
+          id: 'be-java-generics',
+          title: 'Java 泛型的类型擦除是什么？带来了哪些限制和坑？',
+          difficulty: 'intermediate',
+          tags: ['Java', '泛型', '类型擦除'],
+          points: [
+            '**类型擦除**：Java 泛型是**编译期的语法糖**——编译后 `List<String>` 与 `List<Integer>` 都是同一个 `List`（原始类型），类型参数在运行时被擦除（替换为上界或 Object）；证据链：`new ArrayList<String>().getClass() == new ArrayList<Integer>().getClass()` 为 true、运行时拿不到 `T.class`。',
+            '**擦除带来的限制清单（必背）**：不能 `new T()`（运行时不知道 T）、不能 `new T[]` 与泛型数组的协变问题、**静态成员不能引用类的类型参数**、不能 `instanceof List<String>`（只判原始类型）、**基本类型不能做类型参数**（`List<int>` 非法 → 装箱开销，这是泛型性能的隐形坑）；**重载冲突**：`f(List<String>)` 与 `f(List<Integer>)` 签名相同编译不过。',
+            '**桥方法（加分细节）**：擦除后接口/父类的抽象方法签名与子类实现不匹配时，编译器生成**合成桥方法**维持多态——`class MyComparator implements Comparator<String>` 擦除后父类方法是 `compare(Object,Object)`，子类的 `compare(String,String)` 之外会多一个委托的桥方法；反射看方法列表会见到 `bridge` 标记——讲得出桥方法说明真懂擦除的机制层。',
+            '**通配符与 PECS**：`? extends T`（生产者，只读）与 `? super T`（消费者，只写）——**Producer Extends, Consumer Super**；为什么需要：泛型不变型（`List<String>` 不是 `List<Object>` 的子类型）的补偿机制，保证类型安全的同时保留协变/逆变表达。横向对比收尾：**Kotlin 的 reinline/泛型特化、C# 的具化泛型（运行时保留 T，可 new T）证明擦除是 Java 的历史选择而非必然**（兼容 5.0 之前的海量字节码）。',
+          ],
+          followUps: [
+            {
+              question: '运行时真的完全拿不到泛型信息吗？那些框架是怎么解析泛型返回值的？',
+              points: [
+                '**部分场景能拿到**：擦除擦的是"对象实例"的类信息，但**字段、方法签名、类继承声明里的泛型被完整保留在 Class 元数据**（Signature 属性）——所以 `getGenericReturnType()` 能拿到 `List<User>`，Jackson/Fastjson 反序列化 `Result<User>` 靠的是方法签名而非运行时对象；匿名子类/子类继承（`new TypeReference<List<User>>(){}`）也是同理（超类签名保留）。',
+                '边界：局部变量、运行时 new 出来的实例本体拿不到（`new ArrayList<String>()` 的实例不知道自己装 String）；这个"**声明处保留、实例处擦除**"的区别就是框架能做泛型解析而你不能 `new T()` 的完整解释——答到这一层基本到顶了。',
+              ],
+            },
+          ],
+        },
+        {
           id: 'be-java-concurrenthashmap',
           title: 'ConcurrentHashMap 在 JDK7 和 JDK8 中的实现有什么区别？size 怎么保证准确？',
           difficulty: 'intermediate',
@@ -605,6 +626,27 @@ export const backendTrack: Track = {
         { label: 'Go FAQ（并发与调度）', url: 'https://go.dev/doc/faq' },
       ],
       questions: [
+        {
+          id: 'be-go-interface',
+          title: 'Go interface 的底层是怎么实现的？nil interface 陷阱是什么？',
+          difficulty: 'intermediate',
+          tags: ['Go', 'interface', 'duck typing'],
+          points: [
+            '**两字节结构**：interface 变量 = (**itab/类型信息, 数据指针**) 两字（16 字节）。**iface**（带方法的接口）：itab 里存**接口类型、动态类型、方法表**（接口要求的方法 → 具体类型实现的地址，调用即查表间接跳转）；**eface**（`interface{}` 空接口）：只有动态类型 + 数据指针，没有方法表。',
+            '**动态派发的开销与内联**：接口调用要查 itab 方法表（间接调用 + 阻止内联），比直接调用慢（纳秒级，但热路径累积可见）；逃逸分析联动：值装入 interface 通常**逃逸到堆**（见逃逸分析题）。Go 的应对是** devout/泛型约束**时代仍保留接口做灵活性，性能敏感处用泛型（编译期特化）或具体类型。',
+            '**nil interface 陷阱（必考）**：`var p *MyType = nil; var i Iface = p` 此时 **i != nil**——interface 的 nil 判断要求**类型指针与数据指针都为 nil**，而这里类型信息是 *MyType（非空）、数据指针是 nil；错误返回时 `return err` 把 nil 具体类型包装成非 nil interface，调用方 `if err != nil` 误判——**Go 最著名的线上 bug 来源**，函数返回 error 前必须显式 `return nil` 而不是返回类型化的 nil。',
+            '**隐式实现（结构化类型/duck typing）的设计权衡**：不需要 `implements` 声明——接口与实现解耦，**定义方不用预先知道接口存在**（这是标准库 io.Reader 生态爆发的原因：任何类型只要签名匹配就能插入整个 io 体系）；代价：**实现关系不显式**（重构方法签名时"悄悄不再实现某接口"，编译期才发现）、接口意外实现（方法撞名）；对比 Java/C# 显式声明（编译器立即校验，但实现耦合定义）。收束：Go 的选择服务于"**消费方定义接口**"（accept interfaces, return structs）——小接口 + 消费端声明的习惯用法要能说出来。',
+          ],
+          followUps: [
+            {
+              question: '类型断言和 type switch 的开销一样吗？怎么高效判断接口的具体类型？',
+              points: [
+                '单次断言 `i.(T)` 编译成对 itab/类型的比较（一次指针比较，非常便宜）；**type switch** 是一串比较的语法糖，Go 编译器会优化成类似哈希/二分的分派（对 interface 断言链效率不错）；真正贵的是**反射**（reflect.ValueOf 要遍历类型元数据）——断言是 O(1)，反射按结构遍历，差数量级。',
+                '工程口径：热路径优先类型断言/type switch，反射只留给通用序列化这类没有静态信息的场景；接口中**缓存类型信息**（如先把 error 断言成已知错误类型再比较）也是常见优化——能讲清"断言 O(1)、type switch 优化分派、反射慢"三档，这题就完整了。',
+              ],
+            },
+          ],
+        },
         {
           id: 'be-go-gmp',
           title: 'Goroutine 的 GMP 调度模型是怎样的？相比线程池为什么能开百万个？',
@@ -1162,6 +1204,28 @@ export const backendTrack: Track = {
               points: [
                 '可走索引：a、a+b、a+b+c、a+c（a 走索引定位，c 在叶子层过滤不回表部分）、`a like \'x%\'`；不可走：b、c、b+c（缺少最左列，B+ 树有序性无从谈起）。',
                 '本质：**联合索引的排序是字典序**——先按 a 排，a 相同再按 b 排；跳过前缀意味着数据对该列无序。范围查询（a>10）之后的列 b 失去有序性（只能过滤不能精确定位）——"范围查询会让后续列失效"是最常见的联合索引设计失误。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'be-mysql-vs-pg',
+          title: 'MySQL 和 PostgreSQL 怎么选？两者 MVCC 和复制机制的差异是根本分歧吗？',
+          difficulty: 'intermediate',
+          tags: ['MySQL', 'PostgreSQL', 'MVCC', '选型'],
+          points: [
+            '**存储组织的第一差异**：MySQL InnoDB 是**聚簇索引**（数据即主键 B+ 树叶子，二级索引存主键回表——查询友好）；PG 是**堆表 + 全部独立索引**（插入只需追加堆 + 更新各索引，写友好、索引策略灵活但回表普遍）。衍生差异：PG 支持**部分索引、表达式索引、多种索引类型**（btree/gin/gist/brin——倒排 GIN 配 pgvector 全文与向量检索），InnoDB 索引形态单一但主键点查极快。',
+            '**MVCC 实现是根本分歧（必考深水区）**：**PG**——**多版本留在堆内**：UPDATE 写新版本行、旧行打 xmax 标记，死元组靠 **VACUUM** 后台清理（autovacuum 按阈值触发）；风险是**表与索引膨胀**（死元组清不及时）、长事务阻塞 VACUUM 制造更多垃圾。**InnoDB**——旧版本放 **undo log 链**， purge 线程自动回收，用户无感；风险是**长事务导致 undo 膨胀与回滚段占用**。一句话：**PG 把清理责任显式交给运维（VACUUM 调优是真功夫），InnoDB 把它藏进引擎**——面试说出"谁清理旧版本"这个视角，说明对比是懂原理的对比。',
+            '**复制与生态差异**：PG 逻辑复制是**发布/订阅 + 解析 WAL**，表级粒度、**不复制 DDL**、**复制槽不消费会保留 WAL 撑爆磁盘**（经典事故，要监控 pg_replication_slots；17/18 版本补 failover slots）；MySQL binlog 实例级、DDL 可复制、GTID 切换成熟——**高可用体系 MySQL 更省心，CDC 生态两者都有（Canal vs Debezium/_pgoutput）**。',
+            '**PG 的独特武器（选型加分项）**：**JSONB**（二进制 JSON 带 GIN 索引，半结构化不用上 MongoDB）、**pgvector**（向量检索进数据库，中小规模 RAG 免独立向量库）、丰富扩展生态（PostGIS 地理、TimescaleDB 时序）、**窗口函数/CTE/物料化视图等 SQL 能力更强**（复杂分析一条 SQL 顶 MySQL 多条）；MySQL 的护城河：**国内生态与人才储备、运维经验沉淀、云厂商支持成熟度、简单场景的稳定省心**。',
+            '**选型口径收束**：**复杂查询、GIS、向量、半结构化、扩展玩法 → PG**（近年在国内明显回潮）；**团队 MySQL 经验深、高可用要求成熟方案、典型 OLTP → MySQL**；新项目从零开始且无历史包袱，PG 值得认真评估——两都会用才是现实（不同服务按特征选库）。主动提一句 **PG 18 的异步 IO（io_method=worker/io_uring）让大表扫描吞吐大幅提升**，是版本视野的加分点（与操作系统方向 io_uring 题呼应）。',
+          ],
+          followUps: [
+            {
+              question: 'PG 的表膨胀了，怎么处理和预防？',
+              points: [
+                '应急：手动 **VACUUM**（可并发跑不锁写）/ 严重时 **VACUUM FULL**（锁表重写回收空间，一般只敢维护窗口做）或 pg_repack（在线重建，生产首选）；先查**元凶**：`pg_stat_activity` 里的长事务（最老的 xid 决定清理边界——一个跑几天的查询能让整个库的垃圾都清不掉）与**废弃的复制槽/未消费的槽**（同样钉住 WAL 边界）。',
+                '预防：autovacuum 调优（大表调低 scale_factor 提高清理频率）、监控 `pg_stat_user_tables` 的 dead_tup 比例与**表年龄**（事务 ID 回卷防护：autovacuum_freeze）、长事务与复制槽的告警**必须在监控里**——"PG 运维 = 管 VACUUM 的边界条件"，这句经验总结能瞬间区分背书与实操。',
               ],
             },
           ],

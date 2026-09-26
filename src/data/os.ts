@@ -673,6 +673,27 @@ export const osTrack: Track = {
           ],
         },
         {
+          id: 'os-io-iouring',
+          title: 'io_uring 是什么？相比 epoll 解决了什么根本问题？',
+          difficulty: 'advanced',
+          tags: ['io_uring', '异步 IO', 'epoll', 'Linux'],
+          points: [
+            '**先点破 epoll 的两个残余成本**：epoll 只解决"就绪通知"（一次系统调用知道哪些 fd 就绪），但**每次 read/write 仍是独立系统调用**（syscall 上下文切换固定开销），且**数据要在内核态与用户态之间拷贝**——百万级 IOPS 场景这两项就是天花板。io_uring（Linux 5.1+）把问题重新设计为**真正的异步 + 批量提交**。（分工注记：epoll 机制本身与 Reactor 应用见另两题，本题讲范式差异。）',
+            '**核心机制：用户态与内核共享的两个环形队列**——**SQ（提交队列）**：应用把 I/O 操作（read/write/连接/甚至 openat）写成 SQE，**攒一批**后一次 `io_uring_enter` 提交（甚至配置 SQPOLL 后**内核线程自取，连这一次系统调用都省**）；**CQ（完成队列）**：内核完成操作后把结果写成 CQE，应用像读无锁队列一样收割。整个过程**提交与收割都不再逐次 syscall**——"系统调用次数归零"是它对高并发 I/O 的降维打击。',
+            '**三个进阶能力**：**注册缓冲区/文件表**（registered buffers/files：内核固定映射，减少每次操作的引用管理与拷贝）；**链式操作**（IOSQE_IO_LINK：读完成自动触发写——把"读-处理-写"管道下沉到内核）；**覆盖全异步**（不像 Linux AIO 只支持 O_DIRECT 直读，io_uring 对 buffered I/O、网络、文件创建删除统一异步化）——数据库（MySQL/PG 的新引擎）、高性能代理（早已跟进）把它当作新一代引擎的地基。',
+            '**适用与生态判断**：收益最大的是**超高 IOPS 且单次操作小**的存储引擎与网关（syscall 开销占比高）；普通业务服务（QPS 千级、操作毫秒级）用 epoll + Reactor 完全够，io_uring 的复杂度（生命周期管理、内核版本差异、调试困难）不划算——"新≠默认"。收束口径：**epoll 优化的是"等"，io_uring 优化的是"做"**——从就绪通知模型进化为提交/完成模型（与 Reactor → Proactor 的演进呼应，见后端网络模型题）。',
+          ],
+          followUps: [
+            {
+              question: 'io_uring 的 SQPOLL 模式为什么连一次系统调用都不需要？没有代价吗？',
+              points: [
+                'SQPOLL 起一个**内核轮询线程**盯着共享的 SQ（可绑核），应用写完 SQE 塞一个内存标志位，内核线程看到就处理——用户态与内核态**通过共享内存通信，完全没有陷入切换**；这是"用一根常驻 CPU 换 syscall 归零"的交易：空载时内核线程会休眠省电，忙时独占一颗核。',
+                '代价清单：多占 CPU（低负载场景反而浪费）、与 cgroup/CPU 配额的兼容细节、内核线程绑核对 NUMA 亲和的要求——所以默认模式（每批一次 io_uring_enter）是大多数应用的选择，SQPOLL 留给极致 IOPS 的存储场景。**能说出"这是 busy-polling 哲学"，并把 DPDK/网卡轮询模式归为同族，说明理解的是一类设计而非一个 API**。',
+              ],
+            },
+          ],
+        },
+        {
           id: 'os-io-page-cache-fsync',
           title: 'Page Cache 在写入路径上扮演什么角色？write 返回成功数据就安全了吗？',
           difficulty: 'advanced',
