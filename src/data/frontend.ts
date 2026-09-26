@@ -223,6 +223,28 @@ export const frontendTrack: Track = {
           ],
         },
         {
+          id: 'fe-css-modern',
+          title: '说说近年前端值得用的新 CSS 能力：View Transitions、容器查询、:has() 怎么用？',
+          difficulty: 'intermediate',
+          tags: ['现代 CSS', 'View Transitions', '容器查询'],
+          points: [
+            '**容器查询（@container）**：媒体查询问"**视口**多宽"，容器查询问"**父容器**多宽"——同一张卡片在侧边栏窄容器、主栏宽容器里**按自己的空间自适应**，组件真正封装了响应式（不用父组件告诉它上下文）；用法：父元素 `container-type: inline-size` + 子元素 `@container (min-width: 400px)`——设计系统的卡片/小部件是最大受益者。',
+            '**View Transitions API（页面动效的新范式）**：`document.startViewTransition(callback)` ——浏览器自动**截取新旧状态快照**做过渡动画（默认 cross-fade），可用 `::view-transition-old/new` 伪元素自定义；**同文档版**（SPA 状态切换：列表→详情的共享元素动画）与**跨文档版**（MPA 多页面导航，CSS 声明式）——以前要 FLIP 手写测量/反转/播放的"元素从列表飞到详情页"，现在是声明式几行；**注意它是增强不是依赖**（不支持的浏览器直接跳变，功能无损）。',
+            '**:has() 父选择器**：`form:has(input.invalid)` 按子状态改父样式——CSS 苦等 20 年的"父选择器"；实战场景：表单错误状态高亮整块、`label:has(:checked)` 自定义单选、卡片 hover 联动兄弟区域；配合 **CSS 嵌套**（原生 `&` 选择器，postcss-nesting 时代结束）把 BEM 的长选择器折叠——**很多 JS 状态同步样式的代码可以直接删掉**（状态本来在 DOM 里，CSS 现在够得着了）。',
+            '**怎么决策"能不能用"——Baseline 思维**：不再背"哪些浏览器支持"，用 **Baseline 标准**（web platform 特性按 Widely Available（两大引擎 30 个月+）/ Newly Available 分级）+ `@supports` 做能力检测渐进增强；工程纪律：**新特性先用在"增强层"**（动画、锦上添花的布局），核心布局与信息可用性不依赖它——降级路径先想好再用。',
+            '收束口径：这一波 CSS 能力的共同主题是"**把原来必须 JS 做的事还给 CSS**"（共享元素动画、按容器自适应、按内容状态选样式）——更少 JS、更少 hydration、浏览器层优化；面试里能各给一个真实使用场景（而不是罗列特性名）就是用过的人。',
+          ],
+          followUps: [
+            {
+              question: 'View Transitions 的动画卡顿或闪烁，怎么排查与优化？',
+              points: [
+                '机理排查：过渡期间浏览器渲染的是**快照层**（旧/新两份伪元素），卡顿常见于快照太大（整页截图级别）——优化：**缩小过渡范围**（`view-transition-name` 只挂在变化的元素上，而不是默认根元素整页过渡）；闪烁常因新旧快照尺寸差异大（布局跳变）——给旧快照 `view-transition-class` 统一尺寸或用 `types` 定制不同过渡。',
+                '进阶细节：callback 里只做状态变更（DOM 更新越快过渡越顺）；长列表给每个 item 唯一 name 会爆伪元素数量——按需命名；不可达降级：`@supports (view-transition-name: none)` 包裹自定义样式。能讲到"快照层"这一层的实现理解，这题就答穿了。',
+              ],
+            },
+          ],
+        },
+        {
           id: 'fe-css-grid',
           title: 'Grid 布局和 Flex 有什么区别？Grid 的核心用法是什么？',
           difficulty: 'intermediate',
@@ -2177,6 +2199,28 @@ export const frontendTrack: Track = {
               points: [
                 '根因是**中间层缓冲**：Nginx 的 proxy_buffering 会攒够 buffer 再转发、gzip 攒块压缩、CDN 默认缓冲响应——流被攒成大块，前端表现为"等半天突然蹦一大段"。',
                 '修复清单：响应头 **`X-Accel-Buffering: no`**（Nginx 透传禁用缓冲）或 nginx 配置 `proxy_buffering off`；`Content-Type: text/event-stream` + **`Cache-Control: no-cache`**；关掉该路径的 gzip 或确认其流式模式；HTTP/2 下还要注意某些代理对长连接的超时（`proxy_read_timeout` 调大）。能报出"三个缓冲点：代理缓冲、压缩缓冲、CDN 缓冲"说明真排查过。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'fe-browser-webrtc',
+          title: 'WebRTC 的连接建立和弱网对抗是怎么做的？和 HLS/RTMP 什么场景下选谁？',
+          difficulty: 'advanced',
+          tags: ['WebRTC', 'ICE', '实时音视频', '弱网对抗'],
+          points: [
+            '**定位先分清（协议选型题眼）**：**实时通信（<500ms 延迟）用 WebRTC**（连麦、会议、云游戏）；**延迟容忍的点播/直播用 HLS/DASH 切片**（CDN 分发成本优势巨大）；RTMP 是推流侧的老协议（延迟 1~3s，正在被 SRT/WebRTC 推流替代）。一句话：**延迟预算决定协议，成本决定规模**——WebRTC 的低延迟是用 P2P/UDP 和抗住了复杂度换的。',
+            '**连接建立三步（信令 → ICE 打洞 → SRTP）**：① **信令协商**（WebRTC 标准不管信令——一般走 WebSocket 交换 **SDP**（Offer/Answer：编解码能力、加密参数）与 ICE candidate）；② **ICE 打洞**：收集候选地址（主机/STUN 公网映射/TURN 中继），按优先级**配对探测连通性**——能打洞就 P2P 直连，打不通走 TURN 中继（成本兜底，与 NAT 题的穿透内容衔接）；③ 协商出 **DTLS 加密信道 + SRTP 媒体流 + SCTP DataChannel**（数据通道，传文件/信令/游戏状态）。',
+            '**弱网对抗全家桶（实时音视频的深水区）**：**丢包恢复**——NACK（接收方请求重传，RTT 小时有效）+ **FEC 前向纠错**（冗余包，重传来不及时）交织使用；**JitterBuffer**（缓冲消抖动，按网络抖动自适应大小——延迟与流畅的平衡器）；**码率自适应**（GCC/TransportCC：基于延迟梯度与丢包率的双臂码率估计，带宽降了通知编码器降码率——与视频平台题的 ABR 呼应：那是播放侧选档，这是发送侧调码率）；**带宽估计联动编码器**（VP8/H264 的 simulcast 多路分层，SFU 按接收端带宽转发不同层）。',
+            '**架构角色：P2P vs SFU vs MCU**：P2P（1v1 最优）；**SFU（选择性转发单元，多人场景主流）**——服务器只转发不解码（ simulcast 各端按带宽收不同质量，成本可控）；MCU（服务器混流解码再编码，CPU 贵、延迟高，基本只在需要"合成单流录制"时用）——多人会议的答案基本都是 SFU + simulcast，能讲出为什么 MCU 死了是加分。',
+            '**工程收束**：WebRTC 的学习曲线全在"协议栈全家桶"（ICE/DTLS/SRTP/SCTP + 编解码 + 弱网算法）；生产实践常"**用开源栈（libwebrtc/mediasoup/Pion）而少自己写**"，工程师的价值在**调参与排障**（为什么卡：看 getStats 的丢包/RTT/抖动/编码器目标码率四个指标定位是网络、编码还是渲染的问题——分层排查的又一次应用）。',
+          ],
+          followUps: [
+            {
+              question: '多人会议里某端反馈「画面糊但不卡」，另一端「卡但不糊」，分别是什么问题？',
+              points: [
+                '**糊但不卡 = 带宽估计过低**：码率估计算法保守（延迟梯度误判拥塞）或上行确实受限，编码器长期跑低码率——查 getStats 的编码目标码率 vs 实际带宽、simulcast 层选择（是不是被 SFU 降到了低分辨率层转发）；调 GCC 参数或调高最低码率档。',
+                '**卡但不糊 = 码率没降下来**：带宽估计反应慢或丢包靠 FEC/NACK 硬扛、缓冲溢出丢帧；查丢包率曲线（突发丢包 vs 持续丢包）、JitterBuffer 深度是否打满；反应是让码率估计更激进（快降慢升策略）或补 FEC 比例。这两个 case 的对照说明你理解"**质量 = 码率策略 × 恢复策略**"的两维调优空间，而不是笼统的"网络不好」。',
               ],
             },
           ],

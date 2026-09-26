@@ -968,6 +968,28 @@ export const aiTrack: Track = {
           ],
         },
         {
+          id: 'ai-llm-pd-disagg',
+          title: '什么是 PD 分离与 KVCache 分离式推理架构（Mooncake 一类）？解决什么问题？',
+          difficulty: 'advanced',
+          tags: ['PD 分离', 'KVCache', '推理架构', 'Mooncake'],
+          points: [
+            '**先看清自回归推理的两张面孔（本题的地基）**：**Prefill（处理 prompt）是算力密集**（一次并行算完整个输入，GPU 打满），**Decode（逐 token 生成）是带宽密集**（每步只算一个 token，瓶颈在显存带宽与 KV Cache 读写，算力大量闲置——与 GPU 架构题的 roofline 呼应）。传统合部署的后果：**两种负载互相干扰**——长 prompt 的 prefill 阻塞别人的 decode（正在打字的用户卡顿），资源配比也无法对两种负载分别调优。',
+            '**PD 分离的方案形态**：**Prefill 集群与 Decode 集群分开部署**——prefill 完成后把 **KV Cache 传给 decode 侧**继续生成；收益：各自独立选型与扩缩（prefill 用高算力卡、decode 用高带宽/大显存卡）、干扰消除、SLO 分别保障（首 token 延迟归 prefrill 管、生成速度归 decode 管）；代价：**KV Cache 跨机传输**成为新的核心矛盾——所以它天然引出下一层。',
+            '**KVCache 分离与复用（Mooncake 的核心思想）**：把 KV Cache 当**一等公民的分布式缓存**——**对象存储/内存池（DRAM + SSD）做 KVCache 池**，prefill 结果写入池，decode 从池取；更大的红利是**跨请求复用**：相同 system prompt/文档前缀的 KV 不必重算（prefix caching 从"单机显存内"升级为"全局池化共享"），多轮对话的历史 KV 也能池化续用——**重复前缀的推理成本断崖式下降**（企业 RAG 场景系统提示占大头的，收益极大）。',
+            '**工程深水区清单**：**传输层**（KVCache 几 GB 级跨机搬——RDMA/高速网络的用武之地，与 3FS 这类 AI 专用存储的兴起互为因果：训练要数据集吞吐、推理要 KVCache 池，**AI 存储层**正在成为独立基建层）；**调度**（请求该在哪 prefill？按前缀哈希路由到已有缓存节点——缓存亲和调度）；**一致性**（缓存失效：模型版本变更、前缀命中的精度损失权衡）。',
+            '收束判断（选型视角）**：单机/小规模——vLLM/SGLang 单实例的 PagedAttention + 前缀缓存已够；**大规模集群、多租户、长公共前缀场景**（API 平台、企业 RAG）——PD 分离 + KVCache 池化的收益才兑付；这是"推理架构从单机优化走向集群化"的当前主线，与推理成本题分工：那题讲单实例怎么省，本题讲集群怎么架构。',
+          ],
+          followUps: [
+            {
+              question: '既然 prefix caching 能省这么多，为什么不能让所有请求都命中？难点在哪？',
+              points: [
+                '命中条件苛刻：KV 复用要求**前缀逐字节一致**（多一个空格就不命中）——system prompt 固定容易命中，但带时间戳/用户名拼接的动态前缀全废；工程对策：**前缀布局的纪律**（静态内容严格前置且字节稳定——与上下文工程题的分层供给衔接）、前缀版本化管理（改 prompt = 缓存全失效，要用**渐进发布**预热）。',
+                '成本与收益的平衡：缓存池容量 vs 命中率（LRU 淘汰冷前缀）、**缓存查找本身的开销**（前缀哈希索引）、多副本一致性（哪份缓存是权威）；进阶方案是**语义级/部分前缀复用**（按 chunk 粒度命中，牺牲部分精确性换柔性）——能说出"prefix caching 是把缓存一致性那一套老问题搬进 GPU 时代"是这题的满分视角。',
+              ],
+            },
+          ],
+        },
+        {
           id: 'ai-llm-inference-cost',
           title: 'LLM 推理为什么贵？KV Cache、PagedAttention、量化这些优化分别省在哪？',
           difficulty: 'advanced',
