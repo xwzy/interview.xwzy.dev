@@ -389,6 +389,28 @@ export const opsTrack: Track = {
           ],
         },
         {
+          id: 'ops-k8s-storage',
+          title: 'K8s 的存储体系：PV、PVC、StorageClass 和 CSI 是什么关系？',
+          difficulty: 'intermediate',
+          tags: ['Kubernetes', '存储', 'PV', 'CSI', 'StatefulSet'],
+          points: [
+            '**三层解耦（答题主线）**：**PVC**（开发者声明"我要 10Gi 读写一次的卷"——**消费抽象**，不知道底层是什么存储）；**PV**（集群管理员/系统提供的"一块实际存储"——**供给实体**）；**StorageClass**（"供给模板"——定义存储类型与参数，如 SSD/机械盘/区域，PVC 引用 SC 后由系统**动态创建 PV**）。价值：开发者与管理员的**关注点分离** + 存储后端可替换（换云厂商只改 SC，业务 PVC 不动）。',
+            '**静态 vs 动态供给**：静态（管理员手工建 PV 池，PVC 绑定——小规模/存量）；动态（PVC 引用 StorageClass → **external-provisioner 按 CSI 接口自动创建卷并绑定**——现代默认）；**绑定是一对一且独占**（PV 的 capacity/accessModes 匹配才可绑）；`volumeMode: Block/Filesystem` 之分（裸块给数据库类应用）。',
+            '**CSI（Container Storage Interface）**：把"创建/挂载/快照/扩容"标准化成**外部插件协议**（与 CRI 容器运行时接口、CNI 网络接口并列——K8s 的三板斧解耦）；存储厂商实现 CSI driver（云盘、Ceph、NFS、local），K8s 内核不再硬编码任何存储逻辑——所以"新存储接入 K8s 不用改 K8s 代码"；**in-tree 卷（awsElasticBlockStore 等）已全部迁移到 CSI**，这是历史演进的常识点。',
+            '**使用方式与生命周期**：Pod 挂卷三形态——**PV/PVC**（独立生命周期，Pod 删卷还在）、**emptyDir**（Pod 生命周期临时盘——沙箱/缓存，节点内非持久）、**ConfigMap/Secret**（配置即卷——更新传播有延迟且部分挂载方式不可更新）；**回收策略**：Retain（保留人工处理）/Recycle（废弃）/Delete（动态供给默认——删 PVC 卷就没了，**生产误删经典事故**，重要数据要 Retain 或开快照）；**StatefulSet 的 volumeClaimTemplates**：每个 Pod 得到自己专属 PVC（ Pod 名有序且重建后绑回同一块卷——有状态应用（数据库集群）的根基，与 Headless Service 的定位呼应）。',
+            '选型速查（收束）：配置 → ConfigMap；临时 → emptyDir；共享文件 → NFS/对象存储；数据库类 → 按需 PVC（云盘/本地盘 SC，性能敏感选 local PV 但要容忍节点绑定）；**对象存储**是云原生存储的默认答案（S3/OSS——无状态服务存大文件别挂卷，走对象存储 + SDK）。',
+          ],
+          followUps: [
+            {
+              question: 'PVC 一直 Pending，怎么排查？删除 PVC 卡在 Terminating 又是怎么回事？',
+              points: [
+                '**Pending 排查链**：`kubectl describe pvc` 看事件——StorageClass 不存在/拼错、SC 没有对应的 provisioner（CSI driver 未部署）、容量超出后端限制（云盘有最小 10Gi 这类下限）、**等待拓扑感知卷调度**（云盘必须与 Pod 同可用区——first-fit 等待；显式指定 topology 可解）、quota 不足（ResourceQuota 限制 PVC 数量/容量）。',
+                '**Terminating 卡住**：PVC 的删除要等**所有使用者（Pod）先删掉**（finalizer `kubernetes.io/pvc-protection`）——查还有没有 Pod（含失败/未调度完的）在用它；孤儿 PVC（Pod 已删但 finalizer 没清）要处理 finalizer（生产谨慎，先确认卷数据可弃）；这个机制本质是**防误删保护**——理解 finalizer 语义（与 Operator 题的删除清理呼应），排查就不是背命令了。',
+              ],
+            },
+          ],
+        },
+        {
           id: 'ops-cicd-k8s-service-ingress',
           title: 'K8s 的 Service 和 Ingress 有什么区别？liveness、readiness、startup 探针分别干什么？',
           difficulty: 'intermediate',

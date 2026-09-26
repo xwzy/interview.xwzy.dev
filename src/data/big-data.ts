@@ -248,6 +248,28 @@ export const bigDataTrack: Track = {
       ],
       questions: [
         {
+          id: 'bd-hbase',
+          title: 'HBase 的架构与读写路径是怎样的？rowkey 设计有哪些讲究？',
+          difficulty: 'intermediate',
+          tags: ['HBase', 'rowkey', 'Region', 'LSM'],
+          points: [
+            '**定位与架构组件**：HBase = HDFS 之上的**分布式 KV 列族数据库**（Google BigTable 的开源实现），按 **rowkey 字典序**存储，海量写、按主键随机读写是它的主场。三大角色：**RegionServer**（承载 Region 的读写与分裂，数据实际在 HDFS）、**HMaster**（元数据管理、Region 分配与均衡、无单点数据风险——挂了只是不能做管理操作）、**ZooKeeper**（meta 表位置、master 选举）；读写路径不经过 Master（客户端从 meta 表定位 Region 直接打 RegionServer）——**数据面与控制面分离**。',
+            '**读写路径（LSM 的具体化，与 LSM 题衔接）**：写 = WAL（防宕机）+ 写内存 **MemStore**，达到阈值 flush 成 HFile（SSTable）；读 = BlockCache + MemStore + 依次找 HFile（布隆过滤器挡无效文件）；**Region 自动分裂**（太大 split 成两个，由 Master 再均衡）——预分区（建表指定 split keys）是避免"写入全部落一个 Region 再分裂"的启动期优化。',
+            '**rowkey 设计三板斧（本题的实战核心）**：原则——**长度控制**（10~100 字节，太长浪费存储与索引）、**散列前置**（时间戳/自增 id 直接做前缀会让新数据全落最后一个 Region——**热点**；反转时间戳让新数据均匀分布、加盐随机前缀打散、哈希前缀保序折中）、**组合键设计**（`user_id + timestamp` 查某用户时间线 = 范围扫描——设计要服务于查询模式，与分区/分桶的"查询模式决定存储"同一条铁律）。',
+            '**热点问题全景（高频追问）**：现象——某 RegionServer 的 CPU/IO 打满其他空闲（监控一眼可见）；成因——rowkey 单调递增、业务天然集中（大 V 用户）；治理——**散列 rowkey**（牺牲范围扫描）、**预分区对齐散列空间**（16 个分区配 16 进制前缀）、读侧缓存挡热点；**get/scan 的取舍**：散列后按原 key 查询要先算哈希定位（变成 get），按序扫描需求要冗余设计（时间线单独用可序 rowkey 存储）。',
+            '收束：HBase 的心智模型 = "**有序的 LSM 大表**"——排序带来范围扫描、LSM 带来写吞吐、Region 分裂带来水平扩展；代价是无 SQL、二级索引要自己建（Phoenix/双写）——选型时它与 MySQL/Redis/ES 的组合分工见 NoSQL 选型题，本题给的是它自己的内部视图。',
+          ],
+          followUps: [
+            {
+              question: 'HBase 和 Cassandra 都是列族 LSM，为什么说一个偏 CP 一个偏 AP？',
+              points: [
+                '**一致性来源不同**：HBase 写走单 RegionServer（**强一致**：同一 rowkey 的写串行在一个节点上，WAL 落 HDFS 三副本——HDFS 本身 Namespace 单点保证顺序）；Cassandra 是**无中心的对等架构**（Dynamo 系），写走**任意副本可协调**，一致性由 W/R 可调（quorum——与 backend 方向 Quorum 题衔接），默认倾向可用（AP）。',
+                '工程取舍顺带说：HBase 依赖 Hadoop 全家桶（运维重、生态成熟——与 Hive/Spark 互操作好）；Cassandra 部署轻、多数据中心复制天然（跨地域场景强）；国内大数据栈 HBase 存量更大，海外 Cassandra 系（含 ScyllaDB）更常见——把两家差异归因到"一致性协议与架构中心化与否"，比背功能对比表高一档。',
+              ],
+            },
+          ],
+        },
+        {
           id: 'bd-flink-state',
           title: 'Flink 的状态是什么？Keyed State 和 Operator State 怎么区分？状态后端怎么选？',
           difficulty: 'intermediate',
