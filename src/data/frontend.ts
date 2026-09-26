@@ -2307,6 +2307,27 @@ export const frontendTrack: Track = {
           ],
         },
         {
+          id: 'fe-browser-built-in-ai',
+          title: '浏览器内置 AI（Chrome Gemini Nano / Prompt API）能做什么？前端怎么用它？',
+          difficulty: 'intermediate',
+          tags: ['浏览器 AI', 'Gemini Nano', 'Prompt API', '端侧'],
+          points: [
+            '**是什么**：Chrome 137/138 起**内置 Gemini Nano 小模型**并开放一组 JavaScript API（早期叫 window.ai，现标准化为各专用 API）——**无需 API Key、无需联网、不出浏览器**就能跑轻量 AI 任务：**Prompt API**（通用文本提示，LanguageModel.create() + session.prompt()）、**Translator/Translator Detector**（离线翻译）、**Summarizer**（摘要）、**Writer/Rewriter**（写作改写）、Proofreader（校对）。本质是把端侧大模型（与移动端的 on-device AI 题同源）搬进浏览器运行时。',
+            '**核心价值三件**：① **隐私与合规**（数据不出设备——表单内容润色、本地文档摘要这类场景直接规避数据外发审批）；② **零成本零延迟**（不调云 API、无网络往返——输入法式实时建议可做）；③ **离线可用**（PWA 离线场景的 AI 能力补全）。配套设计：模型按需**异步下载**（首次调用触发，session 管理进度）、能力探测（`LanguageModel.availability()` 返回 readily/downloadable/no——**渐进增强的标配姿势**）。',
+            '**正确的心智：它是「小而近」不是「大而全」**：Nano 级模型的边界要认清——适合**短文本的轻任务**（改写、分类、抽取、摘要、意图识别），不适合复杂推理/长文/代码生成（该上云还是上云）；工程配方是**分层路由**：能力探测 + 任务分级——简单隐私敏感任务走内置 API，复杂任务走云端大模型，中间给用户选择权；会话要管理 token 预算（session 的输入输出上限，长上下文要摘要裁剪——上下文工程的端上版）。',
+            '**工程化注意**：**能力探测 + 降级路径必做**（Safari/Firefox 未跟进、老 Chrome 没有——没有内置 AI 时功能要可用，与 View Transitions 的"增强不依赖"同一条纪律）；**首次下载体验**（几十~上百 MB 模型下载要给进度与说明，最好在空闲时预热）；**输出不可控性**（小模型幻觉率更高——结果要校验或用于非关键路径）；浏览器兼容用 **WebGPU 检测 + origin trial 特性**判断。收束：这是"**AI 能力成为 Web 平台原语**"的第一波——以前前端调 AI = 调网络 API，现在多了一层"本地即可用"，选型问句变成"这个任务**必须多大模型、多私密、多实时**"。',
+          ],
+          followUps: [
+            {
+              question: '给一个表单填写助手做「输入内容智能润色」，内置 AI 和云端 API 你怎么选？',
+              points: [
+                '决策三问：**数据敏感度**（用户正在写的简历/私信——云端要传输存储，合规与信任成本高 → 内置赢）、**延迟要求**（边打字边建议的实时感 → 内置赢）、**质量要求**（润色是小模型强项，质量差距不大 → 平手）——本例内置 AI 全赢，答案明确；若换成"根据职位描述生成整段自我介绍"（长生成、质量敏感）→ 云端大模型。',
+                '落地形态给稳：**先探测后决策**（availability 是 readily 就地用；否则静默降级云端或降级纯本地规则）+ 用户可见的开关（隐私偏好人群锁死本地）；把"哪些走本地、哪些走云"写进产品文档——**前端第一次需要向用户解释 AI 数据流向**，这个产品意识是这类题的隐藏考点。',
+              ],
+            },
+          ],
+        },
+        {
           id: 'fe-browser-websocket',
           title: 'WebSocket 和 SSE 的原理是什么？实时通信方案怎么选型？',
           difficulty: 'intermediate',
