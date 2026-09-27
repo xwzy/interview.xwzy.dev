@@ -240,6 +240,66 @@ export const osTrack: Track = {
             },
           ],
         },
+        {
+          id: 'os-scene-signal-exit',
+          title: '场景题：线上进程无声消失、连接全断，怎么确定它是怎么死的？',
+          difficulty: 'advanced',
+          tags: ['信号', 'SIGPIPE', 'core dump', '优雅退出', '场景排查'],
+          points: [
+            '**第一现场按顺序查三处**：① `dmesg` / `journalctl -xe`——**内核侧死因**：OOM Killer（有 "Killed process" 记录）、segfault 地址、SIGKILL 记录；② systemd 托管的看 `systemctl status` 的退出码——**ExitCode 137 = 128 + 9（SIGKILL）**（OOM 或人工 kill -9 的指纹）、**139 = 128 + 11（SIGSEGV）**、143 = 128 + 15（SIGTERM，正常优雅停止）；③ 容器场景 `kubectl describe pod` 的 Last State（OOMKilled 标志、exit code）。',
+            '**把信号按死因分类记**：**SIGKILL（9）**谁也拦不住——OOM Killer、kubelet 强杀、人工兜底；**SIGTERM（15）**可捕获，是优雅退出的钩子；**SIGSEGV/SIGBUS/SIGFPE** 是硬件异常（非法访存/对齐/除零）被内核转成信号；**SIGPIPE** 默认行为是**静默终止进程**——网络服务最经典的“无声消失”。',
+            '**SIGPIPE 专讲（高频事故）**：对端半关闭（收到 FIN）后本端继续 write，内核回 EPIPE 之前先发 SIGPIPE——C/C++ 服务若没忽略它，**进程直接死、一行日志不留**（信号默认处置不经过应用代码）。所以网络服务启动第一件事 `signal(SIGPIPE, SIG_IGN)`，改成用 write 返回的 EPIPE 错误码走正常异常分支；Go 运行时默认忽略、Java 不暴露该信号——跨语言团队常在 C 网关/SDK 上踩。',
+            '**留下尸体再验尸**：core dump 是段错误的完整现场——`ulimit -c unlimited` + 配置 `/proc/sys/kernel/core_pattern`（容器里默认常落在丢失的 overlay 层，**要显式挂载存放目录**，否则现场即焚）；`gdb 程序 core` 看 `bt` 栈、寄存器与出错地址，对应映射区判断是堆越界、栈溢出还是 UAF。',
+          ],
+          followUps: [
+            {
+              question: 'SIGKILL 为什么设计成不可捕获、不可忽略？如果它能被捕获会怎样？',
+              points: [
+                '**它是管理员的“最终否决权”**：信号机制里 SIGSTOP/SIGKILL 是仅有的两个绕过用户处置的信号——如果可捕获，失控进程（死循环持锁、恶意程序）就能无视终止请求，系统失去最后一道控制；init（PID 1）是唯一例外，这也解释了容器里 PID 1 的特殊责任（僵尸回收、信号转发——否则 kill 不死容器进程）。',
+                '**所有“可靠终止”设施都建在这条保证上**：systemd/docker/k8s 的强杀分级（先 TERM 宽限期、再 KILL）之所以有效，是因为 KILL 阶段无需合作；优雅退出永远只是“先礼”，**礼数用尽必须有不依赖对方配合的后兵**——k8s 的 terminationGracePeriodSeconds（默认 30s 后改发 SIGKILL）是同一思想。',
+                '**工程对照**：应用要假设“随时可能被 SIGKILL”——所以持久化状态必须随时一致（WAL/快照），不能依赖退出钩子完成关键写入；这是“崩溃安全设计”的基础假设（数据库、消息队列的 recovery 逻辑全部以此为前提）。',
+              ],
+            },
+            {
+              question: '收到 SIGTERM 后进程 30 秒才退出、甚至卡死——优雅退出怎么做才可靠？',
+              points: [
+                '**完整 checklist（顺序即答案）**：① 停止接新流量（从注册中心摘除 / readiness 置 not-ready，等传播窗口）；② 停 accept 并给存量请求设**处理超时上限**；③ 按依赖逆序收尾（回复未决 RPC、提交 MQ offset、flush 并 fsync 日志/临时文件、释放锁）；④ **总超时后主动自杀**（防某个环节挂死拖满宽限期被 SIGKILL 硬拆——自己控制在干净点退出永远优于被 9 杀）。',
+                '**卡死的高发点**：退出钩子里做了**同步阻塞操作**（等一个已经不健康的下游、抢锁、等线程池 shutdown 而 worker 卡在 IO）；正确姿势是钩子里只做“置位 + 等待带超时”，重活由独立的退出协调线程执行；**in-flight 请求的记账**（正在处理数）要在入口/出口埋点，否则“等存量”就是等一个测量不到的数。',
+                '**验证方法**：优雅退出是代码路径就要有测试——CI 里发 SIGTERM 断言 N 秒内退出且 exit 0；线上用滚动发布的 502 率做回归指标（优雅退出失败的第一现场就是发布时错峰报错，与运维方向的滚动发布专题衔接——那边讲 k8s 编排视角，这里讲进程内信号视角）。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'os-scene-fork-bomb',
+          title: '场景题：一行 :(){ :|:& };: 就能瘫痪系统——fork 炸弹为什么 kill 不掉？进程数限制到底有几层？',
+          difficulty: 'advanced',
+          tags: ['fork', 'fork 炸弹', 'ulimit', 'cgroup', '资源限制'],
+          points: [
+            '**先拆这行咒语**：定义函数 `:`——函数体是“调用自身两次、用管道连接、放入后台”；再调用一次。每个后代进程都执行同样逻辑，进程数**以 2 的深度为指数**增长，几秒内耗尽进程表（pid_max）、内存与 CPU——fork 本身很便宜（COW，见 fork 题），便宜到指数增长来不及反应。',
+            '**为什么 kill 追不上**：手动 kill 是线性删除、fork 是指数复制——删除速度天然落后；且资源耗尽后 shell/ssh 都无法启动（fork 新进程失败），你已经失去了操作系统接口。这是“资源耗尽类攻击”的共性：**先打掉你的控制通道，再谈治理就晚了**。',
+            '**防线其实有五层（考试重点按层次答）**：① 进程级 **RLIMIT_NPROC**（ulimit -u）——fork 超限返回 EAGAIN；② **cgroup pids 控制器**（pids.max）——按组计数，超额 fork 直接失败，**容器/K8s 的主力限制**（PodPidsLimit）；③ systemd 单元级 **TasksMax**；④ 内核全局 **pid_max**（默认百万级，最后的天花板）；⑤ 准入侧：禁止不可信用户登录执行任意代码（云函数/沙箱场景的 seccomp 限制 clone）。',
+            '**ulimit 的经典坑**：`ulimit -u` 由 **pam_limits** 在**登录会话链路**注入——systemd 启动的服务、cron 任务、容器进程经常不吃这套配置；所以生产上硬限制要看 cgroup（`cat /sys/fs/cgroup/.../pids.max`），nproc 只是会话级软防线。**恢复手段**：预先留着的 rescue sshd（独立的 cgroup 配额）、magic SysRq、或直接重启——事后治理不如事前设限。',
+          ],
+          followUps: [
+            {
+              question: 'cgroup 的 pids 控制器是怎么拦截的？为什么说它比 ulimit 可靠？',
+              points: [
+                '**机制**：cgroup 在 fork/clone 的内核路径上挂钩计数——每次 fork 先检查本组进程数是否达到 pids.max，超了直接返回 **EAGAIN**（fork 失败的是炸弹自己，系统其它部分无感）；**在源头拒绝**而不是等出事后杀——不需要和复制速度赛跑。',
+                '**比 ulimit 可靠的三点**：按**层级聚合**（子 cgroup 全计入，进程在树里怎么迁移都逃不出计数）；对**任何启动路径**生效（systemd、容器、cron，不依赖 PAM 注入）；与 systemd/K8s 的单元模型**原生对齐**（每个 service/Pod 天然有自己的 cgroup，限额即声明式配置 TasksMax/PodPidsLimit）。',
+                '**设计启示（可迁移）**：对“可再生资源”的配额，**在分配入口计数拒绝**优于“在消费侧检测清理”——把这条和 TCP 拥塞控制、线程池队列上限归成一类“准入控制 vs 反压治理”，是系统设计题的通用得分结构。',
+              ],
+            },
+            {
+              question: '同族风险还有哪些？“进程数”之外，容器里还该给哪些资源设上限？',
+              points: [
+                '**同族指数消耗**：**线程炸弹**（pthread_create 上限同受 ulimit/cgroup 约束，NPTL 线程本质是 clone）、**内存炸弹**（反复 malloc + touch，触发 cgroup OOM 而非系统 OOM——有限额时死的是自己）、**fd 炸弹**（ulimit -n / RLIMIT_NOFILE，见 fd 泄漏专题）、**僵尸堆积**（不 wait 的父进程批量产生僵尸——僵尸不占内存但占进程表项，见僵尸进程题）。',
+                '**容器的资源上限清单**：CPU（cpu.max/quota——防抢占）、内存（memory.max——防 OOM 波及宿主）、pids（PodPidsLimit）、fd（LimitNOFILE）、**cgroup 层级与 clone 标志**（seccomp 限制 CLONE_NEWUSER 等命名空间创建——压缩容器逃逸的攻击面）、磁盘（project quota / IO 限速）。K8s 里 QoS 分级（Guaranteed/Burstable/BestEffort）决定资源紧张时谁先被驱逐——**上限既是自保护也是互保护**。',
+                '**反面权衡主动说**：限额过低会造成“隐性故障”——pids=100 时业务高峰自己把自己挤死、表现为偶发 502；所以每项上限都要配**使用率监控与告警**（进程数/fd 数接近限额即报警），限额是安全带不是目标值。',
+              ],
+            },
+          ],
+        },
       ],
     },
     {
@@ -409,6 +469,36 @@ export const osTrack: Track = {
             },
           ],
         },
+        {
+          id: 'os-scene-cpu-usage',
+          title: '场景题：CPU 打到 100% 了——top 里的 us/sy/si/wa/st 各是什么？定位路径怎么走？',
+          difficulty: 'advanced',
+          tags: ['CPU 使用率', 'perf', '火焰图', '性能排查', '场景排查'],
+          points: [
+            '**先把每一列翻译成“谁在花 CPU”**：**us**（user）用户态应用代码（含 ni 列的 nice 加权）；**sy**（system）内核态——系统调用、锁自旋、缺页处理、进程管理；**si**（softirq）软中断——网络包处理与块设备下半部（集中在 ksoftirqd/`%CPU` 上）；**hi** 硬中断；**wa**（iowait）**不是“IO 占了 CPU”**，而是“CPU 空闲但有进程在等磁盘”——是空闲时间的记账方式；**st**（steal）虚拟机被宿主拿走的时间片——云主机专属列。',
+            '**按列走定位决策树**：**us 高** → 应用热点，`perf record -F 99 -ag` 采样 + 火焰图找宽平板；**sy 高** → `strace -c -p PID` 数系统调用（futex 风暴=锁竞争、ep_ctl 频繁=连接抖动）、`vmstat 1` 看 cs（上下文切换）与缺页；**si 高** → 网络软中断打满（`cat /proc/softirqs` 看 NET_RX 分布，多队列 RSS 分核、或流量本身异常——被打/重传风暴）；**wa 高** → 瓶颈在磁盘不在 CPU（转 iostat：util/await/队列深度）；**st 高** → 宿主超卖或吵闹邻居，应用侧无解（换独占型实例/迁移）。',
+            '**火焰图要会讲原理**：perf 以固定频率（如 99Hz）打断 CPU 上的进程**采样调用栈**，聚合后按栈的调用关系画成宽度=出现频率的矩形——“哪块板最宽=CPU 烧在哪”。它只看 **on-CPU**；线程很多但 CPU 不高、延迟却大时要看 **off-CPU**（谁在睡眠等待：锁、IO、futex——bcc/BPF 的 offcputime），两图对照才能区分“算得慢”和“等得慢”。',
+            '**load average 的三个坑**：它包含**D 状态**（不可中断睡眠，多为 IO 等待）进程——CPU 空闲但 load 高是存储拥塞的经典信号；它统计的是**活跃+不可中断任务数**不是百分比（load 4 在 8 核上很健康）；1/5/15 分钟三个值的形状（升/降/平）比绝对值更有信息量——这些细节最能区分背过和用过。',
+          ],
+          followUps: [
+            {
+              question: 'iowait 高但磁盘很闲，可能吗？CPU 100% 但 us/sy 都不高，又是什么情况？',
+              points: [
+                '**wa 高盘却闲的三种解释**：① 等**网络存储/远端块设备**（NFS/EBS 类）——本地 iostat 看不到远端忙；② **内存回收等待**——直接回收（direct reclaim）等脏页写回，记在 D 状态上；③ **历史均值的噪声**——wa 是抽样瞬时值，低采样率时一格尖刺不代表持续状态（看趋势不看单点）。',
+                '**CPU 100% 但 us/sy 都低的两种情况**：**si/hi 占满**（软/硬中断——网卡流量或设备故障风暴，`mpstat -P ALL 1` 能看到中断集中在个别核：单队列网卡/RSS 绑核不均，IRQ affinity 调整）；**st 占满**（虚拟化层被抽税——云上常见“实例规格没满但 perf 找不到热点”，先看 st 再 profiling，别白忙）。',
+                '**方法论收尾**：先分列归因、再决定工具——上来就 perf 是把“等磁盘/被打断/被偷时间”都当热点找，方向错了火焰图再漂亮也没用；**指标语义先行，工具随后**是性能排查的第一原则。',
+              ],
+            },
+            {
+              question: 'sy 高的典型病例有哪些？怎么进一步区分？',
+              points: [
+                '**四大常见病因**：① **futex 风暴**（锁竞争——高并发下 CAS 失败/锁等待频繁陷入内核，strace -c 里 futex 计数巨大，配合 perf 看锁函数栈）；② **上下文切换风暴**（线程数远超核数、频繁阻塞唤醒——vmstat 的 cs 每秒几十万，切走的不只是 CPU 还有缓存/TLB，呼应上下文切换成本题）；③ **缺页/内存活动**（频繁 mmap+munmap、THP 折腾、内存压力下换页——majflt/minflt 增速是证据）；④ **微型系统调用风暴**（每次逻辑做 N 次小 syscall：time/gettimeofday/小读写——时钟源调用、批量 IO 未合并；vDSO 为什么存在就是为了消掉 gettimeofday 的陷入）。',
+                '**区分手段组合**：`strace -c`（调用次数排行——看“哪类调用多”）+ `perf top`（内核符号热点——futex/epoll/alloc 的相对占比）+ `vmstat/pidstat`（切换与缺页速率）三件套互相印证；深挖用 BPF 追锁持有者（off-CPU 分析）。',
+                '**修复方向对照病因**：锁竞争→分片/无锁结构/减小临界区；切换风暴→降线程数、事件驱动改造；缺页→预分配/对象池、大页；syscall 风暴→批量与合并（writev、时间用 vDSO 缓存）——**每个病因都有对应药方，才叫完成定位闭环**。',
+              ],
+            },
+          ],
+        },
       ],
     },
     {
@@ -544,6 +634,36 @@ export const osTrack: Track = {
               points: [
                 'swap 只是延迟爆炸：回收/换页的 IO 成本会让进程在 OOM 前先经历**长时间假死**（maj_flt 风暴），对延迟敏感服务比快速失败更糟。',
                 '数据库持有大量热点页，被换出后单次查询可能触发大量随机换入，性能雪崩；且 PostgreSQL 等依赖自己管理缓存，OS 缓存帮不上忙反添乱——常见做法 swapiness 调 0~1 或干脆禁用。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'os-scene-thrashing',
+          title: '场景题：内存吃紧时系统先是慢得像死机而不是立刻 OOM——换页风暴是怎么发生的？',
+          difficulty: 'advanced',
+          tags: ['swap', 'thrashing', '工作集', '页面回收', '场景排查'],
+          points: [
+            '**先认症状（thrashing/颠簸的指纹）**：`vmstat 1` 的 **si/so 持续非零**（换入换出）、`sar -B` 的 majflt 暴涨、**load 很高但 CPU 同时大量 idle**、终端敲命令要等几秒——系统没死，但有效 CPU 时间全花在搬页上，业务吞吐断崖。区别于 OOM（直接杀进程）——thrashing 是“还没到杀的程度，但在灰犀牛阶段慢慢窒息”。',
+            '**机制：工作集之和 > 物理内存**：每个进程近期活跃页集合（working set）加起来超过物理内存时，页面置换进入恶性循环——刚换出 A 的页，A 马上访问缺页 → 必须再换出 B 的页腾地方 → B 马上访问……**缺页率雪崩**，CPU 大部分时间在等磁盘而不是执行指令（这解释了 load 高 + idle 高的组合：进程都在 D 状态等 IO）。',
+            '**为什么不立刻 OOM：回收的逐级兜底**：内存水位（watermark）机制下，低于 low 水位先唤醒 **kswapd 后台回收**（异步、挑最冷页）；分配路径上等不及就**直接回收（direct reclaim）**同步回收——脏页要先写回、匿名页要有 swap 才能换出；只有“直接回收也挤不出页”才触发 OOM Killer。所以漫长的 thrashing 期其实是回收机制在**苦苦支撑**——把这段讲清，就懂了“内存不足先是慢、后是死”的时序。',
+            '**处置与容量**：① 应急——降载/杀最吃内存进程/扩内存；② 配置——延迟敏感服务通常 **swapoff 或低 swappiness**（宁可 OOM 快速失败重启，也不要半死不活拖垮所有请求；数据库机器的传统最佳实践是禁 swap）；③ **swappiness 语义**（0-200：倾向回收 page cache 还是换出匿名页，0 也不是“绝不换”只是强烈倾向，swapoff 才是真的）；④ 根治——**工作集容量规划**：观察稳定期 RSS 曲线与缺页增速，让 物理内存 ≥ 工作集之和 + 余量，而不是盯着“分配了多少”。',
+          ],
+          followUps: [
+            {
+              question: 'page cache 和匿名页的回收为什么不对称？没有 swap 的机器匿名页去哪？',
+              points: [
+                '**可回收性完全不同**：page cache 的干净页**丢了能再读回来**（直接丢弃，零成本）；脏页写回后即可释放——回收友好。**匿名页没有后备存储**（堆数据不在任何文件里），要腾地方必须先写到 swap 设备——没有 swap 就**无路可退**，只能靠 OOM 结局。这解释了云上两种截然相反的故障形态：**有 swap 的机器内存不足 = 慢死（thrashing）**，**无 swap 的机器内存不足 = 快死（OOM Kill）**——快死对延迟敏感服务反而更友好。',
+                '**容器（cgroup）的差异**：cgroup 内存限额内同样走组级回收，memory.max 顶到后先组内回收 page cache，匿名页看组级 swap 配置（memory.swap.max）；所以容器“内存用满”最常见表现是被 cgroup OOM 杀（OOMKilled）而不是拖慢宿主——限额把爆炸半径圈在了组内。',
+                '**加分对照**：这是“**缓存内存与状态内存本质不同**”的内核版——可以联系到应用架构：可重建的（cache）就该允许被随时丢弃（配 TTL/LRU 上限），不可丢的（state）必须有持久化去处；把内核行为映射回架构原则，是跨层理解的标志性表达。',
+              ],
+            },
+            {
+              question: '怎么判断“慢”确实是换页造成的，而不是 CPU 或锁的问题？',
+              points: [
+                '**证据链三件套**：`vmstat 1`——si/so 持续大于 0 且 free 在低位徘徊（换页实锤，偶发几个点不算）；`pidstat -r` / `/proc/<pid>/stat` 的 **majflt/minflt 增速**——主要缺页速率高说明在等盘；`ps aux | awk \'$8 ~ /D/\'` 或 `ps -eo ppid,stat,wchan:32,cmd | grep ^ D`——大量 **D 状态**（不可中断睡眠）进程，wchan 落在 io/swap 相关函数。',
+                '**排除法对照**：CPU 问题（us/sy 高、火焰图有热点）、锁问题（CPU 不高、off-CPU 分析卡在 futex、无换页证据）、IO 问题（wa 高但 si/so 为零、majflt 不涨——是业务读写文件不是换页）——**换页的独有指纹是“si/so + majflt + D 状态”三连**，缺一就要怀疑别的方向。',
+                '**长期治理**：把 majflt 速率、si/so、swap 使用率纳入监控（多数监控栈默认没有，要主动加）；发布前看工作集变化（新版本 RSS 涨了 30% 就是预告）；JVM/运行时的大页与堆配置审查（THP 的 khugepaged 本身也能制造延迟毛刺）——**容量问题在成为事故前，指标早就在报警，只是没人在看**。',
               ],
             },
           ],
@@ -731,6 +851,36 @@ export const osTrack: Track = {
               points: [
                 '原因几乎都是**外碎片化**：总空闲页不少，但都散在低阶（4KB/8KB 小块），高阶（连续 2MB/4MB）耗尽——伙伴系统只在"伙伴空闲"时可合并，而页被长期持有（模块未卸载、too many scattered allocation）就永远合不上。',
                 '排查与缓解：`cat /proc/buddyinfo` 看各 order 余量（order 越高越稀缺）、`/proc/pagetypeinfo` 看可移动/不可移动页的分布；缓解手段——**内存规整（compaction，把可移动页搬拢腾出连续块）**、启动早期预留 CMA、关键路径用 vmalloc（虚拟连续物理可不连续）替代、大内存需求上大页。这个答案是"虚拟内存骗过了你以为的连续"的最好注脚。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'os-scene-fd-leak',
+          title: '场景题：服务稳定运行三天必挂、报 Too many open files——fd 泄漏怎么定位与治理？',
+          difficulty: 'advanced',
+          tags: ['fd', 'EMFILE', 'Too many open files', '场景排查'],
+          points: [
+            '**报错的两层上限先分清**：open/socket/accept 返回 **EMFILE** 是**进程级**上限（`ulimit -n`，默认 1024；systemd 服务由 LimitNOFILE 控制，容器里可能还有 runtime 层限制）；**ENFILE** 才是**系统级**（fs.file-max）——线上九成九是前者。fd 的本质（“一切皆文件”的统一抽象）见 fd 专 题，这题专攻“泄漏的定位与治理”。',
+            '**定位三步法（趋势 → 分布 → 归因）**：① 看趋势——`ls /proc/<pid>/fd | wc -l` 定时采样，**单调上涨不回落**就是泄漏（稳态波动是正常复用）；② 看分布——`ls -l /proc/<pid>/fd | awk \'{print $NF}\' | sed \'s/[0-9]*//g\' | sort | uniq -c`，全是 `socket:` → 连接类泄漏，全是日志/临时文件路径 → 文件类，大量 `anon_inode`/`eventfd`/`epoll` → 框架或事件循环资源；③ 归因——socket 用 `ss -antp | grep pid=<PID>` 对状态：**大量 CLOSE_WAIT = 对端关了我没关（业务异常分支漏 close）**、大量 ESTABLISHED 空闲 = 连接池只借不还，与网络方向的 CLOSE_WAIT 专题互为表里。',
+            '**泄漏源的高发模式**：异常/超时分支**漏掉 close**（try 里成功路径关了、catch 里直接 return）；**重试风暴**——每次重试新建连接而旧连接等 GC/超时；**连接池借还不配对**（借出后业务异常没归还，池上限形同虚设）；**日志轮转配合不当**——进程持有旧 fd 导致轮转后继续写已改名文件（配 reopen 信号）；子进程继承 fd 泄漏给下游（没设 FD_CLOEXEC）。',
+            '**治理分层（治本 + 兜底 + 预警）**：治本——语言级 RAII（try-with-resources/defer/finalizer 不可靠）、池化借还配对 + 泄漏检测（Netty 的 leak detector 思路：借出带栈追踪，超时未还打日志）；兜底——LimitNOFILE 调大只是**延迟死亡**（泄漏是线性增长，上限×2 = 多活一倍时间），配定期**自愈重启**是务实的最后一道；预警——**fd 使用率 70% 告警**（进程级与系统级都要有），给运维留出人工介入窗口。',
+          ],
+          followUps: [
+            {
+              question: '为什么默认上限是 1024？调到百万级有什么代价？',
+              points: [
+                '**1024 的历史**：与早期 select 的 **FD_SETSIZE** 绑定——select 用固定 1024 位的位图管理 fd，成了事实标准默认值；poll/epoll 早已没有这个硬限制（epoll 用红黑树管理任意数量），但保守默认保留至今——所以“默认值小”不代表“只能这么小”，C10K 时代的老约束不该约束今天的服务。',
+                '**调大的真实代价**：每个 fd 是内核 file 对象 + 进程 fd 表项（内存随数量线性）；select 类接口仍受 1024 硬限（老代码混用会静默截断——比报错更危险）；海量 fd 下 close-all 语义（fork 后遍历关闭）、audit/安全模块的扫描成本上升；selinux/监控工具对超大 fd 表的遍历开销。合理值按“单进程真实连接需求 × 2”设（如 65536~100 万），不是无脑拉满。',
+                '**关联知识**：连接数上限还受**端口**（客户端侧四元组去重，约 6 万/目标）与**内存**（每连接内核 socket buffer + 应用缓冲）约束——fd 上限只是三关之一，答全才叫理解 C10M 的资源账本。',
+              ],
+            },
+            {
+              question: '怎么在测试阶段就发现 fd 泄漏，而不是等线上三天后崩？',
+              points: [
+                '**soak test（浸泡测试）是主力**：压测恒定流量跑数小时，周期性采样进程 fd 数与各类型分布——**画成曲线**，斜率稳定为正即泄漏（正常应进入平台期）；CI 里做成门槛用例（N 轮迭代后 fd 数必须回到基线 ±阈值）。',
+                '**语言级工具**：Java 用 NIO/Netty 的泄漏检测（引用队列追踪 DirectBuffer 与 Channel）；Go 的 `runtime.SetFinalizer` 兜底报警（更建议显式 Close + `goleak` 在测试里断言无残留 goroutine——goroutine 泄漏与 fd 泄漏常常同源）；C/C++ 用 LSAN/valgrind 跑单测路径，注入故障路径（超时、对端断开、错误注入）专门覆盖异常分支——**泄漏几乎都藏在异常分支里，只测 happy path 永远测不出**。',
+                '**上线后的观测**：fd 数作为进程健康指标导出（Prometheus process_fd 数量是现成采集项）、按实例聚合对比（同角色实例 fd 分布明显偏高者即嫌疑）、发布前后对比（新版本 fd 基线上移 = 引入泄漏的强信号）——**泄漏是慢变量，靠对比发现，不靠绝对阈值**。',
               ],
             },
           ],

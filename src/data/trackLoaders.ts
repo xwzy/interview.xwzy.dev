@@ -10,6 +10,7 @@ export const trackLoaders: TrackLoader[] = [
   () => import('./backend').then((m) => m.backendTrack),
   () => import('./frontend').then((m) => m.frontendTrack),
   () => import('./cs-fundamentals').then((m) => m.csTrack),
+  () => import('./network').then((m) => m.networkTrack),
   () => import('./os').then((m) => m.osTrack),
   () => import('./computer-organization').then((m) => m.computerOrganizationTrack),
   () => import('./system-design').then((m) => m.systemDesignTrack),

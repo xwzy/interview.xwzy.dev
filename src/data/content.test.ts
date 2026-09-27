@@ -7,6 +7,7 @@ const allowedPrefixes: Record<string, string[]> = {
   backend: ['be-'],
   frontend: ['fe-'],
   'cs-fundamentals': ['cs-'],
+  network: ['net-'],
   os: ['os-'],
   'computer-organization': ['co-'],
   'system-design': ['sd-'],
@@ -22,11 +23,11 @@ const rank: Record<string, number> = { basic: 0, intermediate: 1, advanced: 2 }
 
 /** 内容完整性约束：防止未来扩充题库时引入脏数据 */
 describe('题库内容完整性', () => {
-  it('全部 12 个方向分包加载成功且结构完整', async () => {
+  it('全部 13 个方向分包加载成功且结构完整', async () => {
     const rawTracks = await loadAllTracks()
-    expect(rawTracks).toHaveLength(12)
+    expect(rawTracks).toHaveLength(13)
     const bank = buildBank(rawTracks, [])
-    expect(bank.tracks).toHaveLength(12)
+    expect(bank.tracks).toHaveLength(13)
     expect(bank.totalQuestionCount).toBeGreaterThan(300)
     expect(bank.questionById.size).toBe(bank.totalQuestionCount)
   })
