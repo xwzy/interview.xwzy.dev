@@ -112,17 +112,6 @@ export default function Layout() {
       <main id="main-content" tabIndex={-1} className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 outline-none sm:px-6">
         <Outlet />
       </main>
-      <footer className="border-t border-slate-200 py-6 dark:border-white/10">
-        <div className="mx-auto flex w-full max-w-6xl flex-col items-center gap-1 px-4 text-xs text-slate-400 sm:px-6">
-          <p>面试宝典 · interview.xwzy.dev — 分类题库持续补充中，内容如有出入欢迎指正</p>
-          <p>
-            React + Vite + Tailwind CSS 构建 · 进度数据保存在浏览器本地 ·
-            <Link to="/settings" className="ml-1 hover:text-blue-600 dark:hover:text-blue-400">
-              数据管理
-            </Link>
-          </p>
-        </div>
-      </footer>
     </div>
   )
 }
