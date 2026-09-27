@@ -164,18 +164,6 @@ export const systemDesignTrack: Track = {
             },
           ],
         },
-      ],
-    },
-    {
-      id: 'sd-classic',
-      name: '经典系统设计题',
-      description: '秒杀、短链、Feed 流等经典场景的综合设计，考察从需求澄清到落地权衡的完整方案能力。',
-      references: [
-        { label: 'System Design Primer（GitHub 开源）', url: 'https://github.com/donnemartin/system-design-primer' },
-        { label: 'Apache Kafka 官方文档', url: 'https://kafka.apache.org/documentation/' },
-        { label: 'Redis 官方文档', url: 'https://redis.io/docs/latest/' },
-      ],
-      questions: [
         {
           id: 'sd-methodology-ab-testing',
           title: '设计一个 AB 实验平台：流量怎么分层分桶？怎么防止实验互相污染？',
@@ -219,6 +207,18 @@ export const systemDesignTrack: Track = {
             },
           ],
         },
+      ],
+    },
+    {
+      id: 'sd-classic',
+      name: '经典系统设计题',
+      description: '秒杀、短链、Feed 流等经典场景的综合设计，考察从需求澄清到落地权衡的完整方案能力。',
+      references: [
+        { label: 'System Design Primer（GitHub 开源）', url: 'https://github.com/donnemartin/system-design-primer' },
+        { label: 'Apache Kafka 官方文档', url: 'https://kafka.apache.org/documentation/' },
+        { label: 'Redis 官方文档', url: 'https://redis.io/docs/latest/' },
+      ],
+      questions: [
         {
           id: 'sd-short-url',
           title: '设计一个短链接服务（如 t.cn/aB3xY）',

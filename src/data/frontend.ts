@@ -1524,19 +1524,6 @@ export const frontendTrack: Track = {
             },
           ],
         },
-      ],
-    },
-    {
-      id: 'fe-vue',
-      name: 'Vue',
-      description: '响应式原理、diff 与 Composition API 是核心，考的是"懂框架"而不只是"用框架"。',
-      references: [
-        { label: 'Vue 官方文档（中文）', url: 'https://cn.vuejs.org' },
-        { label: 'vuejs/core GitHub 仓库', url: 'https://github.com/vuejs/core' },
-        { label: 'Pinia 官方文档', url: 'https://pinia.vuejs.org' },
-        { label: 'Vue Router 官方文档', url: 'https://router.vuejs.org' },
-      ],
-      questions: [
         {
           id: 'fe-react-rsc',
           title: 'React Server Components 是什么？它和 SSR 有什么本质区别？',
@@ -1558,6 +1545,19 @@ export const frontendTrack: Track = {
             },
           ],
         },
+      ],
+    },
+    {
+      id: 'fe-vue',
+      name: 'Vue',
+      description: '响应式原理、diff 与 Composition API 是核心，考的是"懂框架"而不只是"用框架"。',
+      references: [
+        { label: 'Vue 官方文档（中文）', url: 'https://cn.vuejs.org' },
+        { label: 'vuejs/core GitHub 仓库', url: 'https://github.com/vuejs/core' },
+        { label: 'Pinia 官方文档', url: 'https://pinia.vuejs.org' },
+        { label: 'Vue Router 官方文档', url: 'https://router.vuejs.org' },
+      ],
+      questions: [
         {
           id: 'fe-vue-vif-vshow',
           title: 'v-if 和 v-show 有什么区别？分别适用什么场景？',

@@ -224,18 +224,6 @@ export const aiTrack: Track = {
             },
           ],
         },
-      ],
-    },
-    {
-      id: 'ai-dl',
-      name: '深度学习',
-      description: '反向传播、经典网络结构、注意力机制与训练调优，考察对深度模型“为什么有效”的理解；分布式训练与推理部署的系统工程在「AI Infra」方向。',
-      references: [
-        { label: '《Deep Learning》花书', url: 'https://www.deeplearningbook.org/' },
-        { label: 'CS231n 课程笔记', url: 'https://cs231n.github.io/' },
-        { label: 'The Illustrated Transformer', url: 'https://jalammar.github.io/illustrated-transformer/' },
-      ],
-      questions: [
         {
           id: 'ai-ml-imbalance',
           title: '类别极度不平衡时有哪些处理手段？重采样、代价敏感、阈值调整怎么选？',
@@ -279,6 +267,18 @@ export const aiTrack: Track = {
             },
           ],
         },
+      ],
+    },
+    {
+      id: 'ai-dl',
+      name: '深度学习',
+      description: '反向传播、经典网络结构、注意力机制与训练调优，考察对深度模型“为什么有效”的理解；分布式训练与推理部署的系统工程在「AI Infra」方向。',
+      references: [
+        { label: '《Deep Learning》花书', url: 'https://www.deeplearningbook.org/' },
+        { label: 'CS231n 课程笔记', url: 'https://cs231n.github.io/' },
+        { label: 'The Illustrated Transformer', url: 'https://jalammar.github.io/illustrated-transformer/' },
+      ],
+      questions: [
         {
           id: 'ai-dl-activation',
           title: '为什么神经网络需要非线性激活函数？ReLU 相比 Sigmoid 好在哪？',

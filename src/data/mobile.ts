@@ -623,6 +623,27 @@ export const mobileTrack: Track = {
             },
           ],
         },
+        {
+          id: 'mo-ios-swiftui',
+          title: 'SwiftUI 和 UIKit 的区别是什么？声明式 UI 在 iOS 上怎么落地？',
+          difficulty: 'intermediate',
+          tags: ['SwiftUI', 'UIKit', '声明式 UI'],
+          points: [
+            '**范式差异**：UIKit 是**命令式**——UIViewController 持有 UIView 树，生命周期回调（viewDidLoad/viewWillAppear）里手动布局（Frame 或 AutoLayout 约束）、手动更新控件；SwiftUI 是**声明式**——`var body: some View` 描述"状态到界面的映射"，状态（@State/@StateObject/@Published）变化自动触发 body 重算与最小化 diff 更新（与 React/Compose 同构，前端范式可平移）。',
+            '**声明式的核心机制**：**属性包装器决定数据的"所有权与流向"**——@State 组件私有可变状态，@Binding 子视图获得可写引用，@ObservableObject/@EnvironmentObject 跨组件共享（Combine 发布订阅），观测到变化就重算 body。生命周期从"回调序列"变成"任务修饰符"（.onAppear/.task——后者自动随视图销毁取消 Swift Task，结构化并发与 UI 生命周期绑定的典范）。',
+            '**UIKit 没死（工程判断）**：存量代码、深度自定义（复杂转场动画、自定义容器 Controller）、底层能力（UIGestureRecognizer 细粒度手势、某些系统级 API）仍是 UIKit 主场；SwiftUI 提供 **UIViewRepresentable/UIViewControllerRepresentable** 桥接，混编是常态。选型口径：**新项目/新页面 SwiftUI 优先**（代码量减半起步、预览提效、Apple 全平台一套技术栈），复杂老页面渐进迁移。',
+            '辩证收尾：SwiftUI 的短板要主动说——**细粒度性能控制不如 UIKit 直白**（黑盒 diff，Profiler 才能定位重绘）、老系统版本兼容、超大列表/复杂编辑器仍有坑（UICollectionView 在超重型场景仍是性能天花板）。能把"声明式提效"与"命令式可控"讲成权衡，比站队高一档。',
+          ],
+          followUps: [
+            {
+              question: '@State、@Binding、@StateObject、@EnvironmentObject 分别用在什么场景？选错会发生什么？',
+              points: [
+                '**所有权决定选型**：@State——视图私有的值类型状态（SwiftUI 自己管理存储，重算 body 不丢）；@Binding——把父视图状态的"写权限"传给子视图（双向绑定）；@StateObject——视图**创建并拥有**引用类型模型（ObservableObject，随视图生命周期初始化一次）；@EnvironmentObject——沿环境注入的共享依赖（不关心谁创建，只订阅）。',
+                '选错的典型事故：把 @StateObject 写成 @ObservedObject——模型随视图重建**反复重新初始化**（列表页返回后状态丢失的经典 bug）；把 @State 存引用类型——SwiftUI 只感知值变化，对象内部属性变了不会触发刷新。这道题实际考"SwiftUI 的数据流是否真的用过"，比背概念狠得多。',
+              ],
+            },
+          ],
+        },
       ],
     },
     {
@@ -818,27 +839,6 @@ export const mobileTrack: Track = {
               points: [
                 '**域名白名单是第一道闸**：只有可信域名的页面才能调用完整 API，敏感接口（支付、用户信息、登录态）再做**接口级鉴权与二次确认**；来源不可信的调用直接拒绝并记录。',
                 '纵深防御：Android 的 addJavascriptInterface 在 API 17 以下有反射 RCE 漏洞，必须**最低版本约束 + @JavascriptInterface 白名单方法**；H5 传入的参数一律当不可信输入做 schema 校验，防止构造畸形数据攻击原生层；scheme 拦截方案还要防恶意页面伪造 URL。',
-              ],
-            },
-          ],
-        },
-        {
-          id: 'mo-ios-swiftui',
-          title: 'SwiftUI 和 UIKit 的区别是什么？声明式 UI 在 iOS 上怎么落地？',
-          difficulty: 'intermediate',
-          tags: ['SwiftUI', 'UIKit', '声明式 UI'],
-          points: [
-            '**范式差异**：UIKit 是**命令式**——UIViewController 持有 UIView 树，生命周期回调（viewDidLoad/viewWillAppear）里手动布局（Frame 或 AutoLayout 约束）、手动更新控件；SwiftUI 是**声明式**——`var body: some View` 描述"状态到界面的映射"，状态（@State/@StateObject/@Published）变化自动触发 body 重算与最小化 diff 更新（与 React/Compose 同构，前端范式可平移）。',
-            '**声明式的核心机制**：**属性包装器决定数据的"所有权与流向"**——@State 组件私有可变状态，@Binding 子视图获得可写引用，@ObservableObject/@EnvironmentObject 跨组件共享（Combine 发布订阅），观测到变化就重算 body。生命周期从"回调序列"变成"任务修饰符"（.onAppear/.task——后者自动随视图销毁取消 Swift Task，结构化并发与 UI 生命周期绑定的典范）。',
-            '**UIKit 没死（工程判断）**：存量代码、深度自定义（复杂转场动画、自定义容器 Controller）、底层能力（UIGestureRecognizer 细粒度手势、某些系统级 API）仍是 UIKit 主场；SwiftUI 提供 **UIViewRepresentable/UIViewControllerRepresentable** 桥接，混编是常态。选型口径：**新项目/新页面 SwiftUI 优先**（代码量减半起步、预览提效、Apple 全平台一套技术栈），复杂老页面渐进迁移。',
-            '辩证收尾：SwiftUI 的短板要主动说——**细粒度性能控制不如 UIKit 直白**（黑盒 diff，Profiler 才能定位重绘）、老系统版本兼容、超大列表/复杂编辑器仍有坑（UICollectionView 在超重型场景仍是性能天花板）。能把"声明式提效"与"命令式可控"讲成权衡，比站队高一档。',
-          ],
-          followUps: [
-            {
-              question: '@State、@Binding、@StateObject、@EnvironmentObject 分别用在什么场景？选错会发生什么？',
-              points: [
-                '**所有权决定选型**：@State——视图私有的值类型状态（SwiftUI 自己管理存储，重算 body 不丢）；@Binding——把父视图状态的"写权限"传给子视图（双向绑定）；@StateObject——视图**创建并拥有**引用类型模型（ObservableObject，随视图生命周期初始化一次）；@EnvironmentObject——沿环境注入的共享依赖（不关心谁创建，只订阅）。',
-                '选错的典型事故：把 @StateObject 写成 @ObservedObject——模型随视图重建**反复重新初始化**（列表页返回后状态丢失的经典 bug）；把 @State 存引用类型——SwiftUI 只感知值变化，对象内部属性变了不会触发刷新。这道题实际考"SwiftUI 的数据流是否真的用过"，比背概念狠得多。',
               ],
             },
           ],

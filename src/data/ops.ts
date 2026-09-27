@@ -626,7 +626,7 @@ export const opsTrack: Track = {
           ],
         },
         {
-          id: 'ops-cicd-monitoring',
+          id: 'ops-obs-monitoring',
           title: 'Prometheus + Grafana 的监控体系怎么搭建？应该监控哪些指标？',
           difficulty: 'advanced',
           tags: ['Prometheus', 'Grafana', '可观测性'],
