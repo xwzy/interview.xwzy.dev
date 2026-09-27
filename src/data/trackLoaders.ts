@@ -18,6 +18,7 @@ export const trackLoaders: TrackLoader[] = [
   () => import('./big-data').then((m) => m.bigDataTrack),
   () => import('./mobile').then((m) => m.mobileTrack),
   () => import('./ai').then((m) => m.aiTrack),
+  () => import('./ai-infra').then((m) => m.aiInfraTrack),
   () => import('./qa').then((m) => m.qaTrack),
   () => import('./ops').then((m) => m.opsTrack),
   () => import('./career').then((m) => m.careerTrack),

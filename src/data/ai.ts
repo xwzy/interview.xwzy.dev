@@ -5,7 +5,7 @@ export const aiTrack: Track = {
   name: 'AI 与大模型',
   icon: '🤖',
   tagline: '机器学习、深度学习到大模型应用',
-  description: '算法岗与传统研发转型 AI 的面试考点：机器学习基础、深度学习原理，以及大模型应用工程实践（数据结构与算法题见"计算机基础"方向）。',
+  description: '算法岗与传统研发转型 AI 的面试考点：机器学习基础、深度学习原理，以及大模型应用工程实践（数据结构与算法题见「计算机基础」方向；训练/推理系统工程见「AI Infra」方向）。',
   color: 'cyan',
   topics: [
     {
@@ -229,7 +229,7 @@ export const aiTrack: Track = {
     {
       id: 'ai-dl',
       name: '深度学习',
-      description: '反向传播、经典网络结构、注意力机制与训练调优、推理部署，考察对深度模型“为什么有效”的理解。',
+      description: '反向传播、经典网络结构、注意力机制与训练调优，考察对深度模型“为什么有效”的理解；分布式训练与推理部署的系统工程在「AI Infra」方向。',
       references: [
         { label: '《Deep Learning》花书', url: 'https://www.deeplearningbook.org/' },
         { label: 'CS231n 课程笔记', url: 'https://cs231n.github.io/' },
@@ -549,70 +549,12 @@ export const aiTrack: Track = {
             },
           ],
         },
-        {
-          id: 'ai-dl-inference-optimization',
-          title: '模型上线时怎么做推理优化？量化、剪枝、蒸馏分别解决什么问题？',
-          difficulty: 'advanced',
-          tags: ['推理优化', '量化', '部署'],
-          points: [
-            '先明确约束与指标：目标硬件（GPU/CPU/边缘端）、优化目标（**延迟 P99、吞吐 QPS、显存、精度损失上限**），先建 baseline 压测，再逐项优化并回归精度——顺序错了会白干。',
-            '**量化**：把 FP32 权重/激活压到 INT8/FP8/INT4，显存与带宽占用降数倍、计算更快；分 **PTQ（训练后量化，无需重训，需要校准数据）**和 **QAT（量化感知训练，模拟量化噪声，精度更好但成本高）**。要会答：精度损失主要来自**激活分布的离群点**和大动态范围的压缩，逐层校验 per-channel 量化可缓解。',
-            '**剪枝**：去掉冗余权重——**非结构化**（剪单个权重，压缩率高但稀疏矩阵 GPU 不友好）与**结构化**（剪整通道/整层，硬件真实受益）；通常按权重幅值剪 + 微调恢复精度。',
-            '**知识蒸馏**：大模型（teacher）的 **soft label（带温度 T 的软化分布）**包含类间相似性等“暗知识”，小模型（student）同时学 soft label 和真标签，以小模型的成本逼近大模型精度；适合端侧和低成本推理。',
-            '**系统层优化**同样重要：算子**融合**（Conv+BN+ReLU 合并）、**图优化与常量折叠**（ONNX Runtime/TensorRT）、**动态 batch**（攒请求提高吞吐）、异步流水线；服务指标用**延迟-吞吐曲线**评估，别只看单请求延迟。收尾一句：所有有损优化都要有**精度回归测试集与线上 A/B**兜底。',
-          ],
-          followUps: [
-            {
-              question: 'INT8 量化的精度损失从哪来？per-channel 和 per-tensor 差在哪？',
-              points: [
-                'INT8 只有 **256 个档位**去逼近连续分布：激活中的**离群点**会撑大量化范围，让大多数普通值挤在少数档位、误差集中放大——这是 PTQ 掉点的第一原因，也是 LLM 量化里 SmoothQuant/outlier 处理要解决的问题。',
-                '**per-tensor** 一个张量一组 scale/zero-point，快但粗；**per-channel** 每个输出通道独立标定，权重分布通道差异大时收益明显（CNN 量化标配）；极端难搞的层可以**跳过量化**（混精度量化），用少量 FP32 层换整体可用。',
-              ],
-            },
-            {
-              question: '蒸馏里的温度 T 是怎么回事？T 大 T 小分别意味着什么？',
-              points: [
-                'softmax 分母除以 T：**T>1 把分布压平**，“猫 0.9、狗 0.08”变成“猫 0.7、狗 0.25”——类间相似性（狗比飞机像猫）被放大，student 学到的是**概率结构/暗知识**而不只是硬标签；T=1 退化为普通 softmax。',
-                '实践：soft target 部分用大 T（损失乘 T² 平衡梯度量级），hard target 用 T=1 一起加权训练；T 过大分布趋于均匀、信息量下降——T 与两个损失的权重是蒸馏最核心的两个旋钮。',
-              ],
-            },
-          ],
-        },
-        {
-          id: 'ai-dl-distributed-training',
-          title: '大模型/大数据集下的分布式训练是怎么做的？DDP、梯度累积、ZeRO 分别解决什么问题？',
-          difficulty: 'advanced',
-          tags: ['分布式训练', 'DDP', 'ZeRO', '混合精度'],
-          points: [
-            '**数据并行（DDP）**：每张卡持有完整模型副本、吃不同数据分片，反向算完梯度后 **AllReduce** 同步（Ring AllReduce 让通信量与卡数近似无关）再统一更新——最常用，瓶颈是"单卡装不下模型"。',
-            '**梯度累积**：显存装不下大 batch 时，连续多个 micro-batch 只算 loss 与梯度（除以累积数）不更新，攒够再 step——用时间换等效大 batch；注意 BN 的统计量跨 micro-batch 不等效。',
-            '**混合精度**：FP16/BF16 前反向 + FP32 主权重与优化器状态，算力翻倍显存减半；FP16 需要 **loss scaling** 防下溢，BF16 动态范围与 FP32 相同则基本免 scaling。',
-            '**ZeRO（DeepSpeed）**：切分训练状态救显存——ZeRO-1 切优化器状态、ZeRO-2 再切梯度、ZeRO-3 连参数也切（前反向时临时 all-gather），通信量依次增加、显存依次减少；模型大到单卡装不下时它先于张量并行被考虑。',
-            '全景：数据并行 × **流水线并行**（按层切）× **张量并行**（按矩阵切）= 3D 并行，超大模型三者组合；工程细节决定成败：通信与计算重叠、随机种子一致性、断点续训的完整性。',
-          ],
-          followUps: [
-            {
-              question: 'DDP 和老的 DP 有什么区别？',
-              points: [
-                'DP（DataParallel）单进程多线程：梯度都聚到主卡规约再广播，主卡显存与通信成为瓶颈，且受 GIL 影响。',
-                'DDP 多进程（每卡一进程）：Ring AllReduce 分摊通信、无主卡热点，启动时广播一次模型后只需同步梯度——多机训练的事实标准。',
-              ],
-            },
-            {
-              question: 'ZeRO 三级分别切什么？代价是什么？',
-              points: [
-                'ZeRO-1 切优化器状态（Adam 的 m/v，占显存大头）；ZeRO-2 再切梯度（reduce-scatter 代替 all-reduce）；ZeRO-3 连参数也切，前反向用时临时 gather。',
-                '代价是通信量递增：ZeRO-3 每层前反向都要 gather 参数，对通信带宽敏感——小模型用 ZeRO-3 纯属浪费，按显存缺口逐级升档。',
-              ],
-            },
-          ],
-        },
       ],
     },
     {
       id: 'ai-llm',
       name: '大模型与 LLM 应用',
-      description: '从 Transformer 与预训练范式到 RAG、Agent、微调与推理成本，覆盖大模型应用工程的完整链路。',
+      description: '从 Transformer 与预训练范式到 RAG、Agent、微调与评测，覆盖大模型应用工程的完整链路；推理成本与 PD 分离等推理架构专题在「AI Infra」方向。',
       references: [
         { label: 'OpenAI · Prompt Engineering 指南', url: 'https://platform.openai.com/docs/guides/prompt-engineering' },
         { label: 'OpenAI · Function Calling 指南', url: 'https://platform.openai.com/docs/guides/function-calling' },
@@ -1053,28 +995,6 @@ export const aiTrack: Track = {
           ],
         },
         {
-          id: 'ai-llm-pd-disagg',
-          title: '什么是 PD 分离与 KVCache 分离式推理架构（Mooncake 一类）？解决什么问题？',
-          difficulty: 'advanced',
-          tags: ['PD 分离', 'KVCache', '推理架构', 'Mooncake'],
-          points: [
-            '**先看清自回归推理的两张面孔（本题的地基）**：**Prefill（处理 prompt）是算力密集**（一次并行算完整个输入，GPU 打满），**Decode（逐 token 生成）是带宽密集**（每步只算一个 token，瓶颈在显存带宽与 KV Cache 读写，算力大量闲置——与 GPU 架构题的 roofline 呼应）。传统合部署的后果：**两种负载互相干扰**——长 prompt 的 prefill 阻塞别人的 decode（正在打字的用户卡顿），资源配比也无法对两种负载分别调优。',
-            '**PD 分离的方案形态**：**Prefill 集群与 Decode 集群分开部署**——prefill 完成后把 **KV Cache 传给 decode 侧**继续生成；收益：各自独立选型与扩缩（prefill 用高算力卡、decode 用高带宽/大显存卡）、干扰消除、SLO 分别保障（首 token 延迟归 prefrill 管、生成速度归 decode 管）；代价：**KV Cache 跨机传输**成为新的核心矛盾——所以它天然引出下一层。',
-            '**KVCache 分离与复用（Mooncake 的核心思想）**：把 KV Cache 当**一等公民的分布式缓存**——**对象存储/内存池（DRAM + SSD）做 KVCache 池**，prefill 结果写入池，decode 从池取；更大的红利是**跨请求复用**：相同 system prompt/文档前缀的 KV 不必重算（prefix caching 从"单机显存内"升级为"全局池化共享"），多轮对话的历史 KV 也能池化续用——**重复前缀的推理成本断崖式下降**（企业 RAG 场景系统提示占大头的，收益极大）。',
-            '**工程深水区清单**：**传输层**（KVCache 几 GB 级跨机搬——RDMA/高速网络的用武之地，与 3FS 这类 AI 专用存储的兴起互为因果：训练要数据集吞吐、推理要 KVCache 池，**AI 存储层**正在成为独立基建层）；**调度**（请求该在哪 prefill？按前缀哈希路由到已有缓存节点——缓存亲和调度）；**一致性**（缓存失效：模型版本变更、前缀命中的精度损失权衡）。',
-            '收束判断（选型视角）**：单机/小规模——vLLM/SGLang 单实例的 PagedAttention + 前缀缓存已够；**大规模集群、多租户、长公共前缀场景**（API 平台、企业 RAG）——PD 分离 + KVCache 池化的收益才兑付；这是"推理架构从单机优化走向集群化"的当前主线，与推理成本题分工：那题讲单实例怎么省，本题讲集群怎么架构。',
-          ],
-          followUps: [
-            {
-              question: '既然 prefix caching 能省这么多，为什么不能让所有请求都命中？难点在哪？',
-              points: [
-                '命中条件苛刻：KV 复用要求**前缀逐字节一致**（多一个空格就不命中）——system prompt 固定容易命中，但带时间戳/用户名拼接的动态前缀全废；工程对策：**前缀布局的纪律**（静态内容严格前置且字节稳定——与上下文工程题的分层供给衔接）、前缀版本化管理（改 prompt = 缓存全失效，要用**渐进发布**预热）。',
-                '成本与收益的平衡：缓存池容量 vs 命中率（LRU 淘汰冷前缀）、**缓存查找本身的开销**（前缀哈希索引）、多副本一致性（哪份缓存是权威）；进阶方案是**语义级/部分前缀复用**（按 chunk 粒度命中，牺牲部分精确性换柔性）——能说出"prefix caching 是把缓存一致性那一套老问题搬进 GPU 时代"是这题的满分视角。',
-              ],
-            },
-          ],
-        },
-        {
           id: 'ai-llm-voice-agent',
           title: '实时语音 Agent 怎么做？级联（ASR→LLM→TTS）和端到端 S2S 怎么选？',
           difficulty: 'advanced',
@@ -1092,35 +1012,6 @@ export const aiTrack: Track = {
               points: [
                 '**判停窗口是最被低估的一段**：等用户"说完"要等一段尾静音（300~700ms）——优化方向：更智能的 VAD（语义完整性判断：句子没说完不长停）、**预测式响应**（高置信时提前起 TTS 首包）；其次是 **LLM 首 token**（小模型路由 + 前缀缓存 + 流式）；TTS 首包（流式合成 + 热句缓存）；ASR 反而通常不是瓶颈（流式识别在用户说话期间已完成大半）。',
                 '系统性手段：**全链路指标埋点**（每段耗时分解——与性能排查的分层思想一致，先测量再优化）；成本与体验的权衡（预测式起播猜错了要撤回，反而更尴尬——保守与激进的阈值要 A/B）；能说出"先分段计时找到自己链路的大头"而不是背通用答案，是做过的人。',
-              ],
-            },
-          ],
-        },
-        {
-          id: 'ai-llm-inference-cost',
-          title: 'LLM 推理为什么贵？KV Cache、PagedAttention、量化这些优化分别省在哪？',
-          difficulty: 'advanced',
-          tags: ['推理优化', 'KV Cache', 'vLLM'],
-          points: [
-            '贵在两件事：**算**——自回归生成一个 token 要过一遍整个网络，长输出 = 线性叠加的完整前向；**存**——**KV Cache** 把历史 token 的 K/V 缓存起来避免重复计算，但其显存占用随序列长度和 batch 线性增长，长上下文下**KV Cache 比模型权重还占显存**，是并发的第一瓶颈。',
-            '**显存侧优化**：**量化**（权重 INT8/INT4，激活 FP8）直接把权重显存砍半到 1/4，小卡跑大模型；**GQA/MQA**（多个 Q 头共享一组 KV 头）从架构上把 KV Cache 压缩数倍；**PagedAttention（vLLM 的核心）**借鉴操作系统分页，把 KV Cache 按 block 非连续分配，消除碎片、共享前缀（system prompt 只存一份），吞吐提升数倍。',
-            '**算力侧优化**：**Continuous batching**——请求级别动态进出 batch，不等最慢的请求，GPU 利用率大幅提高；**投机解码（speculative decoding）**——小模型先草拟 k 个 token，大模型一次并行验证，验证通过则“一次算多个 token”，在保持输出分布不变的前提下加速 2~3 倍；**FlashAttention** 从 IO 角度重写注意力（少读写 HBM），长序列显存与速度双赢。',
-            '**应用侧省钱**（工程团队最可控的）：**prompt 缓存/前缀缓存**（固定的 system prompt 与文档只计一次）；**语义缓存**（相似问题直接返回缓存答案，注意命中率与新鲜度）；**模型路由**——简单请求走小模型/规则，难题升级大模型；**压缩输入输出**（历史对话摘要、限制 max_tokens）；监控每请求 token 数（成本 = 输入 token 价 + 输出 token 价，输出价通常是输入的数倍）。',
-            '选型收尾：**API vs 自部署**的权衡——API 拿最优模型与弹性、按 token 付费；自部署可控数据与成本上限，但要用 vLLM/TGI/SGLang 这类推理框架把吞吐打上去，且需承担运维。日调用量小、模型迭代快时 API 几乎总是更划算。',
-          ],
-          followUps: [
-            {
-              question: 'PagedAttention 具体解决了什么问题？没有它会发生什么？',
-              points: [
-                '传统框架给每个请求**预分配一整块连续显存**放 KV Cache（按 max_length 上限），实际生成长度参差不齐——内部碎片 + 外部碎片让显存利用率常低于 30%，GPU 只能跑很少的并发。',
-                'PagedAttention 借鉴操作系统**分页**：KV Cache 按固定大小的 block 非连续分配、按需扩容，相同前缀的物理块跨请求共享（system prompt 只存一份 + 写时复制）——vLLM 论文里吞吐提升 2~4 倍，是“OS 思想进推理系统”的招牌案例。',
-              ],
-            },
-            {
-              question: 'prompt 缓存和语义缓存分别适合什么场景？各有什么坑？',
-              points: [
-                '**前缀缓存（prompt caching）**复用相同前缀（system prompt、固定文档、few-shot）的 KV：省算力、降时延，计费也有折扣；要求前缀**逐字节一致**才命中——把固定内容放最前面是应用侧的配合动作。',
-                '**语义缓存**按 embedding 相似度直接返回历史答案，适合 FAQ 型高重复流量；坑在**误命中**（“今天天气”和“明天天气”相似度极高但答案不同）与**新鲜度**——需要相似度阈值 + 关键实体校验 + 短 TTL，命中错一次的资损可能吃掉省下的所有成本。',
               ],
             },
           ],
