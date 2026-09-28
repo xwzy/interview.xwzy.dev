@@ -2,12 +2,12 @@ import { useRef, useState } from 'react'
 import { useMastery } from '../context/MasteryContext'
 import { useVerdicts } from '../context/InterviewContext'
 import { useSessions } from '../context/SessionContext'
-import { useCustomQuestions } from '../context/BankContext'
-import { useBank } from '../context/BankContext'
+import { useBank, useCustomQuestions } from '../context/BankContext'
 import { useFavorites } from '../context/FavoritesContext'
 import { useAuth } from '../context/AuthContext'
 import { buildTracksMarkdown } from '../lib/exportMd'
 import { BACKUP_VERSION, sanitizeBackup, type BackupFile } from '../lib/backup'
+import { LS_KEYS } from '../lib/storageKeys'
 import { cx } from '../lib/utils'
 
 function download(filename: string, content: string, mime = 'application/json') {
@@ -24,11 +24,11 @@ function download(filename: string, content: string, mime = 'application/json') 
 
 /** 数据管理：刷题进度、考察记录的导出 / 导入 / 清空（全部只涉及浏览器本地数据） */
 export default function SettingsPage() {
-  const { mastered, toggle } = useMastery()
-  const { verdicts, setVerdict } = useVerdicts()
-  const { sessions, removeSession } = useSessions()
-  const { customQuestions, removeCustom } = useCustomQuestions()
-  const { favorites, toggleFavorite } = useFavorites()
+  const { mastered, clear: clearMastery } = useMastery()
+  const { verdicts, clear: clearVerdicts } = useVerdicts()
+  const { sessions, clear: clearSessions } = useSessions()
+  const { customQuestions, clearCustom } = useCustomQuestions()
+  const { favorites, clear: clearFavorites } = useFavorites()
   const { logout } = useAuth()
   const { tracks } = useBank()
   const fileRef = useRef<HTMLInputElement>(null)
@@ -69,11 +69,11 @@ export default function SettingsPage() {
       const backup = sanitizeBackup(JSON.parse(await file.text()))
       if (!backup) throw new Error('格式不符')
       // 清洗通过后写入 localStorage，刷新让各 Context 重新加载
-      localStorage.setItem('interview.mastery.v1', JSON.stringify(backup.mastery))
-      localStorage.setItem('interview.verdicts.v1', JSON.stringify(backup.verdicts))
-      localStorage.setItem('interview.sessions.v1', JSON.stringify(backup.sessions))
-      localStorage.setItem('interview.custom-questions.v1', JSON.stringify(backup.customQuestions))
-      localStorage.setItem('interview.favorites.v1', JSON.stringify(backup.favorites))
+      localStorage.setItem(LS_KEYS.mastery, JSON.stringify(backup.mastery))
+      localStorage.setItem(LS_KEYS.verdicts, JSON.stringify(backup.verdicts))
+      localStorage.setItem(LS_KEYS.sessions, JSON.stringify(backup.sessions))
+      localStorage.setItem(LS_KEYS.customQuestions, JSON.stringify(backup.customQuestions))
+      localStorage.setItem(LS_KEYS.favorites, JSON.stringify(backup.favorites))
       flash('ok', `导入成功：${backup.mastery.length} 条掌握记录 · ${backup.sessions.length} 份考察记录，即将刷新页面`)
       setTimeout(() => window.location.reload(), 1200)
     } catch {
@@ -91,19 +91,19 @@ export default function SettingsPage() {
       return
     }
     if (category === 'mastery') {
-      ;[...mastered].forEach((id) => toggle(id))
+      clearMastery()
       flash('ok', '刷题进度已清空')
     } else if (category === 'verdicts') {
-      Object.keys(verdicts).forEach((id) => setVerdict(id, null))
+      clearVerdicts()
       flash('ok', '评分记录已清空')
     } else if (category === 'sessions') {
-      ;[...sessions].forEach((s) => removeSession(s.id))
+      clearSessions()
       flash('ok', '考察记录已清空')
     } else if (category === 'custom') {
-      ;[...customQuestions].forEach((q) => removeCustom(q.id))
+      clearCustom()
       flash('ok', '自定义题目已清空')
     } else if (category === 'favorites') {
-      ;[...favorites].forEach((id) => toggleFavorite(id))
+      clearFavorites()
       flash('ok', '收藏记录已清空')
     } else if (category === 'auth') {
       logout()

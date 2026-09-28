@@ -1,5 +1,5 @@
 import { Link, useParams } from 'react-router'
-import { useBank } from '../context/BankContext'
+import { useBankMeta } from '../context/BankContext'
 import { useMastery } from '../context/MasteryContext'
 import { countMastered, cx, trackThemes } from '../lib/utils'
 import { difficultyMeta } from '../types'
@@ -8,7 +8,7 @@ import NotFoundPage from './NotFoundPage'
 
 export default function TrackPage() {
   const { trackId } = useParams()
-  const { tracks } = useBank()
+  const { tracks } = useBankMeta()
   const track = tracks.find((t) => t.id === trackId)
   const { mastered } = useMastery()
 

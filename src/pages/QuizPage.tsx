@@ -4,48 +4,25 @@ import { useBank } from '../context/BankContext'
 import { useFavorites } from '../context/FavoritesContext'
 import { useMastery } from '../context/MasteryContext'
 import { copyText } from '../lib/clipboard'
-import { clearResume, loadResume, saveResume } from '../lib/quizResume'
-import { cx, formatDuration, shuffle, trackThemes } from '../lib/utils'
+import { clearResume, loadResume, saveResume, type QuizResumeState } from '../lib/quizResume'
+import { cx, shuffle, trackThemes } from '../lib/utils'
 import { buildSummaryText, generateId, type SessionItem, type SummaryCounts } from '../lib/summary'
-import { difficultyMeta, type Difficulty, type IndexedQuestion } from '../types'
-import { useVerdicts, verdictMeta, type Verdict } from '../context/InterviewContext'
+import { type Difficulty, type IndexedQuestion } from '../types'
+import { useVerdicts, type Verdict } from '../context/InterviewContext'
 import { useSessions } from '../context/SessionContext'
-import ProgressBar from '../components/ProgressBar'
-import AnswerBody from '../components/AnswerBody'
 import Segmented from '../components/Segmented'
+import QuizRunning from './quiz/QuizRunning'
+import QuizDone from './quiz/QuizDone'
 
 type Phase = 'setup' | 'running' | 'done'
 type DiffFilter = 'all' | Difficulty
 
-/** 本题用时显示：秒级自跳的独立组件，把每秒重渲染限制在计时文本本身 */
-function ElapsedTimer({ startTs }: { startTs: number }) {
-  const [, setTick] = useState(0)
-  useEffect(() => {
-    const timer = setInterval(() => setTick((t) => t + 1), 1000)
-    return () => clearInterval(timer)
-  }, [])
-  const elapsed = Math.max(0, Math.floor((Date.now() - startTs) / 1000))
-  return (
-    <span title="本题用时">⏱ {formatDuration(elapsed)}</span>
-  )
-}
-
 const COUNT_OPTIONS = [5, 10, 15, 20, 30]
-
-const VERDICT_ORDER = ['pass', 'fail', 'maybe'] as const
-
-/** 进行中考察的现场快照（sessionStorage，防误刷新丢失） */
-interface ResumeState {
-  candidate: string
-  queueIds: string[]
-  current: number
-  notes: Record<string, string>
-  savedAt: string
-}
 
 const DIFFICULTY_RANK: Record<Difficulty, number> = { basic: 0, intermediate: 1, advanced: 2 }
 
-/** 面试官模式：选方向 → 随机组卷 → 现场逐题考察、评分、记录 → 自动存档并生成面试小结 */
+/** 面试官模式：选方向 → 随机组卷 → 现场逐题考察、评分、记录 → 自动存档并生成面试小结。
+ *  本文件持有组卷状态机；答题态与完成态 UI 见 quiz/ 子组件。 */
 export default function QuizPage() {
   const [phase, setPhase] = useState<Phase>('setup')
   const [selectedTopics, setSelectedTopics] = useState<Set<string>>(() => new Set(['be-mysql']))
@@ -64,7 +41,7 @@ export default function QuizPage() {
   const [copied, setCopied] = useState(false)
   const [saved, setSaved] = useState(false)
   const [confirmExit, setConfirmExit] = useState(false)
-  const [resumable, setResumable] = useState<ResumeState | null>(null)
+  const [resumable, setResumable] = useState<QuizResumeState | null>(null)
   const startRef = useRef(Date.now())
   const durationsRef = useRef<Record<string, number>>({})
   const { getVerdict, setVerdict } = useVerdicts()
@@ -104,6 +81,8 @@ export default function QuizPage() {
     setQueue(queueNext)
     setNotes({})
     durationsRef.current = {}
+    // 同步重置计时起点：ElapsedTimer 在渲染期就读 startRef，等 effect 重置会把组卷页停留时间计入第一题
+    startRef.current = Date.now()
     setCurrent(0)
     setRevealed(false)
     setSummary(null)
@@ -128,8 +107,10 @@ export default function QuizPage() {
     }
     setCandidate(resumable.candidate)
     setNotes(resumable.notes)
+    durationsRef.current = { ...resumable.durations }
     setQueue(restored)
     setCurrent(Math.min(resumable.current, restored.length - 1))
+    startRef.current = Date.now()
     setRevealed(false)
     setSummary(null)
     setCopied(false)
@@ -180,6 +161,7 @@ export default function QuizPage() {
   const goPrev = () => {
     const item = queue[current]
     if (item) commitTime(item.question.id)
+    startRef.current = Date.now()
     setCurrent((c) => Math.max(0, c - 1))
     setRevealed(false)
   }
@@ -190,8 +172,19 @@ export default function QuizPage() {
     if (current + 1 >= queue.length) {
       finish()
     } else {
+      startRef.current = Date.now()
       setCurrent((c) => c + 1)
       setRevealed(false)
+    }
+  }
+
+  /** 双击确认退出答题：第一次点击进入确认态（3 秒内再点生效） */
+  const handleExit = () => {
+    if (confirmExit) {
+      setPhase('setup')
+    } else {
+      setConfirmExit(true)
+      setTimeout(() => setConfirmExit(false), 3000)
     }
   }
 
@@ -208,13 +201,10 @@ export default function QuizPage() {
     setNotes((prev) => ({ ...prev, [item.question.id]: value }))
   }
 
-  // 计时起点：切题/开卷时同步重置（ElapsedTimer 组件负责秒级展示）
-  useEffect(() => {
-    if (phase !== 'running') return
-    startRef.current = Date.now()
-  }, [phase, current])
+  // 计时起点在各次状态迁移（start/resume/切题）中同步重置；
+  // 不能放到 effect 里——ElapsedTimer 渲染期就读 startRef，effect 重置会晚一帧导致读数错误
 
-  // 回到组卷页时读取现场快照（供“恢复上次考察”）；进行中每次状态变化自动续存
+  // 回到组卷页时读取现场快照（供"恢复上次考察"）；进行中每次状态变化自动续存
   useEffect(() => {
     if (phase === 'setup') setResumable(loadResume())
   }, [phase])
@@ -226,6 +216,7 @@ export default function QuizPage() {
       queueIds: queue.map((item) => item.question.id),
       current,
       notes,
+      durations: durationsRef.current,
       savedAt: new Date().toISOString(),
     })
   }, [phase, candidate, queue, current, notes])
@@ -468,265 +459,41 @@ export default function QuizPage() {
   }
 
   if (phase === 'running' && queue.length > 0) {
-    const item = queue[current]!
-    const meta = difficultyMeta[item.question.difficulty]
-    const verdict = getVerdict(item.question.id)
     return (
-      <div className="mx-auto max-w-3xl space-y-5">
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => {
-              if (confirmExit) {
-                setPhase('setup')
-              } else {
-                setConfirmExit(true)
-                setTimeout(() => setConfirmExit(false), 3000)
-              }
-            }}
-            className={cx(
-              'rounded-lg border px-3 py-1.5 text-sm transition-colors',
-              confirmExit
-                ? 'border-rose-400 bg-rose-500 text-white'
-                : 'border-slate-200 text-slate-400 hover:border-rose-300 hover:text-rose-500 dark:border-white/10 dark:hover:border-rose-500/40',
-            )}
-          >
-            {confirmExit ? '确认结束？（未存档的备注将丢失）' : '← 结束并返回'}
-          </button>
-          <span className="ml-auto flex items-center gap-3 text-sm font-medium tabular-nums text-slate-500 dark:text-slate-400">
-            <ElapsedTimer key={item.question.id} startTs={startRef.current} />
-            {candidate.trim() && <span className="text-slate-400">{candidate.trim()}</span>}
-            <span>
-              第 {current + 1} / {queue.length} 题
-            </span>
-          </span>
-        </div>
-        <ProgressBar value={((current + 1) / queue.length) * 100} />
-
-        <article className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-white/10 dark:bg-white/[0.03]">
-          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400 dark:text-slate-500">
-            <span>
-              {item.track.icon} {item.track.name} · {item.topic.name}
-            </span>
-            <span className={cx('rounded px-1.5 py-0.5 font-medium', meta.className)}>
-              {meta.label}
-            </span>
-            {item.question.tags?.map((tag) => <span key={tag}>#{tag}</span>)}
-          </div>
-          <h1 className="mt-3 text-xl font-semibold leading-relaxed sm:text-2xl">
-            {item.question.title}
-          </h1>
-
-          {revealed ? (
-            <div className="mt-5 border-t border-slate-100 pt-4 dark:border-white/5">
-              <AnswerBody question={item.question} />
-              <div className="mt-4 text-right">
-                <button
-                  type="button"
-                  onClick={() => setRevealed(false)}
-                  className="text-xs font-medium text-slate-400 transition-colors hover:text-blue-600 dark:text-slate-500 dark:hover:text-blue-400"
-                >
-                  🙈 收起要点
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="mt-6 flex flex-col items-start gap-3 border-t border-dashed border-slate-200 pt-5 dark:border-white/10">
-              <p className="text-sm text-slate-400 dark:text-slate-500">
-                先让候选人作答，再对照参考要点与追问链（快捷键：空格 展示要点）。
-              </p>
-              <button
-                type="button"
-                onClick={() => setRevealed(true)}
-                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700"
-              >
-                显示参考要点与追问
-              </button>
-            </div>
-          )}
-
-          <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-4 dark:border-white/5">
-            <span className="text-xs font-medium text-slate-400 dark:text-slate-500">现场评分</span>
-            {VERDICT_ORDER.map((v) => {
-              const vm = verdictMeta[v]
-              const active = verdict === v
-              return (
-                <button
-                  key={v}
-                  type="button"
-                  onClick={() => rate(v)}
-                  aria-pressed={active}
-                  className={cx(
-                    'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
-                    active
-                      ? vm.activeClass
-                      : 'border-slate-300 text-slate-500 hover:border-slate-400 dark:border-white/20 dark:text-slate-400 dark:hover:border-white/35',
-                  )}
-                >
-                  {vm.icon} {vm.label}
-                </button>
-              )
-            })}
-            <span className="ml-auto hidden text-[11px] text-slate-400 sm:inline dark:text-slate-500">
-              快捷键：空格 要点 · 1/2/3 评分 · ← → 切题
-            </span>
-          </div>
-
-          <textarea
-            value={currentNote}
-            onChange={(e) => updateNote(e.target.value)}
-            aria-label="面试备注：记录候选人回答要点或你的评价"
-            placeholder="记录候选人回答要点 / 你的评价（可选，会写入面试小结）"
-            rows={2}
-            className="mt-3 w-full resize-y rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100 dark:border-white/10 dark:bg-white/5 dark:text-slate-100 dark:focus:border-blue-500/50 dark:focus:ring-blue-500/20"
-          />
-        </article>
-
-        <div className="flex items-center justify-between gap-3">
-          <button
-            type="button"
-            onClick={goPrev}
-            disabled={current === 0}
-            className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:border-slate-400 disabled:opacity-40 dark:border-white/10 dark:text-slate-300"
-          >
-            ← 上一题
-          </button>
-          <button
-            type="button"
-            onClick={goNext}
-            className="rounded-lg bg-blue-600 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700"
-          >
-            {current + 1 >= queue.length ? '完成考察，生成小结 ✓' : '下一题 →'}
-          </button>
-        </div>
-      </div>
+      <QuizRunning
+        item={queue[current]!}
+        index={current}
+        total={queue.length}
+        candidate={candidate}
+        revealed={revealed}
+        verdict={getVerdict(queue[current]!.question.id)}
+        note={currentNote}
+        confirmExit={confirmExit}
+        startTs={startRef.current}
+        onReveal={() => setRevealed(true)}
+        onCollapse={() => setRevealed(false)}
+        onRate={rate}
+        onNoteChange={updateNote}
+        onExit={handleExit}
+        onPrev={goPrev}
+        onNext={goNext}
+      />
     )
   }
 
   // phase === 'done'
   return (
-    <div className="space-y-5">
-      <header className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-6 dark:border-emerald-500/25 dark:bg-emerald-500/10">
-        <div className="text-center">
-          <p className="text-3xl">🎉</p>
-          <h1 className="mt-2 text-xl font-bold">
-            本次考察完成{candidate.trim() ? ` · ${candidate.trim()}` : ''}，共 {queue.length} 题
-          </h1>
-          {saved && (
-            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-              已自动存入
-              <Link to="/history" className="mx-0.5 font-medium text-blue-600 hover:underline dark:text-blue-400">
-                考察记录
-              </Link>
-            </p>
-          )}
-          {summary && (
-            <div className="mt-3 flex flex-wrap items-center justify-center gap-2 text-xs">
-              <span className="rounded-full bg-emerald-500/15 px-3 py-1 font-medium text-emerald-700 dark:text-emerald-300">
-                👍 通过 {summary.counts.pass}
-              </span>
-              <span className="rounded-full bg-rose-500/15 px-3 py-1 font-medium text-rose-700 dark:text-rose-300">
-                👎 不通过 {summary.counts.fail}
-              </span>
-              <span className="rounded-full bg-amber-500/15 px-3 py-1 font-medium text-amber-700 dark:text-amber-300">
-                ➖ 待定 {summary.counts.maybe}
-              </span>
-              <span className="rounded-full bg-slate-500/15 px-3 py-1 font-medium text-slate-600 dark:text-slate-300">
-                未评 {summary.counts.unrated}
-              </span>
-            </div>
-          )}
-        </div>
-        <div className="mt-4 flex flex-wrap justify-center gap-3">
-          <button
-            type="button"
-            onClick={copySummary}
-            className={cx(
-              'rounded-lg px-5 py-2 text-sm font-semibold text-white transition-colors',
-              copied ? 'bg-emerald-500' : 'bg-blue-600 hover:bg-blue-700',
-            )}
-          >
-            {copied ? '✓ 小结已复制' : '复制面试小结 📋'}
-          </button>
-          <Link
-            to="/history"
-            className="rounded-lg border border-slate-300 px-5 py-2 text-sm font-medium text-slate-600 hover:border-slate-400 dark:border-white/20 dark:text-slate-300"
-          >
-            查看考察记录 →
-          </Link>
-          <button
-            type="button"
-            onClick={start}
-            className="rounded-lg border border-slate-300 px-5 py-2 text-sm font-medium text-slate-600 hover:border-slate-400 dark:border-white/20 dark:text-slate-300"
-          >
-            再出一卷 🔄
-          </button>
-          <button
-            type="button"
-            onClick={() => setPhase('setup')}
-            className="rounded-lg border border-slate-300 px-5 py-2 text-sm font-medium text-slate-600 hover:border-slate-400 dark:border-white/20 dark:text-slate-300"
-          >
-            调整配置
-          </button>
-        </div>
-      </header>
-
-      <ul className="space-y-3">
-        {queue.map((item, i) => {
-          const v = getVerdict(item.question.id)
-          const note = (notes[item.question.id] ?? '').trim()
-          return (
-            <li key={item.question.id}>
-              <div className="rounded-xl border border-slate-200 bg-white dark:border-white/10 dark:bg-white/[0.03]">
-                <div className="p-4">
-                  <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400 dark:text-slate-500">
-                    <span className="font-mono">{String(i + 1).padStart(2, '0')}</span>
-                    <span>
-                      {item.track.name} · {item.topic.name}
-                    </span>
-                    <span
-                      className={cx(
-                        'rounded px-1.5 py-0.5 font-medium',
-                        difficultyMeta[item.question.difficulty].className,
-                      )}
-                    >
-                      {difficultyMeta[item.question.difficulty].label}
-                    </span>
-                    {v && (
-                      <span
-                        className={cx(
-                          'rounded-full border px-2 py-0.5 font-medium',
-                          v === 'pass'
-                            ? 'border-emerald-300 text-emerald-600 dark:border-emerald-500/40 dark:text-emerald-300'
-                            : v === 'fail'
-                              ? 'border-rose-300 text-rose-600 dark:border-rose-500/40 dark:text-rose-300'
-                              : 'border-amber-300 text-amber-600 dark:border-amber-500/40 dark:text-amber-300',
-                        )}
-                      >
-                        {verdictMeta[v].icon} {verdictMeta[v].label}
-                      </span>
-                    )}
-                  </div>
-                  <h3 className="mt-1.5 font-medium">{item.question.title}</h3>
-                  {note && (
-                    <p className="mt-2 rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600 dark:bg-white/5 dark:text-slate-300">
-                      💬 {note}
-                    </p>
-                  )}
-                </div>
-                <details className="group border-t border-slate-100 dark:border-white/5">
-                  <summary className="cursor-pointer list-none px-4 py-2.5 text-xs font-medium text-slate-400 hover:text-blue-600 dark:text-slate-500 dark:hover:text-blue-400">
-                    展开参考要点与追问
-                  </summary>
-                  <div className="border-t border-slate-100 px-4 pb-4 pt-3 dark:border-white/5">
-                    <AnswerBody question={item.question} />
-                  </div>
-                </details>
-              </div>
-            </li>
-          )
-        })}
-      </ul>
-    </div>
+    <QuizDone
+      candidate={candidate}
+      queue={queue}
+      summary={summary}
+      saved={saved}
+      copied={copied}
+      notes={notes}
+      verdictOf={getVerdict}
+      onCopy={copySummary}
+      onStartAgain={start}
+      onAdjust={() => setPhase('setup')}
+    />
   )
 }

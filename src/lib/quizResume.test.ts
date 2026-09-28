@@ -6,6 +6,7 @@ const valid = JSON.stringify({
   queueIds: ['q1', 'q2', 'q3'],
   current: 1,
   notes: { q1: '备注' },
+  durations: { q1: 42 },
   savedAt: '2026-09-26T00:00:00.000Z',
 })
 
@@ -17,6 +18,7 @@ describe('parseResume', () => {
     expect(r!.queueIds).toEqual(['q1', 'q2', 'q3'])
     expect(r!.current).toBe(1)
     expect(r!.notes).toEqual({ q1: '备注' })
+    expect(r!.durations).toEqual({ q1: 42 })
   })
 
   it('畸形 JSON 返回 null', () => {
@@ -46,6 +48,19 @@ describe('parseResume', () => {
       JSON.stringify({ queueIds: ['a'], current: 0, notes: { good: 'ok', bad: 42 } }),
     )
     expect(r!.notes).toEqual({ good: 'ok' })
+  })
+
+  it('非法用时条目被剔除（旧版快照缺 durations 时回退空表）', () => {
+    const r1 = parseResume(
+      JSON.stringify({
+        queueIds: ['a', 'b'],
+        current: 0,
+        durations: { a: 10, b: -3, c: 'x', d: Infinity },
+      }),
+    )
+    expect(r1!.durations).toEqual({ a: 10 })
+    const r2 = parseResume(JSON.stringify({ queueIds: ['a'], current: 0 }))
+    expect(r2!.durations).toEqual({})
   })
 
   it('缺省字段有安全默认值', () => {

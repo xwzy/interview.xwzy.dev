@@ -1,6 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
-
-const STORAGE_KEY = 'interview.theme'
+import { LS_KEYS } from '../lib/storageKeys'
 
 /** 浅色 / 深色 / 跟随系统（默认深色） */
 export type ThemeMode = 'light' | 'dark' | 'system'
@@ -25,7 +24,7 @@ const ThemeContext = createContext<ThemeValue | null>(null)
 
 function loadInitialMode(): ThemeMode {
   try {
-    const stored = localStorage.getItem(STORAGE_KEY)
+    const stored = localStorage.getItem(LS_KEYS.theme)
     if (stored === 'light' || stored === 'dark' || stored === 'system') return stored
   } catch {
     // 隐私模式下 localStorage 不可用，回退默认
@@ -57,7 +56,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     setResolved(r)
     applyTheme(r)
     try {
-      localStorage.setItem(STORAGE_KEY, mode)
+      localStorage.setItem(LS_KEYS.theme, mode)
     } catch {
       // 忽略存储失败，仅当前会话生效
     }

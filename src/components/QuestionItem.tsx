@@ -1,7 +1,6 @@
 import { memo, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router'
-import type { NormalizedQuestion } from '../types'
-import { difficultyMeta } from '../types'
+import { difficultyMeta, type NormalizedQuestion } from '../types'
 import { useMastery } from '../context/MasteryContext'
 import { useFavorites } from '../context/FavoritesContext'
 import { cx } from '../lib/utils'

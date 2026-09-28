@@ -1,10 +1,10 @@
 import { Link } from 'react-router'
-import type { Track } from '../types'
+import type { MetaTrack } from '../types'
 import { countMastered, cx, trackThemes } from '../lib/utils'
 import { useMastery } from '../context/MasteryContext'
 import ProgressBar from './ProgressBar'
 
-export default function TrackCard({ track }: { track: Track }) {
+export default function TrackCard({ track }: { track: MetaTrack }) {
   const { mastered } = useMastery()
   const theme = trackThemes[track.color]
   const allQuestions = track.topics.flatMap((t) => t.questions)

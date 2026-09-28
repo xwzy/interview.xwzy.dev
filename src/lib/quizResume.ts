@@ -4,6 +4,8 @@ export interface QuizResumeState {
   queueIds: string[]
   current: number
   notes: Record<string, string>
+  /** 各题已累计用时（秒），恢复后继续累计进面试小结 */
+  durations: Record<string, number>
   savedAt: string
 }
 
@@ -35,11 +37,20 @@ export function parseResume(raw: string): QuizResumeState | null {
       if (typeof k === 'string' && typeof v === 'string') notes[k] = v
     }
   }
+  const durations: Record<string, number> = {}
+  if (isRecord(data.durations)) {
+    for (const [k, v] of Object.entries(data.durations)) {
+      if (typeof k === 'string' && typeof v === 'number' && Number.isFinite(v) && v >= 0) {
+        durations[k] = Math.floor(v)
+      }
+    }
+  }
   return {
     candidate: typeof data.candidate === 'string' ? data.candidate : '',
     queueIds,
     current: Math.min(current, queueIds.length - 1),
     notes,
+    durations,
     savedAt: typeof data.savedAt === 'string' ? data.savedAt : new Date(0).toISOString(),
   }
 }

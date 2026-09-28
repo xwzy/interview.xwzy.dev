@@ -19,6 +19,7 @@ export default tseslint.config([
       'react-refresh': reactRefresh,
     },
     rules: {
+      'no-duplicate-imports': 'error',
       '@typescript-eslint/no-unused-vars': [
         'error',
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_', ignoreRestSiblings: true },

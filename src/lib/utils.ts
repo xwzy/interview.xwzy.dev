@@ -1,4 +1,4 @@
-import type { Question, TrackColor } from '../types'
+import type { TrackColor } from '../types'
 
 export function cx(...parts: Array<string | false | null | undefined>): string {
   return parts.filter(Boolean).join(' ')
@@ -13,7 +13,10 @@ export function shuffle<T>(items: readonly T[]): T[] {
   return arr
 }
 
-export function countMastered(questions: Question[], mastered: ReadonlySet<string>): number {
+export function countMastered(
+  questions: ReadonlyArray<{ id: string }>,
+  mastered: ReadonlySet<string>,
+): number {
   return questions.reduce((n, q) => n + (mastered.has(q.id) ? 1 : 0), 0)
 }
 

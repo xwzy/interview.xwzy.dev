@@ -1,5 +1,4 @@
-import type { NormalizedTrack } from '../types'
-import { difficultyMeta } from '../types'
+import { difficultyMeta, type NormalizedTrack } from '../types'
 
 /** 把整站题库（含自定义题目）导出为可打印、可导入笔记工具的结构化 Markdown */
 export function buildTracksMarkdown(tracks: NormalizedTrack[], exportedAt: Date): string {

@@ -3,6 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#0f172a" />
     <meta name="robots" content="noindex, nofollow" />
@@ -15,12 +16,13 @@
     <meta property="og:title" content="面试宝典 · 互联网技术面试知识库" />
     <meta
       property="og:description"
-      content="385 道深度面试题按方向分类：面试官出题评分与个人刷题复习共享一套题库，层层追问链直达问题本质。"
+      content="651 道深度面试题按方向分类：面试官出题评分与个人刷题复习共享一套题库，层层追问链直达问题本质。"
     />
     <meta name="twitter:card" content="summary" />
     <title>面试宝典 · 互联网技术面试知识库</title>
     <script>
       // 默认深色；仅当用户显式选择浅色时才用浅色（system 跟随 OS）
+      // 键名与 src/lib/storageKeys.ts 的 LS_KEYS.theme 保持一致（内联脚本无法引用 TS 常量）
       try {
         var t = localStorage.getItem('interview.theme') || 'dark'
         var dark = t === 'dark' || (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)

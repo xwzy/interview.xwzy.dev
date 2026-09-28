@@ -35,6 +35,7 @@ export default function Segmented<T extends string>({
           key={option.value}
           type="button"
           onClick={() => onChange(option.value)}
+          aria-pressed={value === option.value}
           className={cx(
             'rounded-md px-2.5 py-1 text-xs font-medium transition-colors',
             value === option.value

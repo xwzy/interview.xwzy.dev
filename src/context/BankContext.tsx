@@ -9,64 +9,63 @@ import {
 } from 'react'
 import type { CustomQuestion, Track } from '../types'
 import { buildBank, type Bank } from '../data/bank'
+import { buildMetaBank, type MetaBank } from '../data/metaBank'
+import { trackMeta } from '../data/trackMeta.generated'
 import { loadAllTracks } from '../data/trackLoaders'
-
-const STORAGE_KEY = 'interview.custom-questions.v1'
+import { LS_KEYS } from '../lib/storageKeys'
+import { usePersistentState } from '../lib/usePersistentState'
 
 interface CustomQuestionsValue {
   customQuestions: CustomQuestion[]
   addCustom: (question: CustomQuestion) => void
   updateCustom: (question: CustomQuestion) => void
   removeCustom: (id: string) => void
+  /** 一次性清空（设置页用） */
+  clearCustom: () => void
   getCustom: (id: string) => CustomQuestion | undefined
 }
 
 const CustomQuestionsContext = createContext<CustomQuestionsValue | null>(null)
 
-function loadCustomQuestions(): CustomQuestion[] {
+function parseCustomQuestions(raw: string | null): CustomQuestion[] {
+  if (!raw) return []
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    const parsed = raw ? (JSON.parse(raw) as CustomQuestion[]) : []
-    return Array.isArray(parsed) ? parsed : []
+    const parsed: unknown = JSON.parse(raw)
+    return Array.isArray(parsed) ? (parsed as CustomQuestion[]) : []
   } catch {
     return []
   }
 }
 
 export function CustomQuestionsProvider({ children }: { children: ReactNode }) {
-  const [customQuestions, setCustomQuestions] = useState<CustomQuestion[]>(loadCustomQuestions)
+  const [customQuestions, setCustomQuestions] = usePersistentState<CustomQuestion[]>(
+    LS_KEYS.customQuestions,
+    parseCustomQuestions,
+    JSON.stringify,
+  )
 
-  const persist = (next: CustomQuestion[]) => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
-    } catch {
-      // 存储不可用时静默降级为会话内状态
-    }
-  }
+  const addCustom = useCallback(
+    (question: CustomQuestion) => {
+      setCustomQuestions((prev) => [...prev, question])
+    },
+    [setCustomQuestions],
+  )
 
-  const addCustom = useCallback((question: CustomQuestion) => {
-    setCustomQuestions((prev) => {
-      const next = [...prev, question]
-      persist(next)
-      return next
-    })
-  }, [])
+  const updateCustom = useCallback(
+    (question: CustomQuestion) => {
+      setCustomQuestions((prev) => prev.map((q) => (q.id === question.id ? question : q)))
+    },
+    [setCustomQuestions],
+  )
 
-  const updateCustom = useCallback((question: CustomQuestion) => {
-    setCustomQuestions((prev) => {
-      const next = prev.map((q) => (q.id === question.id ? question : q))
-      persist(next)
-      return next
-    })
-  }, [])
+  const removeCustom = useCallback(
+    (id: string) => {
+      setCustomQuestions((prev) => prev.filter((q) => q.id !== id))
+    },
+    [setCustomQuestions],
+  )
 
-  const removeCustom = useCallback((id: string) => {
-    setCustomQuestions((prev) => {
-      const next = prev.filter((q) => q.id !== id)
-      persist(next)
-      return next
-    })
-  }, [])
+  const clearCustom = useCallback(() => setCustomQuestions([]), [setCustomQuestions])
 
   const value = useMemo<CustomQuestionsValue>(
     () => ({
@@ -74,9 +73,10 @@ export function CustomQuestionsProvider({ children }: { children: ReactNode }) {
       addCustom,
       updateCustom,
       removeCustom,
+      clearCustom,
       getCustom: (id) => customQuestions.find((q) => q.id === id),
     }),
-    [customQuestions, addCustom, updateCustom, removeCustom],
+    [customQuestions, addCustom, updateCustom, removeCustom, clearCustom],
   )
 
   return <CustomQuestionsContext.Provider value={value}>{children}</CustomQuestionsContext.Provider>
@@ -88,9 +88,17 @@ export function useCustomQuestions(): CustomQuestionsValue {
   return ctx
 }
 
-// ---------- 合并后的动态题库（按方向分包异步加载） ----------
+// ---------- 双层题库：元数据（内联主包，即时可用）+ 全量内容（分包后台加载） ----------
 
-const BankContext = createContext<Bank | null>(null)
+interface BankContextValue {
+  metaBank: MetaBank
+  /** 全量题库（含要点/追问内容），内容分包就绪前为 null */
+  bank: Bank | null
+  loadError: boolean
+  retry: () => void
+}
+
+const BankContext = createContext<BankContextValue | null>(null)
 
 export function BankProvider({ children }: { children: ReactNode }) {
   const { customQuestions } = useCustomQuestions()
@@ -98,7 +106,7 @@ export function BankProvider({ children }: { children: ReactNode }) {
   const [loadError, setLoadError] = useState(false)
   const [retryKey, setRetryKey] = useState(0)
 
-  // 数据按方向分包异步加载，仅在挂载/手动重试时拉取一次
+  // 内容分包仅在挂载/手动重试时拉取一次；加载期间页面照常渲染（列表页用元数据）
   useEffect(() => {
     let cancelled = false
     setLoadError(false)
@@ -114,16 +122,50 @@ export function BankProvider({ children }: { children: ReactNode }) {
     }
   }, [retryKey])
 
-  // 加载完成与自定义题目变化时都会重建 Bank（纯函数，成本低）
+  // 元数据与全量 Bank 都随自定义题目变化重建（纯函数，成本低）
+  const metaBank = useMemo(() => buildMetaBank(trackMeta, customQuestions), [customQuestions])
   const bank = useMemo(
     () => (rawTracks ? buildBank(rawTracks, customQuestions) : null),
     [rawTracks, customQuestions],
   )
 
-  // 加载失败提供重试入口，而不是永远卡在加载页
+  const retry = useCallback(() => setRetryKey((k) => k + 1), [])
+  const value = useMemo<BankContextValue>(
+    () => ({ metaBank, bank, loadError, retry }),
+    [metaBank, bank, loadError, retry],
+  )
+
+  return <BankContext.Provider value={value}>{children}</BankContext.Provider>
+}
+
+export function useBankContext(): BankContextValue {
+  const ctx = useContext(BankContext)
+  if (!ctx) throw new Error('useBankContext 必须在 BankProvider 内使用')
+  return ctx
+}
+
+/** 轻量题库（方向/领域/题目 id/难度）：同步可用，不等待内容分包 */
+export function useBankMeta(): MetaBank {
+  return useBankContext().metaBank
+}
+
+/** 全量题库：仅在 FullBankGate 内使用（内容分包就绪后才有值） */
+export function useBank(): Bank {
+  const { bank } = useBankContext()
+  if (!bank) throw new Error('useBank 必须在 FullBankGate 内使用（内容分包未就绪）')
+  return bank
+}
+
+const gateScreenClass =
+  'flex min-h-screen flex-col items-center justify-center gap-3 bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100'
+
+/** 全量内容门禁：搜索/出题/考察记录/领域页等需要完整题目内容的路由包在它里面 */
+export function FullBankGate({ children }: { children: ReactNode }) {
+  const { bank, loadError, retry } = useBankContext()
+
   if (loadError) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+      <div className={gateScreenClass}>
         <p className="text-4xl">📡</p>
         <h1 className="text-lg font-bold">题库加载失败</h1>
         <p className="text-sm text-slate-500 dark:text-slate-400">
@@ -131,7 +173,7 @@ export function BankProvider({ children }: { children: ReactNode }) {
         </p>
         <button
           type="button"
-          onClick={() => setRetryKey((k) => k + 1)}
+          onClick={retry}
           className="mt-2 rounded-lg bg-blue-600 px-5 py-2 text-sm font-semibold text-white hover:bg-blue-700"
         >
           重试
@@ -140,10 +182,9 @@ export function BankProvider({ children }: { children: ReactNode }) {
     )
   }
 
-  // 加载完成前渲染加载页：保证子树消费方拿到的 Bank 始终是完整数据
   if (!bank) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+      <div className={gateScreenClass}>
         <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-violet-600 text-lg font-bold text-white">
           Q
         </span>
@@ -152,11 +193,5 @@ export function BankProvider({ children }: { children: ReactNode }) {
     )
   }
 
-  return <BankContext.Provider value={bank}>{children}</BankContext.Provider>
-}
-
-export function useBank(): Bank {
-  const ctx = useContext(BankContext)
-  if (!ctx) throw new Error('useBank 必须在 BankProvider 内使用')
-  return ctx
+  return <>{children}</>
 }

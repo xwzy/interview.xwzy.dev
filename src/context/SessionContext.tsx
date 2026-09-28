@@ -1,7 +1,7 @@
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useMemo, type ReactNode } from 'react'
+import { LS_KEYS } from '../lib/storageKeys'
+import { usePersistentState } from '../lib/usePersistentState'
 import type { SessionItem } from '../lib/summary'
-
-const STORAGE_KEY = 'interview.sessions.v1'
 
 /** 本地存档上限：防止多年积累撑爆 localStorage */
 const MAX_SESSIONS = 50
@@ -19,51 +19,51 @@ interface SessionValue {
   sessions: InterviewSession[]
   saveSession: (session: InterviewSession) => void
   removeSession: (id: string) => void
+  /** 一次性清空（设置页用） */
+  clear: () => void
 }
 
 const SessionContext = createContext<SessionValue | null>(null)
 
-function loadSessions(): InterviewSession[] {
+function parseSessions(raw: string | null): InterviewSession[] {
+  if (!raw) return []
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    const parsed = raw ? (JSON.parse(raw) as InterviewSession[]) : []
-    return Array.isArray(parsed) ? parsed : []
+    const parsed: unknown = JSON.parse(raw)
+    return Array.isArray(parsed) ? (parsed as InterviewSession[]) : []
   } catch {
     return []
   }
 }
 
 export function SessionProvider({ children }: { children: ReactNode }) {
-  const [sessions, setSessions] = useState<InterviewSession[]>(loadSessions)
+  const [sessions, setSessions] = usePersistentState<InterviewSession[]>(
+    LS_KEYS.sessions,
+    parseSessions,
+    JSON.stringify,
+  )
 
-  const persist = (next: InterviewSession[]) => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
-    } catch {
-      // 存储不可用时静默降级为会话内状态
-    }
-  }
-
-  const saveSession = useCallback((session: InterviewSession) => {
-    setSessions((prev) => {
+  const saveSession = useCallback(
+    (session: InterviewSession) => {
       // 同 id 覆盖，新记录排最前，超出上限丢弃最旧记录
-      const next = [session, ...prev.filter((s) => s.id !== session.id)].slice(0, MAX_SESSIONS)
-      persist(next)
-      return next
-    })
-  }, [])
+      setSessions((prev) =>
+        [session, ...prev.filter((s) => s.id !== session.id)].slice(0, MAX_SESSIONS),
+      )
+    },
+    [setSessions],
+  )
 
-  const removeSession = useCallback((id: string) => {
-    setSessions((prev) => {
-      const next = prev.filter((s) => s.id !== id)
-      persist(next)
-      return next
-    })
-  }, [])
+  const removeSession = useCallback(
+    (id: string) => {
+      setSessions((prev) => prev.filter((s) => s.id !== id))
+    },
+    [setSessions],
+  )
+
+  const clear = useCallback(() => setSessions([]), [setSessions])
 
   const value = useMemo<SessionValue>(
-    () => ({ sessions, saveSession, removeSession }),
-    [sessions, saveSession, removeSession],
+    () => ({ sessions, saveSession, removeSession, clear }),
+    [sessions, saveSession, removeSession, clear],
   )
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>

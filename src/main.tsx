@@ -20,21 +20,21 @@ createRoot(document.getElementById('root')!).render(
         <AuthProvider>
           <AuthGate>
             <ThemeProvider>
-            <CustomQuestionsProvider>
-              <BankProvider>
-                <FavoritesProvider>
-                  <MasteryProvider>
-                    <VerdictProvider>
-                      <SessionProvider>
-                        <App />
-                      </SessionProvider>
-                    </VerdictProvider>
-                  </MasteryProvider>
-                </FavoritesProvider>
-              </BankProvider>
-            </CustomQuestionsProvider>
-          </ThemeProvider>
-        </AuthGate>
+              <CustomQuestionsProvider>
+                <BankProvider>
+                  <FavoritesProvider>
+                    <MasteryProvider>
+                      <VerdictProvider>
+                        <SessionProvider>
+                          <App />
+                        </SessionProvider>
+                      </VerdictProvider>
+                    </MasteryProvider>
+                  </FavoritesProvider>
+                </BankProvider>
+              </CustomQuestionsProvider>
+            </ThemeProvider>
+          </AuthGate>
         </AuthProvider>
       </ErrorBoundary>
     </BrowserRouter>

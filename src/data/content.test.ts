@@ -84,6 +84,15 @@ describe('题库内容完整性', () => {
     }
   })
 
+  it('出题页默认勾选的领域必须存在', async () => {
+    const bank = buildBank(await loadAllTracks(), [])
+    const topicIds = new Set(bank.tracks.flatMap((t) => t.topics.map((tp) => tp.id)))
+    expect(
+      topicIds.has('be-mysql'),
+      'QuizPage 默认勾选 be-mysql 领域——重命名该 id 时需同步 src/pages/QuizPage.tsx',
+    ).toBe(true)
+  })
+
   it('每个领域内题目按 基础→进阶→高级 排序', async () => {
     const bank = buildBank(await loadAllTracks(), [])
     for (const track of bank.tracks) {

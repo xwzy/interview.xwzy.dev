@@ -64,6 +64,32 @@ export interface Track {
 
 export type NormalizedTrack = Omit<Track, 'topics'> & { topics: NormalizedTopic[] }
 
+/**
+ * 题目元数据：仅保留方向/领域列表页与进度统计所需字段，
+ * 不含要点与追问内容（首屏由生成的元数据即时渲染，内容分包后台加载）。
+ */
+export interface MetaQuestion {
+  id: string
+  difficulty: Difficulty
+}
+
+export interface MetaTopic {
+  id: string
+  name: string
+  description?: string
+  questions: MetaQuestion[]
+}
+
+export interface MetaTrack {
+  id: string
+  name: string
+  icon: string
+  tagline: string
+  description: string
+  color: TrackColor
+  topics: MetaTopic[]
+}
+
 /** 用户在本地新增的自定义题目（挂在某个方向的某个领域下） */
 export interface CustomQuestion {
   id: string

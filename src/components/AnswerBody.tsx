@@ -1,10 +1,27 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { FollowUp, NormalizedQuestion } from '../types'
 import Markdown from './Markdown'
+
+/**
+ * 把多条要点合成一份 markdown 一次性解析（原来每条要点各跑一遍解析管线）。
+ * 首行挂列表标记，其余行统一缩进两格：要点内的多行内容与 ``` 代码围栏仍归属同一条目，
+ * 渲染结果与逐条 <li> 包裹等价。前提：要点本身不以列表标记开头（content.test 保证风格）。
+ */
+function toListMarkdown(points: string[]): string {
+  return points
+    .map((p) =>
+      p
+        .split('\n')
+        .map((line, i) => (i === 0 ? `- ${line}` : `  ${line}`))
+        .join('\n'),
+    )
+    .join('\n')
+}
 
 /** 追问链中的一步：问题始终可见，参考要点按需展开 */
 function FollowUpStep({ index, followUp }: { index: number; followUp: FollowUp }) {
   const [open, setOpen] = useState(false)
+  const pointsMd = useMemo(() => toListMarkdown(followUp.points), [followUp.points])
   return (
     <div className="rounded-lg bg-amber-50 p-3 text-sm dark:bg-amber-500/10">
       <div className="flex items-start gap-2">
@@ -28,13 +45,7 @@ function FollowUpStep({ index, followUp }: { index: number; followUp: FollowUp }
       {open && followUp.points.length > 0 && (
         <div className="mt-2 border-t border-amber-200/70 pt-2 dark:border-amber-500/20">
           <div className="md-body">
-            <ul>
-              {followUp.points.map((point, i) => (
-                <li key={i}>
-                  <Markdown>{point}</Markdown>
-                </li>
-              ))}
-            </ul>
+            <Markdown>{pointsMd}</Markdown>
           </div>
         </div>
       )}
@@ -44,19 +55,14 @@ function FollowUpStep({ index, followUp }: { index: number; followUp: FollowUp }
 
 /** 题目的参考要点 + 层层追问链。外层负责何时显示，内部管理追问展开状态 */
 export default function AnswerBody({ question }: { question: NormalizedQuestion }) {
+  const pointsMd = useMemo(() => toListMarkdown(question.points), [question.points])
   return (
     <div>
       <p className="mb-1 text-xs font-medium uppercase tracking-wide text-slate-400 dark:text-slate-500">
         参考要点
       </p>
       <div className="md-body">
-        <ul>
-          {question.points.map((point, i) => (
-            <li key={i}>
-              <Markdown>{point}</Markdown>
-            </li>
-          ))}
-        </ul>
+        <Markdown>{pointsMd}</Markdown>
       </div>
 
       {question.followUps.length > 0 && (

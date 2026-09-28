@@ -37,7 +37,7 @@ npm install
 npm run dev       # 开发服务器
 npm run build     # 类型检查 + 产物构建（tsc -b && vite build）
 npm run lint      # ESLint
-npm test          # Vitest 单元测试（含题库内容完整性校验）
+npm test          # Vitest 单元测试（题库内容完整性 + 组件测试 + 文档统计一致性）
 npm run preview   # 预览构建产物
 ```
 
@@ -75,7 +75,9 @@ PWA 有 Service Worker 缓存，旧缓存会在新版次访问时后台更新）
 
 1. 新建 `src/data/your-track.ts`，导出一个 `Track` 对象（类型见 `src/types.ts`），题目 id 使用统一前缀（如 `be-`、`fe-`）。
 2. 在 `src/data/trackLoaders.ts` 中注册加载器，并在 `src/data/content.test.ts` 的 `allowedPrefixes` 里登记方向前缀。
-3. 题目结构：
+3. 运行 `npm run gen:meta` 重新生成首屏元数据（`trackMeta.generated.ts`）并一并提交——
+   构建时也会自动重新生成，`trackMeta.test.ts` 会在元数据与数据脱节时让测试失败。
+4. 题目结构：
 
 ```ts
 {
@@ -100,11 +102,22 @@ PWA 有 Service Worker 缓存，旧缓存会在新版次访问时后台更新）
 
 内容质量由自动化测试守护（`npm test`）：题目 id 全站唯一且符合方向前缀、**题目标题跨方向查重**、每题必有非空要点、
 延伸资料必须 https、领域内按 基础→进阶→高级 自动排序——脏数据会被 CI 直接拦下。
+组件行为（出题计时器、现场快照恢复、搜索排序、设置页清空）由 Testing Library 组件测试覆盖；
+README 与 index.html 里的题量/追问统计也由 `src/data/stats.test.ts` 锁定，加题后不同步会测试失败。
+
+## 访问门禁说明
+
+`AuthGate` 是纯前端轻量门禁（防随手访问与爬虫抓取），**不是安全边界**：全部题目内容本就打包在公开的
+静态 JS 里，懂浏览器控制台的人可以绕过登录直接读数据。如需真正的私有化，请在 Cloudflare 前面加
+Zero Trust / Access 等服务端鉴权。
 
 ## 性能
 
-- 首屏主包约 90KB（gzip），不含任何题目内容；题库按方向拆成 15 个分包，异步加载
-- 页面级代码分割（React.lazy），PWA Service Worker 缓存后二次访问与离线场景秒开
+- **双层题库加载**：首屏主包（约 90KB gzip）内联全部方向的**元数据**（方向/领域/题目 id 与难度，约 10KB gzip），
+  首页与方向页**即时渲染**，不等任何题目内容；题目内容（要点/追问）按方向拆成 15 个分包，挂载后后台加载，
+  进入搜索/出题/刷题等页面时已就绪（未就绪时显示加载页）
+- 页面级代码分割（React.lazy），Service Worker 对带 hash 的构建产物**缓存优先**、HTML 网络优先，
+  二次访问与离线场景秒开
 
 ## 目录结构
 

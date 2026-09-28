@@ -1,11 +1,9 @@
 import { useMemo } from 'react'
 import { Link, useNavigate } from 'react-router'
-import { useBank } from '../context/BankContext'
-import { useCustomQuestions } from '../context/BankContext'
+import { useBankMeta, useCustomQuestions } from '../context/BankContext'
 import { useFavorites } from '../context/FavoritesContext'
 import { useMastery } from '../context/MasteryContext'
 import { useSessions } from '../context/SessionContext'
-import { countMastered } from '../lib/utils'
 import TrackCard from '../components/TrackCard'
 
 const usageModes = [
@@ -26,21 +24,22 @@ const usageModes = [
 ] as const
 
 export default function HomePage() {
-  const { tracks, totalTopicCount, totalQuestionCount, questionIndex } = useBank()
+  // 元数据随主包同步可用：首页不等待任何题目内容分包
+  const { tracks, totalTopicCount, totalQuestionCount, questionIds, entries } = useBankMeta()
   const navigate = useNavigate()
   const { mastered } = useMastery()
   const { favorites } = useFavorites()
   const { customQuestions } = useCustomQuestions()
   const { sessions } = useSessions()
   const masteredTotal = useMemo(
-    () => countMastered(tracks.flatMap((t) => t.topics.flatMap((tp) => tp.questions)), mastered),
-    [tracks, mastered],
+    () => questionIds.reduce((n, id) => n + (mastered.has(id) ? 1 : 0), 0),
+    [questionIds, mastered],
   )
 
   const goRandom = () => {
-    const pick = questionIndex[Math.floor(Math.random() * questionIndex.length)]
+    const pick = entries[Math.floor(Math.random() * entries.length)]
     if (!pick) return
-    navigate(`/tracks/${pick.track.id}/${pick.topic.id}#${pick.question.id}`)
+    navigate(`/tracks/${pick.trackId}/${pick.topicId}#${pick.questionId}`)
   }
   const personalStats = [
     { icon: '✓', label: '已掌握', value: masteredTotal },

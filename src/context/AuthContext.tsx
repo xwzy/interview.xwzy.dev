@@ -1,6 +1,5 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
-
-const STORAGE_KEY = 'interview.auth.v1'
+import { LS_KEYS } from '../lib/storageKeys'
 
 /** 正确密码的 SHA-256（代码中不保存明文密码） */
 const EXPECTED_HASH = '8de1e564872c61f19bddd5cec6223167000de9d0ed2d21d12c093a333c5ed58f'
@@ -23,7 +22,7 @@ const AuthContext = createContext<AuthValue | null>(null)
 
 function loadAuthed(): boolean {
   try {
-    return localStorage.getItem(STORAGE_KEY) === EXPECTED_HASH
+    return localStorage.getItem(LS_KEYS.auth) === EXPECTED_HASH
   } catch {
     return false
   }
@@ -37,7 +36,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (hash !== EXPECTED_HASH) return false
     try {
       // 登录成功后把密码哈希写入本地，后续访问免重复登录
-      localStorage.setItem(STORAGE_KEY, hash)
+      localStorage.setItem(LS_KEYS.auth, hash)
     } catch {
       // 存储不可用时仅当前会话保持登录
     }
@@ -47,7 +46,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(() => {
     try {
-      localStorage.removeItem(STORAGE_KEY)
+      localStorage.removeItem(LS_KEYS.auth)
     } catch {
       // 忽略
     }
