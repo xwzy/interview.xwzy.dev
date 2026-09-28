@@ -19,7 +19,8 @@ afterEach(() => {
 /** 打开组卷页并等题库就绪（真实定时器下等待，之后各测试再按需切假定时器） */
 async function openQuiz() {
   const view = renderWithProviders(<QuizPage />, { route: '/quiz' })
-  const startBtn = await screen.findByRole('button', { name: /开始出题/ })
+  // CI 机器较慢：题库 15 个分包在 jsdom 下的加载可能远超默认 1s 等待
+  const startBtn = await screen.findByRole('button', { name: /开始出题/ }, { timeout: 15_000 })
   return { view, startBtn }
 }
 
@@ -65,7 +66,7 @@ describe('QuizPage 现场快照', () => {
 
     // 模拟刷新：重新挂载后应出现"恢复考察"入口
     renderWithProviders(<QuizPage />, { route: '/quiz' })
-    const resumeBtn = await screen.findByRole('button', { name: /恢复考察/ })
+    const resumeBtn = await screen.findByRole('button', { name: /恢复考察/ }, { timeout: 15_000 })
     fireEvent.click(resumeBtn)
     expect(screen.getByTitle('本题用时').textContent).toBe('⏱ 0:00')
 

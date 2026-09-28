@@ -22,7 +22,7 @@ describe('SettingsPage', () => {
   it('双击确认后一次性清空对应类别的本地数据', async () => {
     renderWithProviders(<SettingsPage />, { route: '/settings' })
 
-    const masteryBtn = await screen.findByRole('button', { name: '清空（2）' })
+    const masteryBtn = await screen.findByRole('button', { name: '清空（2）' }, { timeout: 15_000 })
     screen.getByRole('button', { name: '清空（3）' }) // 收藏数正确显示
 
     // 第一次点击进入确认态，不删数据
