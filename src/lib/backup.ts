@@ -63,6 +63,39 @@ function migrateLegacyTrack(q: CustomQuestion): CustomQuestion {
   return { ...q, trackId: q.topicId.startsWith('ops-') ? 'ops' : 'qa' }
 }
 
+/** 清洗 localStorage / 备份文件中的考察记录数组：剔除畸形条目、收敛字段类型 */
+export function sanitizeSessions(value: unknown): InterviewSession[] {
+  return (Array.isArray(value) ? value : [])
+    .filter(isRecord)
+    .filter((s) => typeof s.id === 'string' && Array.isArray(s.items))
+    .map((s) => ({
+      id: s.id as string,
+      candidate: typeof s.candidate === 'string' ? s.candidate : '',
+      createdAt: typeof s.createdAt === 'string' ? s.createdAt : new Date(0).toISOString(),
+      items: (s.items as unknown[])
+        .filter(isRecord)
+        .filter((it) => typeof it.questionId === 'string')
+        .map((it) => ({
+          questionId: it.questionId as string,
+          verdict: toVerdict(it.verdict),
+          note: typeof it.note === 'string' ? it.note : '',
+          duration:
+            typeof it.duration === 'number' && Number.isFinite(it.duration) && it.duration >= 0
+              ? Math.floor(it.duration)
+              : undefined,
+        })),
+    }))
+}
+
+/** 清洗 localStorage / 备份文件中的自定义题目数组 */
+export function sanitizeCustomQuestions(value: unknown): CustomQuestion[] {
+  return (Array.isArray(value) ? value : [])
+    .filter(isRecord)
+    .map(toCustomQuestion)
+    .filter((q): q is CustomQuestion => q !== null)
+    .map(migrateLegacyTrack)
+}
+
 /** 清洗导入的备份数据：剔除畸形条目，字段类型逐一收敛（防止垃圾数据进入渲染层） */
 export function sanitizeBackup(raw: unknown): BackupFile | null {
   if (!isRecord(raw) || raw.version !== BACKUP_VERSION) return null
@@ -79,28 +112,8 @@ export function sanitizeBackup(raw: unknown): BackupFile | null {
     }
   }
 
-  const sessions: InterviewSession[] = (Array.isArray(raw.sessions) ? raw.sessions : [])
-    .filter(isRecord)
-    .filter((s) => typeof s.id === 'string' && Array.isArray(s.items))
-    .map((s) => ({
-      id: s.id as string,
-      candidate: typeof s.candidate === 'string' ? s.candidate : '',
-      createdAt: typeof s.createdAt === 'string' ? s.createdAt : new Date(0).toISOString(),
-      items: (s.items as unknown[])
-        .filter(isRecord)
-        .filter((it) => typeof it.questionId === 'string')
-        .map((it) => ({
-          questionId: it.questionId as string,
-          verdict: toVerdict(it.verdict),
-          note: typeof it.note === 'string' ? it.note : '',
-        })),
-    }))
-
-  const customQuestions = (Array.isArray(raw.customQuestions) ? raw.customQuestions : [])
-    .filter(isRecord)
-    .map(toCustomQuestion)
-    .filter((q): q is CustomQuestion => q !== null)
-    .map(migrateLegacyTrack)
+  const sessions = sanitizeSessions(raw.sessions)
+  const customQuestions = sanitizeCustomQuestions(raw.customQuestions)
 
   const favorites = (Array.isArray(raw.favorites) ? raw.favorites : []).filter(
     (id): id is string => typeof id === 'string',

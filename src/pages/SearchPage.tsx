@@ -1,9 +1,12 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { useBank } from '../context/BankContext'
-import { useFavorites } from '../context/FavoritesContext'
+import { useFavoritesState } from '../context/FavoritesContext'
 import { cx, stripMarkdown } from '../lib/utils'
 import { difficultyMeta, type IndexedQuestion } from '../types'
+
+/** 输入提交到 URL 的防抖间隔：过滤 656 题全文 + 排序是重操作，不该每个按键跑一次 */
+const INPUT_DEBOUNCE_MS = 250
 
 function matchRank(item: IndexedQuestion, kw: string): number {
   if (item.question.title.toLowerCase().includes(kw)) return 0
@@ -40,17 +43,34 @@ function Highlight({ text, kw }: { text: string; kw: string }) {
 
 export default function SearchPage() {
   const { questionIndex } = useBank()
-  const { favorites } = useFavorites()
+  const favorites = useFavoritesState()
   const [searchParams, setSearchParams] = useSearchParams()
   const q = searchParams.get('q') ?? ''
   const favOnly = searchParams.get('fav') === '1'
   const [input, setInput] = useState(q)
+  // 中文输入法组词期间不提交（组词的每个音节都会触发 onChange，直接提交会闪结果）
+  const composingRef = useRef(false)
+  // 组词结束时 input 值可能没变（onChange 已在组词中触发过），用 tick 强制重排一次提交
+  const [composeTick, setComposeTick] = useState(0)
 
   // URL 上的 q 被外部改变（顶部搜索提交、前进/后退）时同步输入框；
   // 与输入框本身引起的变更互不打断（比较 trim 后的值）
   useEffect(() => {
     setInput((prev) => (prev.trim() === q.trim() ? prev : q))
   }, [q])
+
+  // 输入防抖提交 URL：URL 是唯一真源，过滤与排序只对提交后的 q 执行
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (composingRef.current) return
+      if (input.trim() === q.trim()) return
+      const next: Record<string, string> = {}
+      if (input.trim()) next.q = input.trim()
+      if (favOnly) next.fav = '1'
+      setSearchParams(next, { replace: true })
+    }, INPUT_DEBOUNCE_MS)
+    return () => clearTimeout(timer)
+  }, [input, q, favOnly, composeTick, setSearchParams])
 
   const results = useMemo(() => {
     const kw = q.trim().toLowerCase()
@@ -63,19 +83,11 @@ export default function SearchPage() {
     return list
   }, [questionIndex, q, favOnly, favorites])
 
-  const updateQuery = (value: string) => {
-    setInput(value)
-    const next: Record<string, string> = {}
-    if (value.trim()) next.q = value.trim()
-    if (favOnly) next.fav = '1'
-    setSearchParams(next, { replace: true })
-  }
-
   const toggleFav = () => {
     const next: Record<string, string> = {}
     if (q.trim()) next.q = q.trim()
     if (!favOnly) next.fav = '1'
-    setInput(q)
+    // 只切换收藏过滤，不回写输入框——保留用户输入到一半的内容
     setSearchParams(next, { replace: true })
   }
 
@@ -89,7 +101,14 @@ export default function SearchPage() {
         <input
           autoFocus={!favOnly}
           value={input}
-          onChange={(e) => updateQuery(e.target.value)}
+          onChange={(e) => setInput(e.target.value)}
+          onCompositionStart={() => {
+            composingRef.current = true
+          }}
+          onCompositionEnd={() => {
+            composingRef.current = false
+            setComposeTick((t) => t + 1)
+          }}
           placeholder="搜索题目、知识点、标签，如：索引、闭包、TCP…"
           className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:border-white/10 dark:bg-white/5 dark:text-slate-100 dark:focus:border-blue-500/50 dark:focus:ring-blue-500/20"
         />

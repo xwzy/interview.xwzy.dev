@@ -14,9 +14,9 @@ describe('sanitizeBackup', () => {
           candidate: '张三',
           createdAt: '2026-01-01T00:00:00.000Z',
           items: [
-            { questionId: 'q-1', verdict: 'fail', note: '答不上' },
+            { questionId: 'q-1', verdict: 'fail', note: '答不上', duration: 12.7 },
             { verdict: 'pass' }, // 缺 questionId，整条剔除
-            { questionId: 'q-2', verdict: 'bogus' }, // 非法评分收敛为 null
+            { questionId: 'q-2', verdict: 'bogus', duration: -5 }, // 非法评分收敛为 null，非法用时丢弃
           ],
         },
         'not-a-record',
@@ -44,8 +44,11 @@ describe('sanitizeBackup', () => {
     // 数字键经 Object.entries 会转成字符串 '3'——无对应题目 id，属无害数据，按设计保留
     expect(result!.verdicts).toEqual({ 'q-1': 'pass', 3: 'fail' })
     expect(result!.sessions).toHaveLength(1)
+    // 用时在导出/导入往返中保留（历史总用时、面试小结都依赖它）；非法值收敛为缺省
+    expect(result!.sessions[0]!.items[0]).toMatchObject({ questionId: 'q-1', duration: 12 })
+    expect(result!.sessions[0]!.items[1]).toMatchObject({ questionId: 'q-2', duration: undefined })
     expect(result!.sessions[0]!.items).toEqual([
-      { questionId: 'q-1', verdict: 'fail', note: '答不上' },
+      { questionId: 'q-1', verdict: 'fail', note: '答不上', duration: 12 },
       { questionId: 'q-2', verdict: null, note: '' },
     ])
     expect(result!.customQuestions).toHaveLength(2)

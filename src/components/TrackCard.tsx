@@ -1,14 +1,19 @@
+import { memo } from 'react'
 import { Link } from 'react-router'
 import type { MetaTrack } from '../types'
-import { countMastered, cx, trackThemes } from '../lib/utils'
-import { useMastery } from '../context/MasteryContext'
+import { cx, trackThemes } from '../lib/utils'
 import ProgressBar from './ProgressBar'
 
-export default function TrackCard({ track }: { track: MetaTrack }) {
-  const { mastered } = useMastery()
+interface TrackCardProps {
+  track: MetaTrack
+  /** 该方向已掌握题数：父级从状态 Context 算好传入——配合 memo，
+   *  标记掌握时只有进度变化的那张卡重渲染，其余 14 张跳过 */
+  done: number
+}
+
+function TrackCardImpl({ track, done }: TrackCardProps) {
   const theme = trackThemes[track.color]
   const allQuestions = track.topics.flatMap((t) => t.questions)
-  const done = countMastered(allQuestions, mastered)
   const pct = allQuestions.length ? (done / allQuestions.length) * 100 : 0
 
   return (
@@ -57,3 +62,5 @@ export default function TrackCard({ track }: { track: MetaTrack }) {
     </Link>
   )
 }
+
+export default memo(TrackCardImpl)

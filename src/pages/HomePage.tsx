@@ -1,9 +1,10 @@
 import { useMemo } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { useBankMeta, useCustomQuestions } from '../context/BankContext'
-import { useFavorites } from '../context/FavoritesContext'
-import { useMastery } from '../context/MasteryContext'
+import { useFavoritesState } from '../context/FavoritesContext'
+import { useMasteryState } from '../context/MasteryContext'
 import { useSessions } from '../context/SessionContext'
+import { countMastered } from '../lib/utils'
 import TrackCard from '../components/TrackCard'
 
 const usageModes = [
@@ -27,13 +28,24 @@ export default function HomePage() {
   // 元数据随主包同步可用：首页不等待任何题目内容分包
   const { tracks, totalTopicCount, totalQuestionCount, questionIds, entries } = useBankMeta()
   const navigate = useNavigate()
-  const { mastered } = useMastery()
-  const { favorites } = useFavorites()
+  const mastered = useMasteryState()
+  const favorites = useFavoritesState()
   const { customQuestions } = useCustomQuestions()
   const { sessions } = useSessions()
   const masteredTotal = useMemo(
     () => questionIds.reduce((n, id) => n + (mastered.has(id) ? 1 : 0), 0),
     [questionIds, mastered],
+  )
+  // 各方向已掌握数：算好后传给 memo 的 TrackCard，标记掌握只重渲染受影响的那张卡
+  const doneByTrack = useMemo(
+    () =>
+      new Map(
+        tracks.map((track) => [
+          track.id,
+          countMastered(track.topics.flatMap((t) => t.questions), mastered),
+        ]),
+      ),
+    [tracks, mastered],
   )
 
   const goRandom = () => {
@@ -130,7 +142,7 @@ export default function HomePage() {
         <h2 className="mb-5 text-lg font-semibold">按方向浏览题库</h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {tracks.map((track) => (
-            <TrackCard key={track.id} track={track} />
+            <TrackCard key={track.id} track={track} done={doneByTrack.get(track.id) ?? 0} />
           ))}
         </div>
       </section>

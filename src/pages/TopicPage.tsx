@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link, useLocation, useParams } from 'react-router'
 import { useBank, useCustomQuestions } from '../context/BankContext'
-import { useMastery } from '../context/MasteryContext'
-import { useFavorites } from '../context/FavoritesContext'
+import { useMasteryState } from '../context/MasteryContext'
+import { useFavoritesState } from '../context/FavoritesContext'
 import { countMastered, trackThemes } from '../lib/utils'
 import { generateId } from '../lib/summary'
 import { type CustomQuestion, type Difficulty } from '../types'
@@ -38,8 +38,8 @@ export default function TopicPage() {
   const location = useLocation()
   const { tracks } = useBank()
   const { addCustom, updateCustom, removeCustom, getCustom } = useCustomQuestions()
-  const { mastered } = useMastery()
-  const { favorites } = useFavorites()
+  const mastered = useMasteryState()
+  const favorites = useFavoritesState()
 
   const track = tracks.find((t) => t.id === trackId)
   const topic = track?.topics.find((t) => t.id === topicId)
@@ -47,7 +47,8 @@ export default function TopicPage() {
   const [keyword, setKeyword] = useState('')
   const [diff, setDiff] = useState<DiffFilter>('all')
   const [status, setStatus] = useState<StatusFilter>('all')
-  const [showAnswers, setShowAnswers] = useState(true)
+  // 默认收起：刷题模式先自己想、再展开对照（要一屏看全部要点可点右侧开关）
+  const [showAnswers, setShowAnswers] = useState(false)
   const [form, setForm] = useState<FormState | null>(null)
   const [formError, setFormError] = useState('')
 
@@ -337,6 +338,8 @@ export default function TopicPage() {
                   question={q}
                   index={i}
                   defaultOpen={showAnswers}
+                  mastered={mastered.has(q.id)}
+                  favorite={favorites.has(q.id)}
                   custom={isCustom}
                   onEdit={handleEdit}
                   onDelete={handleDelete}

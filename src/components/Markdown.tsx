@@ -2,14 +2,18 @@ import { memo } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 
+// 模块级常量：引用稳定，避免每次渲染重建让 react-markdown 内部组件树失效
+const REMARK_PLUGINS = [remarkGfm]
+
+const COMPONENTS = {
+  a: ({ node: _node, ...props }: { node?: unknown } & Record<string, unknown>) => (
+    <a {...props} target="_blank" rel="noreferrer" />
+  ),
+}
+
 function MarkdownImpl({ children }: { children: string }) {
   return (
-    <ReactMarkdown
-      remarkPlugins={[remarkGfm]}
-      components={{
-        a: ({ node, ...props }) => <a {...props} target="_blank" rel="noreferrer" />,
-      }}
-    >
+    <ReactMarkdown remarkPlugins={REMARK_PLUGINS} components={COMPONENTS as never}>
       {children}
     </ReactMarkdown>
   )

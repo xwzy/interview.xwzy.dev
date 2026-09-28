@@ -8,6 +8,8 @@ interface VerdictValue {
   getVerdict: (id: string) => Verdict | undefined
   /** 传入 null 表示清除该题评分 */
   setVerdict: (id: string, verdict: Verdict | null) => void
+  /** 批量清除指定题目的评分（开新卷时清掉上一场残留，避免跨候选人污染） */
+  clearFor: (ids: readonly string[]) => void
   /** 一次性清空（设置页用） */
   clear: () => void
 }
@@ -57,6 +59,23 @@ export function VerdictProvider({ children }: { children: ReactNode }) {
     [setVerdicts],
   )
 
+  const clearFor = useCallback(
+    (ids: readonly string[]) => {
+      setVerdicts((prev) => {
+        const next = { ...prev }
+        let changed = false
+        for (const id of ids) {
+          if (id in next) {
+            delete next[id]
+            changed = true
+          }
+        }
+        return changed ? next : prev
+      })
+    },
+    [setVerdicts],
+  )
+
   const clear = useCallback(() => setVerdicts({}), [setVerdicts])
 
   const value = useMemo<VerdictValue>(
@@ -64,9 +83,10 @@ export function VerdictProvider({ children }: { children: ReactNode }) {
       verdicts,
       getVerdict: (id) => verdicts[id],
       setVerdict,
+      clearFor,
       clear,
     }),
-    [verdicts, setVerdict, clear],
+    [verdicts, setVerdict, clearFor, clear],
   )
 
   return <VerdictContext.Provider value={value}>{children}</VerdictContext.Provider>

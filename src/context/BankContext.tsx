@@ -4,14 +4,17 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react'
 import type { CustomQuestion, Track } from '../types'
-import { buildBank, type Bank } from '../data/bank'
+import { buildBaseBank, mergeCustomBank, type Bank } from '../data/bank'
 import { buildMetaBank, type MetaBank } from '../data/metaBank'
 import { trackMeta } from '../data/trackMeta.generated'
 import { loadAllTracks } from '../data/trackLoaders'
+import { sanitizeCustomQuestions } from '../lib/backup'
+import { isLowBandwidth } from '../lib/utils'
 import { LS_KEYS } from '../lib/storageKeys'
 import { usePersistentState } from '../lib/usePersistentState'
 
@@ -30,8 +33,8 @@ const CustomQuestionsContext = createContext<CustomQuestionsValue | null>(null)
 function parseCustomQuestions(raw: string | null): CustomQuestion[] {
   if (!raw) return []
   try {
-    const parsed: unknown = JSON.parse(raw)
-    return Array.isArray(parsed) ? (parsed as CustomQuestion[]) : []
+    // 与备份导入同一套清洗：畸形条目/字段逐项收敛，防止脏 localStorage 数据进入渲染层
+    return sanitizeCustomQuestions(JSON.parse(raw))
   } catch {
     return []
   }
@@ -88,13 +91,15 @@ export function useCustomQuestions(): CustomQuestionsValue {
   return ctx
 }
 
-// ---------- 双层题库：元数据（内联主包，即时可用）+ 全量内容（分包后台加载） ----------
+// ---------- 双层题库：元数据（内联主包，即时可用）+ 全量内容（分包按需加载） ----------
 
 interface BankContextValue {
   metaBank: MetaBank
   /** 全量题库（含要点/追问内容），内容分包就绪前为 null */
   bank: Bank | null
   loadError: boolean
+  /** 幂等触发内容分包加载（FullBankGate 进入时调用，避免首页就拉全部题目内容） */
+  ensureLoaded: () => void
   retry: () => void
 }
 
@@ -104,35 +109,57 @@ export function BankProvider({ children }: { children: ReactNode }) {
   const { customQuestions } = useCustomQuestions()
   const [rawTracks, setRawTracks] = useState<Track[] | null>(null)
   const [loadError, setLoadError] = useState(false)
-  const [retryKey, setRetryKey] = useState(0)
+  /** 进行中的加载 promise：去重并发的 ensureLoaded，失败后置空以便重试 */
+  const loadPromiseRef = useRef<Promise<void> | null>(null)
 
-  // 内容分包仅在挂载/手动重试时拉取一次；加载期间页面照常渲染（列表页用元数据）
-  useEffect(() => {
-    let cancelled = false
+  const ensureLoaded = useCallback((): void => {
+    if (loadPromiseRef.current) return
     setLoadError(false)
-    loadAllTracks()
+    const promise = loadAllTracks()
       .then((tracks) => {
-        if (!cancelled) setRawTracks(tracks)
+        setRawTracks(tracks)
       })
       .catch(() => {
-        if (!cancelled) setLoadError(true)
+        // 失败后清掉 promise，让下一次 ensureLoaded/retry 能重新发起
+        loadPromiseRef.current = null
+        setLoadError(true)
       })
-    return () => {
-      cancelled = true
-    }
-  }, [retryKey])
+    loadPromiseRef.current = promise
+  }, [])
 
-  // 元数据与全量 Bank 都随自定义题目变化重建（纯函数，成本低）
+  const retry = useCallback(() => {
+    loadPromiseRef.current = null
+    ensureLoaded()
+  }, [ensureLoaded])
+
+  // 后台预取：等浏览器空闲再拉内容分包（首页/方向页只依赖元数据，不必立刻下载全部题目）；
+  // 省流模式 / 弱网下跳过，进入需要内容的页面时由 FullBankGate 即时触发
+  useEffect(() => {
+    if (isLowBandwidth()) return
+    const w = window as Window & {
+      requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number
+      cancelIdleCallback?: (handle: number) => void
+    }
+    const idle =
+      w.requestIdleCallback ?? ((cb: () => void) => window.setTimeout(cb, 3000))
+    const handle = idle(() => ensureLoaded(), { timeout: 5000 })
+    return () => {
+      if (w.cancelIdleCallback) w.cancelIdleCallback(handle)
+      else window.clearTimeout(handle)
+    }
+  }, [ensureLoaded])
+
+  // 基础层只随内容分包构建一次；自定义题目增删改只重建轻量的合并层（全文索引不重算）
+  const baseBank = useMemo(() => (rawTracks ? buildBaseBank(rawTracks) : null), [rawTracks])
   const metaBank = useMemo(() => buildMetaBank(trackMeta, customQuestions), [customQuestions])
   const bank = useMemo(
-    () => (rawTracks ? buildBank(rawTracks, customQuestions) : null),
-    [rawTracks, customQuestions],
+    () => (baseBank ? mergeCustomBank(baseBank, customQuestions) : null),
+    [baseBank, customQuestions],
   )
 
-  const retry = useCallback(() => setRetryKey((k) => k + 1), [])
   const value = useMemo<BankContextValue>(
-    () => ({ metaBank, bank, loadError, retry }),
-    [metaBank, bank, loadError, retry],
+    () => ({ metaBank, bank, loadError, ensureLoaded, retry }),
+    [metaBank, bank, loadError, ensureLoaded, retry],
   )
 
   return <BankContext.Provider value={value}>{children}</BankContext.Provider>
@@ -157,11 +184,16 @@ export function useBank(): Bank {
 }
 
 const gateScreenClass =
-  'flex min-h-screen flex-col items-center justify-center gap-3 bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100'
+  'flex min-h-[50vh] flex-col items-center justify-center gap-3 text-slate-900 dark:text-slate-100'
 
-/** 全量内容门禁：搜索/出题/考察记录/领域页等需要完整题目内容的路由包在它里面 */
+/** 全量内容门禁：搜索/出题/考察记录/领域页等需要完整题目内容的路由包在它里面。
+ *  挂载即触发内容分包加载——按需拉取，访问首页/方向页不下载题目内容。 */
 export function FullBankGate({ children }: { children: ReactNode }) {
-  const { bank, loadError, retry } = useBankContext()
+  const { bank, loadError, retry, ensureLoaded } = useBankContext()
+
+  useEffect(() => {
+    ensureLoaded()
+  }, [ensureLoaded])
 
   if (loadError) {
     return (

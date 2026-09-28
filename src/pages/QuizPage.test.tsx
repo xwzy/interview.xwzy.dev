@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import QuizPage from './QuizPage'
+import { backendTrack } from '../data/backend'
 import { renderWithProviders } from '../test/testUtils'
 
 beforeEach(() => {
@@ -92,5 +94,43 @@ describe('QuizPage 评分与存档', () => {
     const sessions = JSON.parse(localStorage.getItem('interview.sessions.v1') ?? '[]')
     expect(sessions).toHaveLength(1)
     expect(sessions[0].items[0].verdict).toBe('pass')
+  })
+
+  it('开新卷时清掉同题的上一场评分，不带入新候选人的小结', async () => {
+    // 渲染前预置：上一场（候选人 A）把默认领域（be-general）全部题目评了 pass
+    const generalIds =
+      backendTrack.topics.find((t) => t.id === 'be-general')?.questions.map((q) => q.id) ?? []
+    expect(generalIds.length).toBeGreaterThan(0)
+    const seeded = Object.fromEntries(generalIds.map((id) => [id, 'pass']))
+    localStorage.setItem('interview.verdicts.v1', JSON.stringify(seeded))
+
+    const { startBtn } = await openQuiz()
+    fireEvent.click(startBtn)
+
+    // 本场（候选人 B）全程不评分：小结应全部未评，而不是继承 A 的"通过"
+    fireEvent.click(advanceToLastQuestion())
+    await waitFor(() => expect(screen.getByText(/本次考察完成/)).toBeTruthy())
+    expect(screen.getByText('👍 通过 0')).toBeTruthy()
+    const sessions = JSON.parse(localStorage.getItem('interview.sessions.v1') ?? '[]')
+    expect(sessions).toHaveLength(1)
+    for (const item of sessions[0].items) {
+      expect(item.verdict).toBeNull()
+    }
+    // 全局评分表里本卷的题目已被清掉（只剩不在本卷的残留）
+    const left = JSON.parse(localStorage.getItem('interview.verdicts.v1') ?? '{}')
+    expect(Object.keys(left).length).toBeLessThan(generalIds.length)
+  })
+})
+
+describe('QuizPage 快捷键', () => {
+  it('焦点在按钮上时空格激活按钮（切题），不被"展示要点"快捷键吞掉', async () => {
+    const { startBtn } = await openQuiz()
+    fireEvent.click(startBtn)
+
+    const nextBtn = screen.getByRole('button', { name: '下一题 →' })
+    nextBtn.focus()
+    await userEvent.keyboard(' ')
+
+    await waitFor(() => expect(screen.getByText(/第 2 \/ \d+ 题/)).toBeTruthy())
   })
 })

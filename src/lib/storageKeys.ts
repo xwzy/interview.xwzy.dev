@@ -7,4 +7,5 @@ export const LS_KEYS = {
   favorites: 'interview.favorites.v1',
   theme: 'interview.theme',
   auth: 'interview.auth.v1',
+  quizTopics: 'interview.quiz-topics.v1',
 } as const

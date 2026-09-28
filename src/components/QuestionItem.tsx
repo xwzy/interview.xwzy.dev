@@ -1,8 +1,8 @@
 import { memo, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { difficultyMeta, type NormalizedQuestion } from '../types'
-import { useMastery } from '../context/MasteryContext'
-import { useFavorites } from '../context/FavoritesContext'
+import { useMasteryActions } from '../context/MasteryContext'
+import { useFavoritesActions } from '../context/FavoritesContext'
 import { cx } from '../lib/utils'
 import AnswerBody from './AnswerBody'
 
@@ -12,6 +12,10 @@ interface QuestionItemProps {
   index: number
   /** 跟随页面的「显示/收起全部答案」开关 */
   defaultOpen: boolean
+  /** 是否已掌握 / 已收藏：由父级从状态 Context 算好传入——
+   *  配合 memo，别人标记掌握时未受影响的题卡（布尔 props 未变）跳过重渲染 */
+  mastered: boolean
+  favorite: boolean
   /** 自定义题目：显示标记并允许编辑/删除 */
   custom?: boolean
   onEdit?: (id: string) => void
@@ -24,17 +28,17 @@ function QuestionItemImpl({
   question,
   index,
   defaultOpen,
+  mastered,
+  favorite,
   custom,
   onEdit,
   onDelete,
 }: QuestionItemProps) {
   const [open, setOpen] = useState(defaultOpen)
   const [confirmDelete, setConfirmDelete] = useState(false)
-  const { isMastered, toggle } = useMastery()
-  const { isFavorite, toggleFavorite } = useFavorites()
+  const { toggle } = useMasteryActions()
+  const { toggleFavorite } = useFavoritesActions()
   const navigate = useNavigate()
-  const mastered = isMastered(question.id)
-  const favorite = isFavorite(question.id)
 
   useEffect(() => {
     setOpen(defaultOpen)

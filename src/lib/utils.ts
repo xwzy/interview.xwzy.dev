@@ -32,6 +32,17 @@ export function stripMarkdown(text: string): string {
   return text.replace(/[#*`>[\]()]/g, '').replace(/\s+/g, ' ').trim()
 }
 
+/** 弱网 / 省流判断：决定是否做后台预取（内容分包、路由分包），避免替用户花流量 */
+export function isLowBandwidth(): boolean {
+  const conn = (
+    navigator as Navigator & {
+      connection?: { saveData?: boolean; effectiveType?: string }
+    }
+  ).connection
+  if (!conn) return false
+  return Boolean(conn.saveData) || conn.effectiveType === 'slow-2g' || conn.effectiveType === '2g'
+}
+
 export interface TrackTheme {
   /** 图标底色 */
   iconBox: string

@@ -3,6 +3,7 @@ import { Route, Routes } from 'react-router'
 import Layout from './components/Layout'
 import HomePage from './pages/HomePage'
 import { FullBankGate } from './context/BankContext'
+import { isLowBandwidth } from './lib/utils'
 
 // 路由级代码分割：首屏只加载首页，其余页面按需加载
 const TrackPage = lazy(() => import('./pages/TrackPage'))
@@ -31,8 +32,10 @@ function withGate(ui: ReactNode) {
 }
 
 export default function App() {
-  // 空闲时预取全部路由分包：首次加载后站内切换路由不再出现加载态
+  // 空闲时预取路由分包：首次加载后站内切换路由不再出现加载态。
+  // 省流模式 / 弱网下跳过——预取是锦上添花，不替用户花流量
   useEffect(() => {
+    if (isLowBandwidth()) return
     const preload = () => {
       void import('./pages/QuizPage')
       void import('./pages/TrackPage')
@@ -42,9 +45,16 @@ export default function App() {
       void import('./pages/SettingsPage')
       void import('./pages/NotFoundPage')
     }
-    const w = window as unknown as { requestIdleCallback?: (cb: () => void) => number }
-    const idle = w.requestIdleCallback ?? ((cb: () => void) => window.setTimeout(cb, 300))
-    idle(preload)
+    const w = window as Window & {
+      requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number
+      cancelIdleCallback?: (handle: number) => void
+    }
+    const idle = w.requestIdleCallback ?? ((cb: () => void) => window.setTimeout(cb, 2000))
+    const handle = idle(preload, { timeout: 5000 })
+    return () => {
+      if (w.cancelIdleCallback) w.cancelIdleCallback(handle)
+      else window.clearTimeout(handle)
+    }
   }, [])
 
   return (

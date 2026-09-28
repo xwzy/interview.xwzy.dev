@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "gen:meta": "node scripts/gen-track-meta.mjs",
-    "build": "npm run gen:meta && tsc -b && vite build && node scripts/check-dist.mjs",
+    "build": "npm run gen:meta && tsc -b && vite build && node scripts/inject-sw-version.mjs && node scripts/check-dist.mjs",
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",

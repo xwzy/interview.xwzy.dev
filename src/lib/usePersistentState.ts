@@ -23,9 +23,29 @@ export function usePersistentState<T>(
     try {
       localStorage.setItem(key, stringify(state))
     } catch {
-      // 存储不可用时静默降级为会话内状态
+      // 存储不可用时降级为会话内状态，但要让用户知道（静默丢进度比报错更糟）
+      notifyStorageWriteFailed()
     }
   }, [key, state, stringify])
 
   return [state, setState]
+}
+
+// ---------- 写盘失败广播：Layout 监听后展示全局横幅 ----------
+
+const STORAGE_FAIL_EVENT = 'interview:storage-write-failed'
+/** 节流：连续多个键同时失败只广播一次，避免横幅反复弹出 */
+const NOTIFY_INTERVAL_MS = 10_000
+let lastNotifiedAt = 0
+
+export function notifyStorageWriteFailed(): void {
+  const now = Date.now()
+  if (now - lastNotifiedAt < NOTIFY_INTERVAL_MS) return
+  lastNotifiedAt = now
+  window.dispatchEvent(new CustomEvent(STORAGE_FAIL_EVENT))
+}
+
+export function subscribeStorageWriteFailed(listener: () => void): () => void {
+  window.addEventListener(STORAGE_FAIL_EVENT, listener)
+  return () => window.removeEventListener(STORAGE_FAIL_EVENT, listener)
 }

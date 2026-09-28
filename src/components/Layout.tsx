@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router'
 import { useTheme } from '../context/ThemeContext'
 import { themeModeMeta } from '../lib/themeMeta'
+import { subscribeStorageWriteFailed } from '../lib/usePersistentState'
 import { cx } from '../lib/utils'
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
@@ -99,6 +100,40 @@ function ScrollToTop() {
   return null
 }
 
+/** localStorage 写盘失败横幅：静默丢进度比报错更糟，至少要让用户知道并引导导出备份 */
+function StorageFailBanner() {
+  const [visible, setVisible] = useState(false)
+  useEffect(
+    () => subscribeStorageWriteFailed(() => setVisible(true)),
+    [],
+  )
+  if (!visible) return null
+  return (
+    <div
+      role="status"
+      className="border-b border-amber-300 bg-amber-50 px-4 py-2 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200"
+    >
+      <div className="mx-auto flex max-w-6xl items-center gap-3">
+        <p className="min-w-0 flex-1">
+          ⚠️ 浏览器存储写入失败（可能已满或被禁用），本次会话的进度不会被保存。建议到
+          <Link to="/settings" className="mx-1 font-medium underline">
+            数据管理
+          </Link>
+          导出备份，或清理浏览器存储后刷新。
+        </p>
+        <button
+          type="button"
+          onClick={() => setVisible(false)}
+          aria-label="关闭提示"
+          className="shrink-0 rounded p-1 hover:bg-amber-100 dark:hover:bg-amber-500/20"
+        >
+          ✕
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function Layout() {
   return (
     <div className="flex min-h-screen flex-col bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
@@ -110,6 +145,7 @@ export default function Layout() {
         跳到主内容
       </a>
       <Header />
+      <StorageFailBanner />
       <main id="main-content" tabIndex={-1} className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 outline-none sm:px-6">
         <Outlet />
       </main>

@@ -53,9 +53,21 @@ function FollowUpStep({ index, followUp }: { index: number; followUp: FollowUp }
   )
 }
 
+/** 用追问问题文本做 key（重复出现时加序号消歧）：编辑自定义题的追问后，
+ *  展开状态跟着内容走而不是跟着数组下标错位 */
+function followUpKeys(followUps: FollowUp[]): string[] {
+  const seen = new Map<string, number>()
+  return followUps.map((f) => {
+    const nth = seen.get(f.question) ?? 0
+    seen.set(f.question, nth + 1)
+    return nth === 0 ? f.question : `${f.question}#${nth + 1}`
+  })
+}
+
 /** 题目的参考要点 + 层层追问链。外层负责何时显示，内部管理追问展开状态 */
 export default function AnswerBody({ question }: { question: NormalizedQuestion }) {
   const pointsMd = useMemo(() => toListMarkdown(question.points), [question.points])
+  const keys = useMemo(() => followUpKeys(question.followUps), [question.followUps])
   return (
     <div>
       <p className="mb-1 text-xs font-medium uppercase tracking-wide text-slate-400 dark:text-slate-500">
@@ -72,7 +84,7 @@ export default function AnswerBody({ question }: { question: NormalizedQuestion 
           </p>
           <div className="space-y-2">
             {question.followUps.map((f, i) => (
-              <FollowUpStep key={i} index={i} followUp={f} />
+              <FollowUpStep key={keys[i]} index={i} followUp={f} />
             ))}
           </div>
         </div>

@@ -1,9 +1,9 @@
 import { useRef, useState } from 'react'
-import { useMastery } from '../context/MasteryContext'
+import { useMasteryState, useMasteryActions } from '../context/MasteryContext'
 import { useVerdicts } from '../context/InterviewContext'
 import { useSessions } from '../context/SessionContext'
 import { useBank, useCustomQuestions } from '../context/BankContext'
-import { useFavorites } from '../context/FavoritesContext'
+import { useFavoritesState, useFavoritesActions } from '../context/FavoritesContext'
 import { useAuth } from '../context/AuthContext'
 import { buildTracksMarkdown } from '../lib/exportMd'
 import { BACKUP_VERSION, sanitizeBackup, type BackupFile } from '../lib/backup'
@@ -24,11 +24,13 @@ function download(filename: string, content: string, mime = 'application/json') 
 
 /** 数据管理：刷题进度、考察记录的导出 / 导入 / 清空（全部只涉及浏览器本地数据） */
 export default function SettingsPage() {
-  const { mastered, clear: clearMastery } = useMastery()
+  const mastered = useMasteryState()
+  const { clear: clearMastery } = useMasteryActions()
   const { verdicts, clear: clearVerdicts } = useVerdicts()
   const { sessions, clear: clearSessions } = useSessions()
   const { customQuestions, clearCustom } = useCustomQuestions()
-  const { favorites, clear: clearFavorites } = useFavorites()
+  const favorites = useFavoritesState()
+  const { clear: clearFavorites } = useFavoritesActions()
   const { logout } = useAuth()
   const { tracks } = useBank()
   const fileRef = useRef<HTMLInputElement>(null)
@@ -65,20 +67,49 @@ export default function SettingsPage() {
   }
 
   const handleImport = async (file: File) => {
+    let backup: BackupFile | null = null
     try {
-      const backup = sanitizeBackup(JSON.parse(await file.text()))
-      if (!backup) throw new Error('格式不符')
-      // 清洗通过后写入 localStorage，刷新让各 Context 重新加载
-      localStorage.setItem(LS_KEYS.mastery, JSON.stringify(backup.mastery))
-      localStorage.setItem(LS_KEYS.verdicts, JSON.stringify(backup.verdicts))
-      localStorage.setItem(LS_KEYS.sessions, JSON.stringify(backup.sessions))
-      localStorage.setItem(LS_KEYS.customQuestions, JSON.stringify(backup.customQuestions))
-      localStorage.setItem(LS_KEYS.favorites, JSON.stringify(backup.favorites))
-      flash('ok', `导入成功：${backup.mastery.length} 条掌握记录 · ${backup.sessions.length} 份考察记录，即将刷新页面`)
-      setTimeout(() => window.location.reload(), 1200)
+      backup = sanitizeBackup(JSON.parse(await file.text()))
     } catch {
-      flash('err', '导入失败：文件格式不正确')
+      flash('err', '导入失败：文件不是有效的 JSON')
+      return
     }
+    if (!backup) {
+      flash('err', '导入失败：文件结构或版本不符，请确认导出自本站的备份文件')
+      return
+    }
+    // 事务化写入：先留旧值快照，任一键写入失败（如存储配额满）则回滚，避免半新半旧
+    const entries = [
+      [LS_KEYS.mastery, JSON.stringify(backup.mastery)],
+      [LS_KEYS.verdicts, JSON.stringify(backup.verdicts)],
+      [LS_KEYS.sessions, JSON.stringify(backup.sessions)],
+      [LS_KEYS.customQuestions, JSON.stringify(backup.customQuestions)],
+      [LS_KEYS.favorites, JSON.stringify(backup.favorites)],
+    ] as const
+    const snapshots = entries.map(([key]) => [key, localStorage.getItem(key)] as const)
+    try {
+      for (const [key, value] of entries) localStorage.setItem(key, value)
+    } catch (err) {
+      for (const [key, old] of snapshots) {
+        try {
+          if (old === null) localStorage.removeItem(key)
+          else localStorage.setItem(key, old)
+        } catch {
+          // 回滚失败（存储彻底不可用）：保留现状并提示
+        }
+      }
+      const quota =
+        err instanceof DOMException && (err.name === 'QuotaExceededError' || err.code === 22)
+      flash(
+        'err',
+        quota
+          ? '导入失败：浏览器存储空间不足，请先清理浏览器数据或减少考察记录后重试'
+          : '导入失败：无法写入浏览器存储（可能被禁用），原始数据已恢复',
+      )
+      return
+    }
+    flash('ok', `导入成功：${backup.mastery.length} 条掌握记录 · ${backup.sessions.length} 份考察记录，即将刷新页面`)
+    setTimeout(() => window.location.reload(), 1200)
   }
 
   /** 双击确认式清空：category 唯一标识 */

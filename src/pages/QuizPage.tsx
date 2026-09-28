@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router'
 import { useBank } from '../context/BankContext'
-import { useFavorites } from '../context/FavoritesContext'
-import { useMastery } from '../context/MasteryContext'
+import { useFavoritesState } from '../context/FavoritesContext'
+import { useMasteryState } from '../context/MasteryContext'
 import { copyText } from '../lib/clipboard'
 import { clearResume, loadResume, saveResume, type QuizResumeState } from '../lib/quizResume'
+import { LS_KEYS } from '../lib/storageKeys'
 import { cx, shuffle, trackThemes } from '../lib/utils'
 import { buildSummaryText, generateId, type SessionItem, type SummaryCounts } from '../lib/summary'
-import { type Difficulty, type IndexedQuestion } from '../types'
+import { type Difficulty, type IndexedQuestion, type NormalizedTrack } from '../types'
 import { useVerdicts } from '../context/InterviewContext'
 import type { Verdict } from '../lib/verdict'
 import { useSessions } from '../context/SessionContext'
@@ -22,18 +23,48 @@ const COUNT_OPTIONS = [5, 10, 15, 20, 30]
 
 const DIFFICULTY_RANK: Record<Difficulty, number> = { basic: 0, intermediate: 1, advanced: 2 }
 
+/** 上次组卷勾选的方向（数据文件改名后失效的 id 会被过滤掉） */
+function loadStoredTopicIds(): string[] {
+  try {
+    const parsed: unknown = JSON.parse(localStorage.getItem(LS_KEYS.quizTopics) ?? '[]')
+    return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : []
+  } catch {
+    return []
+  }
+}
+
+function persistTopicIds(ids: ReadonlySet<string>): void {
+  try {
+    localStorage.setItem(LS_KEYS.quizTopics, JSON.stringify([...ids]))
+  } catch {
+    // 存储不可用时跳过：下次进来退回默认选择
+  }
+}
+
+/** 初始勾选：优先上次的选择，其次默认第一个方向的第一个领域（不硬编码具体 id，数据调整不会静默变空） */
+function initialSelectedTopics(tracks: NormalizedTrack[]): Set<string> {
+  const known = new Set(tracks.flatMap((t) => t.topics.map((tp) => tp.id)))
+  const stored = loadStoredTopicIds().filter((id) => known.has(id))
+  if (stored.length > 0) return new Set(stored)
+  const first = tracks[0]?.topics[0]
+  return first ? new Set([first.id]) : new Set()
+}
+
 /** 面试官模式：选方向 → 随机组卷 → 现场逐题考察、评分、记录 → 自动存档并生成面试小结。
  *  本文件持有组卷状态机；答题态与完成态 UI 见 quiz/ 子组件。 */
 export default function QuizPage() {
   const [phase, setPhase] = useState<Phase>('setup')
-  const [selectedTopics, setSelectedTopics] = useState<Set<string>>(() => new Set(['be-mysql']))
-  const [diff, setDiff] = useState<DiffFilter>('all')
-  const [count, setCount] = useState(10)
-
   const [candidate, setCandidate] = useState('')
   const [ordered, setOrdered] = useState(false)
   const [onlyFavorites, setOnlyFavorites] = useState(false)
   const [onlyUnmastered, setOnlyUnmastered] = useState(false)
+  const { tracks, questionIndex, questionById } = useBank()
+  const [selectedTopics, setSelectedTopics] = useState<Set<string>>(() =>
+    initialSelectedTopics(tracks),
+  )
+  const [diff, setDiff] = useState<DiffFilter>('all')
+  const [count, setCount] = useState(10)
+
   const [queue, setQueue] = useState<IndexedQuestion[]>([])
   const [notes, setNotes] = useState<Record<string, string>>({})
   const [current, setCurrent] = useState(0)
@@ -45,11 +76,10 @@ export default function QuizPage() {
   const [resumable, setResumable] = useState<QuizResumeState | null>(null)
   const startRef = useRef(Date.now())
   const durationsRef = useRef<Record<string, number>>({})
-  const { getVerdict, setVerdict } = useVerdicts()
+  const { getVerdict, setVerdict, clearFor } = useVerdicts()
   const { saveSession } = useSessions()
-  const { favorites } = useFavorites()
-  const { mastered } = useMastery()
-  const { tracks, questionIndex, questionById } = useBank()
+  const favorites = useFavoritesState()
+  const mastered = useMasteryState()
 
   const pool = useMemo(
     () =>
@@ -79,6 +109,9 @@ export default function QuizPage() {
     const queueNext = ordered
       ? [...picked].sort((a, b) => DIFFICULTY_RANK[a.question.difficulty] - DIFFICULTY_RANK[b.question.difficulty])
       : picked
+    // 开新卷前清掉这批题上一场遗留的评分，避免上一位候选人的评分带进新卷的小结
+    clearFor(queueNext.map((item) => item.question.id))
+    persistTopicIds(selectedTopics)
     setQueue(queueNext)
     setNotes({})
     durationsRef.current = {}
@@ -210,16 +243,35 @@ export default function QuizPage() {
     if (phase === 'setup') setResumable(loadResume())
   }, [phase])
 
+  // 快照读取最新状态（定时器存续期间 state 可能变化，闭包不能停留在挂载时的值）
+  const latestRef = useRef({ candidate, queue, current, notes })
+  latestRef.current = { candidate, queue, current, notes }
+
   useEffect(() => {
     if (phase !== 'running' || queue.length === 0) return
-    saveResume({
-      candidate,
-      queueIds: queue.map((item) => item.question.id),
-      current,
-      notes,
-      durations: durationsRef.current,
-      savedAt: new Date().toISOString(),
-    })
+    const persist = () => {
+      const snap = latestRef.current
+      if (snap.queue.length === 0) return
+      // 快照把当前题"未提交"的停留时长一并计入：在某题上停留很久不切题、
+      // 直接刷新/误关也能找回用时（15s 定时兜底，最多丢最后一段不足 15s 的部分）
+      const item = snap.queue[snap.current]
+      const durations = { ...durationsRef.current }
+      if (item) {
+        const secs = Math.floor((Date.now() - startRef.current) / 1000)
+        if (secs > 0) durations[item.question.id] = (durations[item.question.id] ?? 0) + secs
+      }
+      saveResume({
+        candidate: snap.candidate,
+        queueIds: snap.queue.map((i) => i.question.id),
+        current: snap.current,
+        notes: snap.notes,
+        durations,
+        savedAt: new Date().toISOString(),
+      })
+    }
+    persist()
+    const timer = setInterval(persist, 15_000)
+    return () => clearInterval(timer)
   }, [phase, candidate, queue, current, notes])
 
   // 考察进行中离开页面（刷新/关闭）前给出挽留提示，避免评分与备注丢失
@@ -237,8 +289,11 @@ export default function QuizPage() {
   useEffect(() => {
     if (phase !== 'running') return
     const handler = (e: KeyboardEvent) => {
-      const tag = (e.target as HTMLElement | null)?.tagName
-      if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return
+      // 输入法组词确认的回车不是快捷键
+      if (e.isComposing) return
+      // 焦点在按钮/链接等可交互元素上时放行原生行为（空格/回车应激活按钮，不能被吞掉）
+      if (e.target instanceof Element && e.target.closest('button, a, input, select, textarea, [contenteditable]'))
+        return
       if (e.key === ' ' || e.key === 'Enter') {
         e.preventDefault()
         setRevealed(true)

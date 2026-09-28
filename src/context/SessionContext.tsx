@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useMemo, type ReactNode } from 'react'
+import { sanitizeSessions } from '../lib/backup'
 import { LS_KEYS } from '../lib/storageKeys'
 import { usePersistentState } from '../lib/usePersistentState'
 import type { SessionItem } from '../lib/summary'
@@ -28,8 +29,8 @@ const SessionContext = createContext<SessionValue | null>(null)
 function parseSessions(raw: string | null): InterviewSession[] {
   if (!raw) return []
   try {
-    const parsed: unknown = JSON.parse(raw)
-    return Array.isArray(parsed) ? (parsed as InterviewSession[]) : []
+    // 与备份导入同一套清洗：畸形条目/字段逐项收敛，防止脏 localStorage 数据进入渲染层
+    return sanitizeSessions(JSON.parse(raw))
   } catch {
     return []
   }
