@@ -3,7 +3,7 @@ import { Link } from 'react-router'
 import { useBank } from '../context/BankContext'
 import { useSessions, type InterviewSession } from '../context/SessionContext'
 import { buildSummaryText } from '../lib/summary'
-import { verdictMeta } from '../context/InterviewContext'
+import { verdictMeta } from '../lib/verdict'
 import { copyText } from '../lib/clipboard'
 import { cx, formatDuration } from '../lib/utils'
 

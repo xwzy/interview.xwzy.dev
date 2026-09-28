@@ -1,32 +1,7 @@
 import { createContext, useCallback, useContext, useMemo, type ReactNode } from 'react'
 import { LS_KEYS } from '../lib/storageKeys'
 import { usePersistentState } from '../lib/usePersistentState'
-
-/** 面试官对某道题的现场评分结论 */
-export type Verdict = 'pass' | 'fail' | 'maybe'
-
-export const verdictMeta: Record<
-  Verdict,
-  { label: string; icon: string; activeClass: string }
-> = {
-  pass: {
-    label: '通过',
-    icon: '👍',
-    activeClass: 'border-emerald-500 bg-emerald-500 text-white',
-  },
-  fail: {
-    label: '不通过',
-    icon: '👎',
-    activeClass: 'border-rose-500 bg-rose-500 text-white',
-  },
-  maybe: {
-    label: '待定',
-    icon: '➖',
-    activeClass: 'border-amber-500 bg-amber-500 text-white',
-  },
-}
-
-const VALID_VERDICTS: readonly string[] = ['pass', 'fail', 'maybe']
+import { VALID_VERDICTS, type Verdict } from '../lib/verdict'
 
 interface VerdictValue {
   verdicts: Readonly<Record<string, Verdict>>
@@ -46,7 +21,7 @@ function parseVerdicts(raw: string | null): Readonly<Record<string, Verdict>> {
     const out: Record<string, Verdict> = {}
     if (typeof parsed === 'object' && parsed !== null) {
       for (const [id, v] of Object.entries(parsed)) {
-        if (typeof id === 'string' && typeof v === 'string' && VALID_VERDICTS.includes(v)) {
+        if (typeof id === 'string' && typeof v === 'string' && VALID_VERDICTS.includes(v as Verdict)) {
           out[id] = v as Verdict
         }
       }

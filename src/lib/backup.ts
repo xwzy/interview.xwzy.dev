@@ -1,4 +1,4 @@
-import type { Verdict } from '../context/InterviewContext'
+import type { Verdict } from './verdict'
 import type { CustomQuestion } from '../types'
 import type { InterviewSession } from '../context/SessionContext'
 

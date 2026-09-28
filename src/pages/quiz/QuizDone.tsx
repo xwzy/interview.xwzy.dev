@@ -1,5 +1,5 @@
 import { Link } from 'react-router'
-import { verdictMeta, type Verdict } from '../../context/InterviewContext'
+import { verdictMeta, type Verdict } from '../../lib/verdict'
 import { difficultyMeta, type IndexedQuestion } from '../../types'
 import { cx } from '../../lib/utils'
 import type { SummaryCounts } from '../../lib/summary'

@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router'
-import { useTheme, themeModeMeta } from '../context/ThemeContext'
+import { useTheme } from '../context/ThemeContext'
+import { themeModeMeta } from '../lib/themeMeta'
 import { cx } from '../lib/utils'
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>

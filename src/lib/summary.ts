@@ -1,4 +1,4 @@
-import { verdictMeta, type Verdict } from '../context/InterviewContext'
+import { verdictMeta, type Verdict } from './verdict'
 import { formatDuration } from './utils'
 
 /** 一次考察中单道题的结论快照（评分 + 面试官备注 + 用时） */
