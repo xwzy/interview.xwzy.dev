@@ -6,6 +6,7 @@
  * 任一检查失败即以非零码退出，阻断 CI 发布。
  */
 import { readFileSync, existsSync } from 'node:fs'
+import { createHash } from 'node:crypto'
 import { join, resolve } from 'node:path'
 
 const dist = resolve('dist')
@@ -56,6 +57,37 @@ for (const f of ['sw.js', 'manifest.webmanifest']) {
 if (existsSync('dist/404.html')) {
   console.error('[check-dist] 不应发布 404.html（CF Pages 以 index.html 做 SPA 回退）')
   failures += 1
+}
+
+// CSP 一致性：index.html 内联脚本（如主题初始化）的 sha256 必须出现在 _headers 的
+// script-src 指令里。修改内联脚本后若忘更新 public/_headers 的哈希，构建在此失败——
+// 否则浏览器会直接拒绝执行脚本，线上暗色主题初始化失效
+const headersPath = join(dist, '_headers')
+if (!existsSync(headersPath)) {
+  console.error('[check-dist] 缺失 _headers（CSP 等安全响应头未发布）')
+  failures += 1
+} else {
+  const cspLine = readFileSync(headersPath, 'utf8')
+    .split('\n')
+    .map((l) => l.trim())
+    .find((l) => l.startsWith('Content-Security-Policy:'))
+  if (!cspLine) {
+    console.error('[check-dist] _headers 缺少 Content-Security-Policy')
+    failures += 1
+  } else {
+    const inlineScripts = [...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g)].map(
+      (m) => m[1],
+    )
+    for (const code of inlineScripts) {
+      const hash = `'sha256-${createHash('sha256').update(code).digest('base64')}'`
+      if (!cspLine.includes(hash)) {
+        console.error(
+          `[check-dist] CSP 未放行内联脚本 ${hash}——请把 public/_headers 的 script-src 哈希更新为此值`,
+        )
+        failures += 1
+      }
+    }
+  }
 }
 
 if (failures > 0) {

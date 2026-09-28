@@ -11,4 +11,8 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineConfig({
   base: process.env.VITE_BASE_PATH ?? '/',
   plugins: [react(), tailwindcss()],
+  build: {
+    // hidden：生成 .map 但产物不引用——线上 DevTools 可见源码路径，便于排错
+    sourcemap: 'hidden',
+  },
 })
