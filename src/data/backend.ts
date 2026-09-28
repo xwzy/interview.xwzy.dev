@@ -14,7 +14,7 @@ export const backendTrack: Track = {
       name: '服务端通用基础',
       description: 'API 设计、鉴权、幂等与安全——所有后端岗位绕不开的基本功。',
       references: [
-        { label: 'MDN: HTTP 访问认证（Authorization）', url: 'https://developer.mozilla.org/zh-CN/docs/Web/HTTP/Authentication' },
+        { label: 'MDN: HTTP 访问认证（Authorization）', url: 'https://developer.mozilla.org/zh-CN/docs/Web/HTTP/Guides/Authentication' },
         { label: 'OAuth 2.0 RFC 6749', url: 'https://datatracker.ietf.org/doc/html/rfc6749' },
       ],
       questions: [
@@ -301,7 +301,7 @@ export const backendTrack: Track = {
       description: 'TCP 连接管理、IO 多路复用与 Reactor 模型——高并发服务的网络地基。',
       references: [
         { label: 'Linux manual: epoll(7)', url: 'https://man7.org/linux/man-pages/man7/epoll.7.html' },
-        { label: 'MDN: HTTP 概述', url: 'https://developer.mozilla.org/zh-CN/docs/Web/HTTP/Overview' },
+        { label: 'MDN: HTTP 概述', url: 'https://developer.mozilla.org/zh-CN/docs/Web/HTTP/Guides/Overview' },
       ],
       questions: [
         {
@@ -952,7 +952,7 @@ export const backendTrack: Track = {
       name: 'Node.js',
       description: '事件循环、流与进程模型——Node 的高并发本质与能力边界。',
       references: [
-        { label: 'Node.js 官方文档（含 Event Loop 机制）', url: 'https://nodejs.org/api/all.html#event-loop' },
+        { label: 'Node.js 官方文档（含 Event Loop 机制）', url: 'https://nodejs.org/api/all.html' },
         { label: 'Node.js 官方文档：Stream', url: 'https://nodejs.org/api/stream.html' },
       ],
       questions: [

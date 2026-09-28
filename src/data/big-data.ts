@@ -118,7 +118,7 @@ export const bigDataTrack: Track = {
       description: '数仓分层与维度建模是数据工程师的看家方法论，面试常结合"你怎么建公司的数仓"这类开放题考察体系化思维。',
       references: [
         { label: '《数据仓库工具箱（Kimball）》官方站点', url: 'https://www.kimballgroup.com/data-warehouse-business-intelligence-resources/books/data-warehouse-dw-toolkit/' },
-        { label: '阿里云 · OneData 数仓方法论公开资料', url: 'https://help.aliyun.com/document_detail/173133.html' },
+        { label: '阿里云 · OneData 数仓方法论公开资料', url: 'https://help.aliyun.com/zh/document_detail/173133.html' },
       ],
       questions: [
         {

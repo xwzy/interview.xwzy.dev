@@ -13,7 +13,7 @@ export const qaTrack: Track = {
       name: '测试基础',
       description: '用例设计方法、缺陷管理与测试分级，是测试岗位的基本功，也考察质量思维是否成体系。',
       references: [
-        { label: 'ISTQB 国际软件测试认证', url: 'https://www.istqb.org/' },
+        { label: 'ISTQB 国际软件测试认证', url: 'https://istqb.org/' },
         { label: 'Martin Fowler · TestPyramid', url: 'https://martinfowler.com/bliki/TestPyramid.html' },
         { label: 'Google Testing Blog', url: 'https://testing.googleblog.com/' },
       ],
@@ -536,8 +536,8 @@ export const qaTrack: Track = {
       name: '安全与专项测试',
       description: 'Web 安全测试思路、越权漏洞与 App 专项（兼容性/弱网/稳定性）——测试工程师的高阶护城河。',
       references: [
-        { label: 'OWASP Testing Guide', url: 'https://owasp.org/www-project-web-security-testing-guide/' },
-        { label: 'OWASP Top 10', url: 'https://owasp.org/Top10/' },
+        { label: 'OWASP Testing Guide', url: 'https://owasp.org/projects/web-security-testing-guide' },
+        { label: 'OWASP Top 10', url: 'https://top10.owasp.org/' },
       ],
       questions: [
         {

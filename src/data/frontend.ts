@@ -15,8 +15,8 @@ export const frontendTrack: Track = {
       references: [
         { label: 'MDN CSS 文档', url: 'https://developer.mozilla.org/en-US/docs/Web/CSS' },
         { label: 'web.dev Learn CSS 课程', url: 'https://web.dev/learn/css' },
-        { label: 'Can I use 兼容性查询', url: 'https://caniuse.com' },
-        { label: 'CSS Working Group 规范草案', url: 'https://drafts.csswg.org' },
+        { label: 'Can I use 兼容性查询', url: 'https://caniuse.com/' },
+        { label: 'CSS Working Group 规范草案', url: 'https://drafts.csswg.org/' },
       ],
       questions: [
         {
@@ -435,9 +435,9 @@ export const frontendTrack: Track = {
       description: '闭包、原型链、this 与事件循环等语言核心机制，是区分"会用 JS"和"理解 JS"的分水岭。',
       references: [
         { label: 'MDN JavaScript 文档', url: 'https://developer.mozilla.org/en-US/docs/Web/JavaScript' },
-        { label: '现代 JavaScript 教程', url: 'https://javascript.info' },
-        { label: 'ECMA-262 语言规范', url: 'https://262.ecma-international.org' },
-        { label: 'V8 官方博客', url: 'https://v8.dev' },
+        { label: '现代 JavaScript 教程', url: 'https://javascript.info/' },
+        { label: 'ECMA-262 语言规范', url: 'https://262.ecma-international.org/' },
+        { label: 'V8 官方博客', url: 'https://v8.dev/' },
       ],
       questions: [
         {
@@ -846,9 +846,9 @@ export const frontendTrack: Track = {
       description: '类型系统的思维：从泛型与工具类型到协变逆变，考察能否用类型表达业务约束。',
       references: [
         { label: 'TypeScript Handbook', url: 'https://www.typescriptlang.org/docs/handbook/' },
-        { label: 'tsconfig 官方参考', url: 'https://www.typescriptlang.org/tsconfig' },
+        { label: 'tsconfig 官方参考', url: 'https://www.typescriptlang.org/tsconfig/' },
         { label: 'type-challenges 类型体操练习', url: 'https://github.com/type-challenges/type-challenges' },
-        { label: 'typescript-eslint', url: 'https://typescript-eslint.io' },
+        { label: 'typescript-eslint', url: 'https://typescript-eslint.io/' },
       ],
       questions: [
         {
@@ -1126,10 +1126,10 @@ export const frontendTrack: Track = {
       name: 'React',
       description: '从 Hooks 用法到 Fiber 与并发原理的分层考察，React 岗位面试的绝对重心。',
       references: [
-        { label: 'React 官方文档', url: 'https://react.dev' },
+        { label: 'React 官方文档', url: 'https://react.dev/' },
         { label: 'React Learn 章节', url: 'https://react.dev/learn' },
-        { label: 'React GitHub 仓库', url: 'https://github.com/facebook/react' },
-        { label: 'React 旧版文档', url: 'https://legacy.reactjs.org' },
+        { label: 'React GitHub 仓库', url: 'https://github.com/react/react' },
+        { label: 'React 旧版文档', url: 'https://legacy.reactjs.org/' },
       ],
       questions: [
         {
@@ -1552,10 +1552,10 @@ export const frontendTrack: Track = {
       name: 'Vue',
       description: '响应式原理、diff 与 Composition API 是核心，考的是"懂框架"而不只是"用框架"。',
       references: [
-        { label: 'Vue 官方文档（中文）', url: 'https://cn.vuejs.org' },
+        { label: 'Vue 官方文档（中文）', url: 'https://cn.vuejs.org/' },
         { label: 'vuejs/core GitHub 仓库', url: 'https://github.com/vuejs/core' },
-        { label: 'Pinia 官方文档', url: 'https://pinia.vuejs.org' },
-        { label: 'Vue Router 官方文档', url: 'https://router.vuejs.org' },
+        { label: 'Pinia 官方文档', url: 'https://pinia.vuejs.org/' },
+        { label: 'Vue Router 官方文档', url: 'https://router.vuejs.org/' },
       ],
       questions: [
         {
@@ -1947,9 +1947,9 @@ export const frontendTrack: Track = {
       description: '渲染流水线、同源策略与存储体系——理解浏览器，才能理解前端的一切约束。与"计算机基础 → 计算机网络"的同题分工：输入 URL、HTTP 版本等经典题在此聚焦**浏览器渲染进程与前端配合**，网络链路与协议细节在计算机基础方向。',
       references: [
         { label: 'MDN Web API 参考', url: 'https://developer.mozilla.org/en-US/docs/Web/API' },
-        { label: 'MDN CORS 文档', url: 'https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS' },
+        { label: 'MDN CORS 文档', url: 'https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CORS' },
         { label: 'MDN PWA 指南', url: 'https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps' },
-        { label: 'web.dev（Google Web 平台）', url: 'https://web.dev' },
+        { label: 'web.dev（Google Web 平台）', url: 'https://web.dev/' },
       ],
       questions: [
         {
@@ -2365,10 +2365,10 @@ export const frontendTrack: Track = {
       name: '前端工程化',
       description: '从构建工具原理到 CI/CD 与灰度发布，考察工程效率与协作规范的实践能力。',
       references: [
-        { label: 'Webpack 官方文档', url: 'https://webpack.js.org' },
-        { label: 'Vite 官方文档', url: 'https://vite.dev' },
-        { label: 'Rollup 官方文档', url: 'https://rollupjs.org' },
-        { label: 'pnpm 官方文档', url: 'https://pnpm.io' },
+        { label: 'Webpack 官方文档', url: 'https://webpack.js.org/' },
+        { label: 'Vite 官方文档', url: 'https://vite.dev/' },
+        { label: 'Rollup 官方文档', url: 'https://rollupjs.org/' },
+        { label: 'pnpm 官方文档', url: 'https://pnpm.io/' },
       ],
       questions: [
         {
@@ -3080,9 +3080,9 @@ export const frontendTrack: Track = {
       name: '前端安全',
       description: 'XSS/CSRF/CSP 到供应链安全——一面常问、二面深挖的安全素养。',
       references: [
-        { label: 'OWASP Cheat Sheet Series', url: 'https://cheatsheetseries.owasp.org' },
+        { label: 'OWASP Cheat Sheet Series', url: 'https://cheatsheetseries.owasp.org/' },
         { label: 'MDN Web Security', url: 'https://developer.mozilla.org/en-US/docs/Web/Security' },
-        { label: 'MDN Content-Security-Policy', url: 'https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy' },
+        { label: 'MDN Content-Security-Policy', url: 'https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy' },
       ],
       questions: [
         {
@@ -3315,7 +3315,7 @@ export const frontendTrack: Track = {
       description: '防抖节流到 LRU——笔试与白板环节的经典手写题，关键在边界条件与复杂度分析。',
       references: [
         { label: 'MDN JavaScript 文档', url: 'https://developer.mozilla.org/en-US/docs/Web/JavaScript' },
-        { label: '现代 JavaScript 教程', url: 'https://javascript.info' },
+        { label: '现代 JavaScript 教程', url: 'https://javascript.info/' },
         { label: 'lodash GitHub 仓库', url: 'https://github.com/lodash/lodash' },
         { label: 'p-limit GitHub 仓库', url: 'https://github.com/sindresorhus/p-limit' },
       ],

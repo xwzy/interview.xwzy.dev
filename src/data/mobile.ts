@@ -373,8 +373,8 @@ export const mobileTrack: Track = {
       description: 'iOS 内存管理、RunLoop、事件响应与多线程，考察对 Objective-C 运行时和系统底层机制的理解。',
       references: [
         { label: 'Apple 官方 · CFRunLoop 文档', url: 'https://developer.apple.com/documentation/corefoundation/cfrunloop' },
-        { label: 'Swift 官方文档 · Automatic Reference Counting', url: 'https://docs.swift.org/swift-book/documentation/the-swift-programming-language/automaticreferencecounting/' },
-        { label: 'Apple 官方 · Touches, presses, and gestures', url: 'https://developer.apple.com/documentation/uikit/touches_presses_and_gestures' },
+        { label: 'Swift 官方文档 · Automatic Reference Counting', url: 'https://docs.swift.org/latest/documentation/the-swift-programming-language/automaticreferencecounting/' },
+        { label: 'Apple 官方 · Touches, presses, and gestures', url: 'https://developer.apple.com/documentation/uikit/touches-presses-and-gestures' },
       ],
       questions: [
         {
@@ -651,7 +651,7 @@ export const mobileTrack: Track = {
       name: '跨端开发',
       description: 'React Native、Flutter、小程序等跨端方案的实现原理、性能取舍与选型思路；端侧 AI 模型的落地与推理加速在「AI Infra」方向。',
       references: [
-        { label: 'React Native 官方 · 架构概览', url: 'https://reactnative.dev/docs/architecture-overview' },
+        { label: 'React Native 官方 · 架构概览', url: 'https://reactnative.dev/architecture/overview' },
         { label: 'Flutter 官方 · Architectural overview', url: 'https://docs.flutter.dev/resources/architectural-overview' },
         { label: '微信小程序官方 · 框架文档', url: 'https://developers.weixin.qq.com/miniprogram/dev/framework/' },
       ],

@@ -11,7 +11,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "preview": "vite preview",
-    "verify": "npm run gen:meta && npm run lint && npm test && npm run build"
+    "verify": "npm run gen:meta && npm run lint && npm test && npm run build",
+    "check:links": "node scripts/check-links.mjs"
   },
   "dependencies": {
     "react": "^19.1.0",

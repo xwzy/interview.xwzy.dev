@@ -524,7 +524,7 @@ export const careerTrack: Track = {
       description: '晋升答辩方法论、工程师到技术管理的转型、空窗期与裁员应对、30+ 路径决策、平台选择与行业影响力——把职业当资产经营。',
       references: [
         { label: 'Staff Engineer（Will Wilson）相关资源', url: 'https://staffeng.com/' },
-        { label: 'The Software Engineer\u0027s Guidebook（Oswald）', url: 'https://engguidebook.com/' },
+        { label: 'The Software Engineer\u0027s Guidebook（Oswald）', url: 'https://www.engguidebook.com/' },
       ],
       questions: [
         {

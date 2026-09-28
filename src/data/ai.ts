@@ -556,8 +556,8 @@ export const aiTrack: Track = {
       name: '大模型与 LLM 应用',
       description: '从 Transformer 与预训练范式到 RAG、Agent、微调与评测，覆盖大模型应用工程的完整链路；推理成本与 PD 分离等推理架构专题在「AI Infra」方向。',
       references: [
-        { label: 'OpenAI · Prompt Engineering 指南', url: 'https://platform.openai.com/docs/guides/prompt-engineering' },
-        { label: 'OpenAI · Function Calling 指南', url: 'https://platform.openai.com/docs/guides/function-calling' },
+        { label: 'OpenAI · Prompt Engineering 指南', url: 'https://developers.openai.com/api/docs/guides/prompt-engineering' },
+        { label: 'OpenAI · Function Calling 指南', url: 'https://developers.openai.com/api/docs/guides/function-calling' },
         { label: 'Hugging Face Transformers 文档', url: 'https://huggingface.co/docs/transformers/index' },
         { label: 'InstructGPT 论文（RLHF）', url: 'https://arxiv.org/abs/2203.02155' },
       ],

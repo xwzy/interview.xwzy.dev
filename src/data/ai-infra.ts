@@ -16,7 +16,7 @@ export const aiInfraTrack: Track = {
         'GPU 微架构与利用率（MFU/roofline）、训练集群的网络与互联（RDMA/NCCL）、算力显存测算——一切训练与推理容量规划的地基。',
       references: [
         { label: 'NVIDIA CUDA 文档', url: 'https://docs.nvidia.com/cuda/' },
-        { label: 'NVIDIA H100 白皮书', url: 'https://www.nvidia.com/content/dam/en-zz/Solutions/Data-Center/h100/nvidia-h100-whitepaper.pdf' },
+        { label: 'NVIDIA Hopper 调优指南', url: 'https://docs.nvidia.com/cuda/hopper-tuning-guide/' },
         { label: 'Google Cloud TPU', url: 'https://cloud.google.com/tpu' },
       ],
       questions: [
@@ -230,8 +230,8 @@ export const aiInfraTrack: Track = {
         '数据/张量/流水线/专家/序列五维并行与组合配方、ZeRO 与显存优化、混合精度与 FP8、万卡容错——把一个模型拆到几千张卡上还要训得对、训得完。',
       references: [
         { label: 'Megatron-LM 论文（NVIDIA）', url: 'https://arxiv.org/abs/2104.04473' },
-        { label: 'DeepSpeed（ZeRO）', url: 'https://github.com/microsoft/DeepSpeed' },
-        { label: 'PyTorch FSDP 文档', url: 'https://pytorch.org/docs/stable/fsdp.html' },
+        { label: 'DeepSpeed（ZeRO）', url: 'https://github.com/deepspeedai/DeepSpeed' },
+        { label: 'PyTorch FSDP 文档', url: 'https://docs.pytorch.org/docs/stable/fsdp.html' },
       ],
       questions: [
         {
@@ -482,7 +482,7 @@ export const aiInfraTrack: Track = {
         '推理引擎的调度内核（continuous batching/PagedAttention/chunked prefill）、KV Cache 与显存治理、投机解码、PD 分离与 KVCache 池化、SLO 与成本治理——从单卡优化到集群架构。',
       references: [
         { label: 'vLLM 论文（Efficient Memory Management for LLM Serving）', url: 'https://arxiv.org/abs/2309.06180' },
-        { label: 'vLLM 文档', url: 'https://docs.vllm.ai/' },
+        { label: 'vLLM 文档', url: 'https://docs.vllm.ai/en/latest/' },
         { label: 'SGLang', url: 'https://github.com/sgl-project/sglang' },
       ],
       questions: [
@@ -849,7 +849,7 @@ export const aiInfraTrack: Track = {
       references: [
         { label: 'llama.cpp', url: 'https://github.com/ggml-org/llama.cpp' },
         { label: 'Apple Core ML 文档', url: 'https://developer.apple.com/documentation/coreml' },
-        { label: 'TensorFlow Lite / LiteRT', url: 'https://www.tensorflow.org/lite' },
+        { label: 'TensorFlow Lite / LiteRT', url: 'https://developers.google.com/edge/litert' },
       ],
       questions: [
         {

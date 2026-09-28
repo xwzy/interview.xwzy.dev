@@ -38,6 +38,7 @@ npm run dev       # 开发服务器
 npm run build     # 类型检查 + 产物构建（tsc -b && vite build）
 npm run lint      # ESLint
 npm test          # Vitest 单元测试（题库内容完整性 + 组件测试 + 文档统计一致性）
+npm run check:links  # 巡检延伸资料链接（重定向/失效/反爬分类报告），改资料后或定期手动跑
 npm run preview   # 预览构建产物
 ```
 

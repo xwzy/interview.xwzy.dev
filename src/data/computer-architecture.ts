@@ -140,7 +140,7 @@ export const computerArchitectureTrack: Track = {
       references: [
         { label: 'Agner Fog 的微架构优化手册', url: 'https://www.agner.org/optimize/' },
         { label: 'Intel 64 and IA-32 SDM', url: 'https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html' },
-        { label: 'Project Zero：Spectre 原始分析', url: 'https://googleprojectzero.blogspot.com/2018/01/reading-privileged-memory-with-side.html', note: '侧信道利用推测执行的第一手完整分析' },
+        { label: 'Project Zero：Spectre 原始分析', url: 'https://projectzero.google/2018/01/reading-privileged-memory-with-side.html', note: '侧信道利用推测执行的第一手完整分析' },
       ],
       questions: [
         {
@@ -468,7 +468,7 @@ export const computerArchitectureTrack: Track = {
       description:
         'MESI 及其扩展（MOESI/MESIF）、目录协议、x86/ARM 内存模型与内存屏障——多核正确性与性能的交汇点；伪共享排查与 NUMA 适配是本方向的两道实战题。缓存映射与写策略的基础在组成原理方向。',
       references: [
-        { label: 'Linux 内核文档：内存屏障', url: 'https://www.kernel.org/doc/html/latest/memory-barriers.html', note: '一致性与屏障的工程圣经' },
+        { label: 'Linux 内核文档：内存屏障', url: 'https://www.kernel.org/doc/html/latest/core-api/wrappers/memory-barriers.html', note: '一致性与屏障的工程圣经' },
         { label: 'MESI 协议 — Wikipedia', url: 'https://en.wikipedia.org/wiki/MESI_protocol' },
       ],
       questions: [
@@ -734,7 +734,7 @@ export const computerArchitectureTrack: Track = {
         '能效与 DVFS、大小核、WSC 数据中心即计算机、ECC 可靠性与安全启动——从晶体管到机房的能耗、可靠与信任的硬件底座。频率抖动的现场排查在组成原理方向的场景题，这里讲设计原理。',
       references: [
         { label: 'Linux 内核文档：intel_pstate', url: 'https://www.kernel.org/doc/html/latest/admin-guide/pm/intel_pstate.html' },
-        { label: 'Google 数据中心', url: 'https://www.google.com/about/datacenters/', note: 'PUE 与基础设施效率的一手资料' },
+        { label: 'Google 数据中心', url: 'https://datacenters.google/', note: 'PUE 与基础设施效率的一手资料' },
       ],
       questions: [
         {
