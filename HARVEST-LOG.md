@@ -15,12 +15,12 @@
 | 4 | 数据结构与算法 | cs-fundamentals.ts 21→24 | 3 | 12 条 | ✅ 已推送 | c0995d6 |
 | 5a | 编译原理（新领域） | cs-fundamentals.ts 新增 cs-compiler | 11 | — | ✅ 已推送 | 80bcf08 |
 | 5b | 网络安全与密码学（新领域） | network.ts 新增 net-security | 10 | — | ✅ 已推送 | 见 git log |
-| 5c | 数学基础（新领域） | cs-fundamentals.ts | — | — | ⬜ 未开始 | — |
+| 5c | 数学基础（新领域） | cs-fundamentals.ts 新增 cs-math | 10 | — | ✅ 已推送 | 见 git log |
 | 6 | 后端增厚（MySQL/C++/Java） | backend.ts | — | — | ⬜ 未开始 | — |
 | 7 | AI / 机器学习 | ai.ts | — | — | ⬜ 未开始 | — |
 | 8 | qa/大数据/移动端/运维扫尾 | 各文件 | — | — | ⬜ 未开始 | — |
 
-题库总量：656（起点）→ **705**（当前）。真题改编题统一打 `tags: ['真题改编']`，可全局搜索筛选。
+题库总量：656（起点）→ **715**（当前）。真题改编题统一打 `tags: ['真题改编']`，可全局搜索筛选。
 
 ## 批 1 · 计算机组成原理（来源：组成原理 43 套试卷 + 清华 912）
 
@@ -68,6 +68,8 @@
 
 **分工**：TLS/证书在 HTTP 领域、认证应用在后端、DDoS/VPN 在 net-engineering——均未动。丢弃：Feistel/域乘法手算/差分分析/古典密码/OTP/TPM 等。详见 docs/quiz-harvest/seeds-batch5b-security.md。
 
-## 批 5c · 数学基础（未开始）
+## 批 5c · 数学基础 ✅（来源：概率统计 13 份 + 线代 5 份 + 运筹 4 份，42 条种子）
 
-来源：概率论 127 + 线代 251 + 离散 154 + 运筹 82。规划领域：cs-fundamentals 新增 cs-math（概率统计/线代/凸优化，ML 岗标配）。
+**新题 10**（cs-fundamentals.ts 新领域 cs-math）：cs-math-bayes（贝叶斯+基础率谬误）、cs-math-expectation-covariance（独立 vs 不相关）、cs-math-distributions（常见分布+无记忆性）、cs-math-lln-clt（LLN vs CLT+√n 尺度）、cs-math-estimation（三标准+MSE 分解）、cs-math-hypothesis-testing（p 值+两类错误+A/B 内核）、cs-math-linear-geometry（秩/特征值/谱定理/正定）、cs-math-projection-least-squares（投影+最小二乘几何）、cs-math-convex-optimization（凸性+鞍点+KKT 影子价格）、cs-math-multivariate-normal（边缘 vs 联合+马氏距离）。
+
+**分工**：ML 应用层数学（交叉熵/偏差方差/优化器/PCA）在 ai.ts；随机算法在 cs-algo-random——正文互相注明。丢弃：χ²、MLE 相合证明、合同惯性、古典概型等应试细节。详见 docs/quiz-harvest/seeds-batch5c-math.md。
