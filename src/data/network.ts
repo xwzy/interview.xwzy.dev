@@ -1417,7 +1417,7 @@ export const networkTrack: Track = {
       description:
         '密码学的机制层与安全工程的基本功：Kerckhoffs 原则与攻击模型、分组密码工作模式、哈希与认证、公钥数学与密钥交换、侧信道、Kerberos 与访问控制。TLS/HTTPS 握手与证书链在「HTTP 与 Web 传输」领域，重放/签名应用与零信任在后端方向——本题域不重复。',
       references: [
-        { label: 'Cryptographic Right Answers（密码选型速查）', url: 'https://latacora.micro.blog/cryptographic-right-answers.html' },
+        { label: 'Crypto 101（免费开源密码学入门书）', url: 'https://www.crypto101.io/' },
         { label: 'OWASP Cryptographic Storage Cheat Sheet', url: 'https://cheatsheetseries.owasp.org/cheatsheets/Cryptographic_Storage_Cheat_Sheet.html' },
         { label: 'NIST FIPS 197（AES 规范）', url: 'https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.197.pdf' },
       ],
