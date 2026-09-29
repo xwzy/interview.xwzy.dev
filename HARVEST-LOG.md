@@ -14,13 +14,13 @@
 | 3 | 计算机网络 | network.ts 41→46 | 5 | 7 条 | ✅ 已推送 | 95ba8b1 |
 | 4 | 数据结构与算法 | cs-fundamentals.ts 21→24 | 3 | 12 条 | ✅ 已推送 | c0995d6 |
 | 5a | 编译原理（新领域） | cs-fundamentals.ts 新增 cs-compiler | 11 | — | ✅ 已推送 | 80bcf08 |
-| 5b | 网络安全与密码学（新领域） | network.ts 新增 net-security | — | — | 🚧 进行中 | — |
+| 5b | 网络安全与密码学（新领域） | network.ts 新增 net-security | 10 | — | ✅ 已推送 | 见 git log |
 | 5c | 数学基础（新领域） | cs-fundamentals.ts | — | — | ⬜ 未开始 | — |
 | 6 | 后端增厚（MySQL/C++/Java） | backend.ts | — | — | ⬜ 未开始 | — |
 | 7 | AI / 机器学习 | ai.ts | — | — | ⬜ 未开始 | — |
 | 8 | qa/大数据/移动端/运维扫尾 | 各文件 | — | — | ⬜ 未开始 | — |
 
-题库总量：656（起点）→ **696**（当前）。真题改编题统一打 `tags: ['真题改编']`，可全局搜索筛选。
+题库总量：656（起点）→ **705**（当前）。真题改编题统一打 `tags: ['真题改编']`，可全局搜索筛选。
 
 ## 批 1 · 计算机组成原理（来源：组成原理 43 套试卷 + 清华 912）
 
@@ -62,9 +62,11 @@
 
 **丢弃**：符号表、backpatch、YACC $ 编号、lex 文件结构、tiling/Maximal Munch、支配节点、FORTRAN 静态环境、C 变参、右递归栈增长（并入 LR 正文）、静态/动态作用域（并入栈帧追问）。
 
-## 批 5b · 网络安全与密码学（进行中）
+## 批 5b · 网络安全与密码学 ✅（来源：现代密码学 + 信息安全与密码，40 条种子）
 
-来源：现代密码学 86 份 + 信息安全与密码 65 份。已有覆盖（避开）：TLS 握手/证书、对称非对称对比、JWT/OAuth/SSO、零信任、签名重放、DDoS、VPN。
+**新题 10**（network.ts 新领域 net-security）：net-sec-principles（Kerckhoffs+CIAA+攻击模型）、net-sec-block-cipher-modes（ECB/CBC/CTR+IV 红线）、net-sec-password-storage（加盐慢哈希）、net-sec-hash-mac-signature（HMAC vs 签名+hash-then-sign）、net-sec-publickey-math（RSA/DH/ECC+能力矩阵+中间人）、net-sec-kerberos（两票+时间依赖）、net-sec-access-control（RBAC+BLP/Biba）、net-sec-side-channel（Flush+Reload+Meltdown/Spectre）、net-scene-nonce-reuse（GCM IV 重用场景题）。
+
+**分工**：TLS/证书在 HTTP 领域、认证应用在后端、DDoS/VPN 在 net-engineering——均未动。丢弃：Feistel/域乘法手算/差分分析/古典密码/OTP/TPM 等。详见 docs/quiz-harvest/seeds-batch5b-security.md。
 
 ## 批 5c · 数学基础（未开始）
 
