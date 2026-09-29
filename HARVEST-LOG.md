@@ -17,10 +17,10 @@
 | 5b | 网络安全与密码学（新领域） | network.ts 新增 net-security | 10 | — | ✅ 已推送 | 见 git log |
 | 5c | 数学基础（新领域） | cs-fundamentals.ts 新增 cs-math | 10 | — | ✅ 已推送 | 见 git log |
 | 6 | 后端增厚（C++/MySQL/Java/SQL） | backend.ts + cs-db | 12 | 12 条 | ✅ 已推送 | 见 git log |
-| 7 | AI / 机器学习 | ai.ts | — | — | ⬜ 未开始 | — |
+| 7 | AI / 机器学习 | ai.ts | 7 | 9 条 | ✅ 已推送 | 见 git log |
 | 8 | qa/大数据/移动端/运维扫尾 | 各文件 | — | — | ⬜ 未开始 | — |
 
-题库总量：656（起点）→ **727**（当前）。真题改编题统一打 `tags: ['真题改编']`，可全局搜索筛选。
+题库总量：656（起点）→ **734**（当前）。真题改编题统一打 `tags: ['真题改编']`，可全局搜索筛选。
 
 ## 批 1 · 计算机组成原理（来源：组成原理 43 套试卷 + 清华 912）
 
@@ -81,3 +81,11 @@
 **追问 12 条**：stl（++it）、copy-control（explicit + 构造次数算例）、binding（构造期多态 C++/Java 对照）、object-layout（const 重载）、equals（Integer 缓存/包装 equals）、string（+= 与 StringBuilder）、exception（finally 覆盖返回值）、generics（List<?> 不可写）、synchronized-lock（wait/notify 归属+双对象死锁）、query-execution（Hash Join vs INL）、serializability（冲突 vs 视图可串行化）、crash-recovery（group commit）、cs-db-normalization（候选键求法+BCNF 分解原题）、cs-db-join（NULL 三值逻辑）。
 
 **分工与丢弃**：B+ 树主干在组成原理/已有 MySQL 题；四大读现象在隔离级别题；内联宏/static 五层/grant-LIKE trivia 等网课细节丢弃。详见 docs/quiz-harvest/seeds-batch6-backend.md。
+
+## 批 7 · AI/机器学习 ✅（来源：清华 ML 期末卷 + 浙大 Review 习题课 + 模式识别作业，36 条种子）
+
+**新题 7**（ai.ts，ai-ml 领域）：ai-ml-generative-discriminative（生成 vs 判别+MAP/ML+正则即先验；追问拉普拉斯平滑、NB 边界）、ai-ml-em-gmm（三硬币隐变量+收敛性质判断组+GMM vs K-Means；追问 HMM/Baum-Welch）、ai-ml-ensembling-diversity（多样性来源+不稳定学习器原题；追问公平对比实验设计）、ai-ml-dimensionality-reduction（维数灾难+PCA/LDA/t-SNE+SVD；追问谱定理衔接）、ai-ml-knn-clustering（懒学习+距离加权+鲁棒性三连；追问十字 Voronoi 反例、距离度量）、ai-ml-model-evaluation（K 折权衡+LOOCV 100% 反例+时间序列划分；追问 VC 维）、ai-ml-decision-theory（最小错误率 vs 最小风险+损失矩阵平移阈值原题+Neyman-Pearson）。
+
+**追问 9 条**（含新题内）：tree-ensembles ← 预/后剪枝（浙大原题）+"集成不剪枝"路线对照；其余见上。
+
+**分工与丢弃**：ML 应用层 10 题与 LLM/深度学习领域未动；数学推导（公式乱码）与网课 trivia 丢弃；推荐系统设计题暂不入库。详见 docs/quiz-harvest/seeds-batch7-ml.md。
