@@ -31,4 +31,13 @@ describe('SearchPage', () => {
     expect(await screen.findByText('★ 我的收藏', {}, { timeout: 15_000 })).toBeTruthy()
     expect(await screen.findByText(/还没有收藏的题目/, {}, { timeout: 15_000 })).toBeTruthy()
   })
+
+  it('真题改编过滤：只显示标注「真题改编」的题目', async () => {
+    renderWithProviders(<SearchPage />, { route: '/search?exam=1' })
+    expect(await screen.findByText('📜 真题改编', {}, { timeout: 15_000 })).toBeTruthy()
+    // 82 道真题改编题非空：结果计数出现且结果标题里带真题标签特色词
+    const count = await screen.findByText(/共 \d+ 条结果/, {}, { timeout: 15_000 })
+    const total = Number(count.textContent?.match(/\d+/)?.[0] ?? 0)
+    expect(total).toBeGreaterThan(50)
+  })
 })

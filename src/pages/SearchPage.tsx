@@ -41,12 +41,16 @@ function Highlight({ text, kw }: { text: string; kw: string }) {
   }, [text, kw])
 }
 
+/** 真题改编题的统一标签（数据文件中以 tags: ['真题改编', ...] 标注） */
+const EXAM_TAG = '真题改编'
+
 export default function SearchPage() {
   const { questionIndex } = useBank()
   const favorites = useFavoritesState()
   const [searchParams, setSearchParams] = useSearchParams()
   const q = searchParams.get('q') ?? ''
   const favOnly = searchParams.get('fav') === '1'
+  const examOnly = searchParams.get('exam') === '1'
   const [input, setInput] = useState(q)
   // 中文输入法组词期间不提交（组词的每个音节都会触发 onChange，直接提交会闪结果）
   const composingRef = useRef(false)
@@ -67,27 +71,38 @@ export default function SearchPage() {
       const next: Record<string, string> = {}
       if (input.trim()) next.q = input.trim()
       if (favOnly) next.fav = '1'
+      if (examOnly) next.exam = '1'
       setSearchParams(next, { replace: true })
     }, INPUT_DEBOUNCE_MS)
     return () => clearTimeout(timer)
-  }, [input, q, favOnly, composeTick, setSearchParams])
+  }, [input, q, favOnly, examOnly, composeTick, setSearchParams])
 
   const results = useMemo(() => {
     const kw = q.trim().toLowerCase()
     let list = questionIndex
     if (favOnly) list = list.filter((item) => favorites.has(item.question.id))
+    if (examOnly) list = list.filter((item) => (item.question.tags ?? []).includes(EXAM_TAG))
     if (kw) {
       list = list.filter((item) => item.haystack.includes(kw))
       list = [...list].sort((a, b) => matchRank(a, kw) - matchRank(b, kw))
     }
     return list
-  }, [questionIndex, q, favOnly, favorites])
+  }, [questionIndex, q, favOnly, examOnly, favorites])
 
   const toggleFav = () => {
     const next: Record<string, string> = {}
     if (q.trim()) next.q = q.trim()
     if (!favOnly) next.fav = '1'
+    if (examOnly) next.exam = '1'
     // 只切换收藏过滤，不回写输入框——保留用户输入到一半的内容
+    setSearchParams(next, { replace: true })
+  }
+
+  const toggleExam = () => {
+    const next: Record<string, string> = {}
+    if (q.trim()) next.q = q.trim()
+    if (favOnly) next.fav = '1'
+    if (!examOnly) next.exam = '1'
     setSearchParams(next, { replace: true })
   }
 
@@ -95,7 +110,9 @@ export default function SearchPage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-5">
-      <h1 className="text-xl font-bold sm:text-2xl">{favOnly ? '★ 我的收藏' : '搜索题库'}</h1>
+      <h1 className="text-xl font-bold sm:text-2xl">
+        {favOnly ? '★ 我的收藏' : examOnly ? '📜 真题改编' : '搜索题库'}
+      </h1>
 
       <div className="flex flex-wrap items-center gap-2">
         <input
@@ -125,11 +142,25 @@ export default function SearchPage() {
         >
           {favOnly ? '★ 收藏中' : '☆ 只看收藏'}
         </button>
+        <button
+          type="button"
+          onClick={toggleExam}
+          aria-pressed={examOnly}
+          title="筛选全部标注「真题改编」的题目（源自清华 912、浙大/清华等课程真题）"
+          className={cx(
+            'rounded-xl border px-4 py-3 text-sm font-medium transition-colors',
+            examOnly
+              ? 'border-violet-400 bg-violet-400/90 text-white'
+              : 'border-slate-200 bg-white text-slate-600 hover:border-violet-300 hover:text-violet-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-300',
+          )}
+        >
+          {examOnly ? '📜 真题改编中' : '📜 只看真题'}
+        </button>
       </div>
 
-      {keyword === '' && !favOnly ? (
+      {keyword === '' && !favOnly && !examOnly ? (
         <p className="text-sm text-slate-400 dark:text-slate-500">
-          输入关键词，在全部方向的题目、要点、追问与标签中查找；或点「只看收藏」浏览星标题目。
+          输入关键词，在全部方向的题目、要点、追问与标签中查找；或点「只看收藏」「只看真题」按类浏览。
         </p>
       ) : results.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-slate-300 p-10 text-center text-sm text-slate-400 dark:border-white/15 dark:text-slate-500">
@@ -142,7 +173,7 @@ export default function SearchPage() {
               中点「☆ 收藏」即可把重点题加入这里。
             </>
           ) : (
-            <>没有找到与「{keyword}」相关的{favOnly ? '收藏' : ''}结果。</>
+            <>没有找到与「{keyword}」相关的{favOnly ? '收藏' : examOnly ? '真题' : ''}结果。</>
           )}
         </div>
       ) : (
