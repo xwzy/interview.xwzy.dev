@@ -20,8 +20,9 @@
 | 7 | AI / 机器学习 | ai.ts | 7 | 9 条 | ✅ 已推送 | 见 git log |
 | 8 | qa 增厚（软件工程试卷） | qa.ts + backend 追问 | 5 | 2 条 | ✅ 已推送 | 见 git log |
 | 9 | 语料缺口补采（B+树计算/矩阵论/ML系统设计） | cs-fund/ai | 3 | 2 条 | ✅ 已推送 | 见 git log |
+| 10 | 计算机体系结构增厚 | computer-architecture.ts | 4 | 6 条 | ✅ 已推送 | 见 git log |
 
-题库总量：656（起点）→ **741**（当前）。真题改编题统一打 `tags: ['真题改编']`，可全局搜索筛选。
+题库总量：656（起点）→ **745**（当前）。真题改编题统一打 `tags: ['真题改编']`，可全局搜索筛选。
 
 > 批 8 范围说明：原计划的"大数据/移动端/运维各 +3~4"在参考库中无对口语料（无对应课程材料），如实跳过；批 8 聚焦有真实试卷支撑的 qa 方向。
 
@@ -106,3 +107,11 @@
 **新题 3**：cs-algo-btree-math（B+ 树容量/高度/IO 推导，912 两年背靠背原题 + 清华 ZB 高度题）、cs-math-svd-conditioning（条件数/det=奇异值积/酉不变/白化/Rayleigh 商，矩阵论原题组；追问 Tikhonov 正则化）、ai-scene-ml-system-design（BBS 个性化推荐四问式设计，清华 2007 原题；追问迁移短视频）。
 
 **范围**：此前审查标注的三处语料缺口全部补齐。详见 docs/quiz-harvest/seeds-batch9-gaps.md。
+
+## 批 10 · 计算机体系结构增厚 ✅（来源：体系结构课程 11 份带答案卷 + 作业 5 份，34 条种子）
+
+**新题 4**：ca-quant-roofline（算术强度判瓶颈+循环融合 2× 原题）、ca-ooo-scheduling（记分板→Tomasulo→硬件投机三代演进+单保留站时序原题；追问重命名边界、RISC-V 异常寄存器）、ca-branch-predictor-structure（(m,n) 两级预测器 8K bits 容量原题+BTB 降 CPI；追问分支延迟槽）、ca-sync-primitives（CAS→test-and-test-and-set→LL/SC→队列锁；追问最小写屏障原题）。
+
+**追问 6 条**：ca-coh-directory（目录消息流原题大题+写无效 vs 写更新）、ca-par-smt（藏延迟 6 线程 CMU 原题）、ca-pw-ecc-ras（软错误翻转 MESI 状态位清华 2014 原题）、ca-ilp-window（2 发射升 3 发射无加速原题）+ 新题内 2 条。
+
+**分工**：乱序机制总览/分支预测代价/MESI 状态机/SMT 资源划分等既有题未动。详见 docs/quiz-harvest/seeds-batch10-arch.md。
