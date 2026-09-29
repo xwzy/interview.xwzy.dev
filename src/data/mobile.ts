@@ -265,7 +265,7 @@ export const mobileTrack: Track = {
             '**先建度量与目标（工程纪律）**：分渠道统计**下载体积**（用户实际下载，App Bundle 动态分发后远小于 APK 全量体积）与安装体积；建立**体积基线看板**（按模块/资源类型拆解——Webpack Analyzer 思想的端上版），CI 上加**体积门禁**（增量超阈值 block 合并）——没有度量的"优化"会一周内回潮。',
             '**资源层（通常是最大头）**：图片 **WebP/AVIF 化**（PNG 转 WebP 省 25~50%，带透明通道也支持）、大图按密度删冗余（一套 xxhdpi 打底 + 按需）、**无用资源清理**（lint 检测 + 资源混淆工具 shrinkResources）、字符串与动画 XML 精简；动态表情/字体这类可后置资源走**在线下发**（首次启动后台拉取）。',
             '**代码层**：**R8 全量混淆**（代码缩减 + 优化 + 混淆三合一，ProGuard 的接替者——keep 规则要克制，keep 泛滥等于白混）；移除未使用的依赖与重复依赖（依赖树分析）；**多 module 按需拆分**（feature module 不进主包）；调试符号与行号表**剥离归档**（崩溃时用 mapping 文件反解——sourcemap 思想的端上版，与崩溃采集联动）。',
-            '**so 层与平台机制**：**abiFilters 控制指令集**（只出 arm64 或用 App Bundle 按设备分发对应 abi——x86 模拟器版本不下发给真机用户）；so 裁剪（strip 符号、`-ffunction-sections` 链接期去死代码）；超大 so（如滤镜/模型）走**动态加载下发**；Android 用 **App Bundle + Play Feature Delivery**（按需/条件分发模块），iOS 对应 bitcode/符号剥离与**按需资源（ODR）**——平台机制永远优先于手工优化。',
+            '**so 层与平台机制**：**abiFilters 控制指令集**（只出 arm64 或用 App Bundle 按设备分发对应 abi——x86 模拟器版本不下发给真机用户）；so 裁剪（strip 符号、`-ffunction-sections` 链接期去死代码）；超大 so（如滤镜/模型）走**动态加载下发**；Android 用 **App Bundle + Play Feature Delivery**（按需/条件分发模块），iOS 对应 App Thinning/符号剥离与**按需资源（ODR）**（早年 bitcode 机制已在 Xcode 14 弃用、App Store 停收）——平台机制永远优先于手工优化。',
             '**权衡与防劣化**：体积 vs 启动（动态下发换小包但增加首开网络依赖——开关由数据决定）；混淆 vs 可调试（mapping 必须归档，否则线上崩溃无法定位）；把体积纳入**每版本 release checklist**（对比上一版本 diff、解释每个增量来源）——包体积是"不管理就永远膨胀"的熵增指标，这句话是这题的工程分。',
           ],
           followUps: [
@@ -771,8 +771,8 @@ export const mobileTrack: Track = {
           tags: ['鸿蒙', 'HarmonyOS', 'ArkTS'],
           points: [
             '**架构层面最大的差异：分布式与统一生态**——HarmonyOS 从设计上面向"全场景"（手机/平板/手表/车机/IoT），应用天然按**多设备形态自适应**（一多开发：一套工程适配多端）；分布式软总线让跨设备协同（接续、协同调用其他设备能力）是系统级能力，而 Android 是以手机为中心、跨设备靠云同步/投屏等外挂方案。',
-            '**开发范式 ArkTS/ArkUI：声明式 UI + 状态驱动**——ArkTS 是 TypeScript 的超集（静态化加强，禁用部分动态特性换取 AOT 性能），ArkUI 用 **@Component + build() + @State/@Prop/@Link** 的声明式写法，与 SwiftUI/Compose 同构（UI = f(state)），前端工程师迁移成本相对低。对比 Android：Java/Kotlin + View/XML（命令式）或 Compose（声明式）——范式演进方向一致，但鸿蒙**原生就是声明式起步**。',
-            '**工程结构差异**：HarmonyOS 的应用是 **HAP 包**（Ability 是最小调度单元：UIAbility 管界面、ExtensionAbility 管后台场景），Stage 模型下由 **UIAbility + WindowStage** 组织页面路由；权限模型、后台任务管控比 Android 更收紧（重续_statless 后台策略），安全上按 ACL 精细授权。与 Android 的"四大组件"映射着学：Activity ≈ UIAbility，Service ≈ 后台任务/ExtensionAbility，但不能机械套用语义。',
+            '**开发范式 ArkTS/ArkUI：声明式 UI + 状态驱动**——**ArkTS 基于 TypeScript 扩展并收紧**（静态化加强——动态特性上是 TS 的**子集**：禁用 any/部分运行时动态特性换取 AOT 性能，任意 TS 代码不能直接编译上鸿蒙），ArkUI 用 **@Component + build() + @State/@Prop/@Link** 的声明式写法，与 SwiftUI/Compose 同构（UI = f(state)），前端工程师迁移成本相对低。对比 Android：Java/Kotlin + View/XML（命令式）或 Compose（声明式）——范式演进方向一致，但鸿蒙**原生就是声明式起步**。',
+            '**工程结构差异**：HarmonyOS 的应用是 **HAP 包**（Ability 是最小调度单元：UIAbility 管界面、ExtensionAbility 管后台场景），Stage 模型下由 **UIAbility + WindowStage** 组织页面路由；权限模型、后台任务管控比 Android 更收紧（更严格的后台任务策略），安全上按 ACL 精细授权。与 Android 的"四大组件"映射着学：Activity ≈ UIAbility，Service ≈ 后台任务/ExtensionAbility，但不能机械套用语义。',
             '**生态与就业视角收束**：技术决策上鸿蒙要回答"多端触达 + 国产生态要求"是否成立；工程师视角它是"**移动端第三平台**"——ArkTS 声明式、方舟编译器 AOT、ArkUI-X 跨端（同一套 ArkUI 出 Android/iOS 版），能把它与 Compose/SwiftUI/Flutter 放在同一个声明式坐标系里对比，就是这道题的完整答案。',
           ],
           followUps: [

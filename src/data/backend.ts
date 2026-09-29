@@ -377,9 +377,9 @@ export const backendTrack: Track = {
           points: [
             '**场景先行（为什么需要专门的定时器结构）**：一个长连接网关上有**百万级定时任务**（每个连接的心跳超时、读写超时、重试退避、延迟任务）——定时器的四大操作（增、删、找最近到期、到期触发）在高频下的复杂度决定组件上限；朴素方案（链表遍历找最近、每秒全量扫描）在 10 万级就崩。与任务调度系统题分工：那题讲分布式调度架构，本题讲**单机定时器组件的数据结构**。',
             '**三种实现的对比（背熟这张表）**：**最小堆（priority queue by expire time）**——插入/删除 O(log n)，**取最近到期 O(1)**（堆顶就是下一个），配合事件循环把"堆顶到期时间 - now"交给 epoll_wait 的 timeout 参数（到点前安心休眠——nginx 早期、libevent 用堆/红黑树变体）；**红黑树**（nginx 定时器）——有序结构，增删 O(log n)，支持范围查询（扫某段时间内到期的一批），比堆多的能力是**按到期区间批量取**；**时间轮（Hashed Timing Wheel）**——见下，增删 **O(1)**，海量任务的王。',
-            '**时间轮原理（游戏/网关面试的硬通货）**：一个环形数组（如 512 槽）+ 指针每 tick（如 10ms）走一格，任务按 `到期时间/tick % 槽数` 挂到槽的链表上——插入删除都是**链表操作 O(1)**，指针走到槽就触发整槽；**单层轮的局限**是最大延时受轮长限制 → **层级时间轮**（Kafka/Netty 的做法：秒级轮走完一圈才让分钟级轮的格子"降级"到秒级轮——像时钟的时分秒针，**O(1) 支持任意时长**）；代价：到期精度受 tick 粒度限制（tick 越细轮转越快——精度与 CPU 的权衡）。',
+            '**时间轮原理（游戏/网关面试的硬通货）**：一个环形数组（如 512 槽）+ 指针每 tick（如 10ms）走一格，任务按 `到期时间/tick % 槽数` 挂到槽的链表上——插入删除都是**链表操作 O(1)**，指针走到槽就触发整槽；**单层轮的局限**是最大延时受轮长限制 → **层级时间轮**（Kafka 的做法：秒级轮走完一圈才让分钟级轮的格子"降级"到秒级轮——像时钟的时分秒针，O(1) 支持任意时长；Netty 的 HashedWheelTimer 则是单层时间轮 + remainingRounds 计数）；代价：到期精度受 tick 粒度限制（tick 越细轮转越快——精度与 CPU 的权衡）。',
             '**工程细节（做过的人才知道的点）**：**到期处理的节奏**——每 tick 处理当前槽任务要快（慢了任务堆积拖垮事件循环——重活丢队列异步做，定时器只做触发）；**删除的两段式**（惰性删除：任务标记取消，走到时跳过——省去链表摘除的锁竞争；Netty 的实现是 O(1) 摘除 + 状态校验）；**多线程**（时间轮单线程驱动 + 任务投递到 worker 池执行——数据结构不跨线程共享，与事件循环模型天然匹配）；**海量连接心跳**的优化：超时检查不必每连接一个定时器——**时间轮扫描 + 最近活跃时间戳比对**（惰性清理：连 10 万个连接只挂 60 个"每秒一格"的扫描任务）。',
-            '选型收束：**百~万级任务、要精确** → 最小堆/红黑树（实现简单）；**十万~百万级、增删频繁** → 时间轮（心跳/重试/游戏 buff 的标配）；配合事件循环（epoll timeout 联动堆顶 / tick 驱动时间轮）是网络库 timer 的两种经典装配——答出"你用的库是哪种装配"（如 Netty = 层级时间轮、nginx = 红黑树）是真实感的临门一脚。',
+            '选型收束：**百~万级任务、要精确** → 最小堆/红黑树（实现简单）；**十万~百万级、增删频繁** → 时间轮（心跳/重试/游戏 buff 的标配）；配合事件循环（epoll timeout 联动堆顶 / tick 驱动时间轮）是网络库 timer 的两种经典装配——答出"你用的库是哪种装配"（如 Kafka = 层级时间轮、Netty = 单层轮 + remainingRounds、nginx = 红黑树）是真实感的临门一脚。',
           ],
           followUps: [
             {
@@ -468,7 +468,7 @@ export const backendTrack: Track = {
             '**类型擦除**：Java 泛型是**编译期的语法糖**——编译后 `List<String>` 与 `List<Integer>` 都是同一个 `List`（原始类型），类型参数在运行时被擦除（替换为上界或 Object）；证据链：`new ArrayList<String>().getClass() == new ArrayList<Integer>().getClass()` 为 true、运行时拿不到 `T.class`。',
             '**擦除带来的限制清单（必背）**：不能 `new T()`（运行时不知道 T）、不能 `new T[]` 与泛型数组的协变问题、**静态成员不能引用类的类型参数**、不能 `instanceof List<String>`（只判原始类型）、**基本类型不能做类型参数**（`List<int>` 非法 → 装箱开销，这是泛型性能的隐形坑）；**重载冲突**：`f(List<String>)` 与 `f(List<Integer>)` 签名相同编译不过。',
             '**桥方法（加分细节）**：擦除后接口/父类的抽象方法签名与子类实现不匹配时，编译器生成**合成桥方法**维持多态——`class MyComparator implements Comparator<String>` 擦除后父类方法是 `compare(Object,Object)`，子类的 `compare(String,String)` 之外会多一个委托的桥方法；反射看方法列表会见到 `bridge` 标记——讲得出桥方法说明真懂擦除的机制层。',
-            '**通配符与 PECS**：`? extends T`（生产者，只读）与 `? super T`（消费者，只写）——**Producer Extends, Consumer Super**；为什么需要：泛型不变型（`List<String>` 不是 `List<Object>` 的子类型）的补偿机制，保证类型安全的同时保留协变/逆变表达。横向对比收尾：**Kotlin 的 reinline/泛型特化、C# 的具化泛型（运行时保留 T，可 new T）证明擦除是 Java 的历史选择而非必然**（兼容 5.0 之前的海量字节码）。',
+            '**通配符与 PECS**：`? extends T`（生产者，只读）与 `? super T`（消费者，只写）——**Producer Extends, Consumer Super**；为什么需要：泛型不变型（`List<String>` 不是 `List<Object>` 的子类型）的补偿机制，保证类型安全的同时保留协变/逆变表达。横向对比收尾：**Kotlin 的 reified 具化泛型、C# 的具化泛型（运行时保留 T，可 new T）证明擦除是 Java 的历史选择而非必然**（兼容 5.0 之前的海量字节码）。',
           ],
           followUps: [
             {
@@ -557,7 +557,7 @@ export const backendTrack: Track = {
           tags: ['GraalVM', 'AOT', '云原生', 'Java'],
           points: [
             '**原理一句话：把"运行时才做的工作"全部提前到构建期**——传统 JVM 启动要加载类、初始化、JIT 边跑边编译（预热期吞吐低）；Native Image 在**构建时做封闭世界分析（closed-world）**：从 main 出发静态可达的代码全部 AOT 编译成机器码，类初始化与堆初始状态**快照（heap snapshot）**进镜像——启动 = 把镜像映射进内存，几十毫秒级、**内存占用常降一半以上**、峰值性能无预热期（没有 JIT 也有 C2 级别的静态优化 + PGO 配合）。',
-            '**代价清单（这题的区分度全在代价上）**：① **封闭世界假设与动态字节码冲突**——反射、动态代理、JNI、动态类加载（ServiceLoader）、字节码增强（CGLIB/ASM）运行时才确定类型，AOT 看不见 → 需要**reachability metadata 配置**（手动登记反射类/方法，社区仓库 spring-native-config 就是干这个的），漏配 = 运行时 ClassNotFound/Raycasting 玄学错误，**配置成本是迁移的主要工作量**；② 构建慢（分钟级）且要大内存；③ **无 JIT 的峰值反优化风险**：激进去虚化、Profile-Guided Optimization（PGO）能补，但极端动态场景仍可能落后 JIT；④ 调试/监控工具链差异（堆 dump 格式、JFR 支持逐步完善）。',
+            '**代价清单（这题的区分度全在代价上）**：① **封闭世界假设与动态字节码冲突**——反射、动态代理、JNI、动态类加载（ServiceLoader）、字节码增强（CGLIB/ASM）运行时才确定类型，AOT 看不见 → 需要**reachability metadata 配置**（手动登记反射类/方法，社区 reachability metadata 仓库就是干这个的），漏配 = 运行时 ClassNotFound/反射失败类玄学错误，**配置成本是迁移的主要工作量**；② 构建慢（分钟级）且要大内存；③ **无 JIT 的峰值反优化风险**：激进去虚化、Profile-Guided Optimization（PGO）能补，但极端动态场景仍可能落后 JIT；④ 调试/监控工具链差异（堆 dump 格式、JFR 支持逐步完善）。',
             '**适用场景的清醒判断**：**Serverless/FaaS**（冷启动就是钱，按毫秒计费的场景 native 是质变）、**CLI 工具与本地脚本**（Java 做 CLI 一直被启动慢劝退，native 后与 Go 同台）、**K8s 弹性扩缩容密集**的场景（扩容快、镜像密度高）；**不适合**：长时间运行的重型服务（JIT 预热后的峰值与 GC 成熟度更优，收益小配置成本大）、强依赖运行时动态性的系统（老 ORM、老 RPC 框架）。',
             '**生态现状口径**：Spring Boot 3+ 的 **Spring AOT**（构建期做 bean 冗余消除与代理提示，为 native 做准备，`spring-boot:build-image` 一键）、Micronaut/Quarkus（从设计之初就少反射、编译期 DI，对 native 更友好——这也是它们诞生的重要动机）；**虚拟线程与 native 的关系**：虚拟线程解决"阻塞 IO 的吞吐"，native 解决"启动与内存"，两者正交可组合——把它们放在一起对比说明懂两条线的分工。',
             '收束格局：Java 在云原生时代对 Go 的劣势项（启动、内存、镜像大小）被 GraalVM 补齐，代价是放弃一部分"动态性自由"；判断标准回到业务形态——**生命周期越短（函数级）、实例越密（弹性扩缩），native 收益越大；生命周期越长（常驻服务），JIT 越香**。',
@@ -580,7 +580,7 @@ export const backendTrack: Track = {
           points: [
             '算法基础：**标记-清除**（碎片）、**标记-复制**（新生代，空间换时间无碎片）、**标记-整理**（老年代）；判活用**可达性分析**（GC Roots：栈引用、静态变量、JNI 引用等），弥补不可达对象靠引用链遍历——这也是"循环引用不需要手动处理"的原因。',
             '演进主线是**缩短停顿（STW）**：Serial/Parallel（全停顿、吞吐优先）→ **CMS**（并发标记清除，首次把老年代停顿拆散）→ **G1**（区域化堆、可预测停顿）→ **ZGC/Shenandoah**（着色指针/读屏障实现并发整理，停顿 <1ms 与堆大小无关）。',
-            '**CMS 被取代的原因**：① 标记-清除产生**内存碎片**，最后被迫 Full MC（Serial 整理）长停顿；② 并发阶段与用户线程抢 CPU；③ **并发失败（concurrent mode failure）**：老年代分配速度超过回收速度就退化为全停顿；④ 维护成本高，JDK14 移除。',
+            '**CMS 被取代的原因**：① 标记-清除产生**内存碎片**，最后被迫 Full GC（Serial 整理）长停顿；② 并发阶段与用户线程抢 CPU；③ **并发失败（concurrent mode failure）**：老年代分配速度超过回收速度就退化为全停顿；④ 维护成本高，JDK14 移除。',
             '**G1 核心**：堆划成 2048 个等大 Region（Eden/Survivor/Old/Humongous 都是逻辑角色）；**按停顿目标（-XX:MaxGCPauseMillis，默认 200ms）优先回收"垃圾占比最高"的 Region**（垃圾优先 Garbage First 的由来）；Remembered Set 维护跨 Region 引用。',
           ],
           followUps: [
@@ -916,7 +916,7 @@ export const backendTrack: Track = {
           tags: ['Go', 'interface', 'duck typing'],
           points: [
             '**两字节结构**：interface 变量 = (**itab/类型信息, 数据指针**) 两字（16 字节）。**iface**（带方法的接口）：itab 里存**接口类型、动态类型、方法表**（接口要求的方法 → 具体类型实现的地址，调用即查表间接跳转）；**eface**（`interface{}` 空接口）：只有动态类型 + 数据指针，没有方法表。',
-            '**动态派发的开销与内联**：接口调用要查 itab 方法表（间接调用 + 阻止内联），比直接调用慢（纳秒级，但热路径累积可见）；逃逸分析联动：值装入 interface 通常**逃逸到堆**（见逃逸分析题）。Go 的应对是** devout/泛型约束**时代仍保留接口做灵活性，性能敏感处用泛型（编译期特化）或具体类型。',
+            '**动态派发的开销与内联**：接口调用要查 itab 方法表（间接调用 + 阻止内联），比直接调用慢（纳秒级，但热路径累积可见）；逃逸分析联动：值装入 interface 通常**逃逸到堆**（见逃逸分析题）。Go 后续版本靠**编译器去虚化 + 泛型约束**缓解，仍保留接口做灵活性，性能敏感处用泛型（编译期特化）或具体类型。',
             '**nil interface 陷阱（必考）**：`var p *MyType = nil; var i Iface = p` 此时 **i != nil**——interface 的 nil 判断要求**类型指针与数据指针都为 nil**，而这里类型信息是 *MyType（非空）、数据指针是 nil；错误返回时 `return err` 把 nil 具体类型包装成非 nil interface，调用方 `if err != nil` 误判——**Go 最著名的线上 bug 来源**，函数返回 error 前必须显式 `return nil` 而不是返回类型化的 nil。',
             '**隐式实现（结构化类型/duck typing）的设计权衡**：不需要 `implements` 声明——接口与实现解耦，**定义方不用预先知道接口存在**（这是标准库 io.Reader 生态爆发的原因：任何类型只要签名匹配就能插入整个 io 体系）；代价：**实现关系不显式**（重构方法签名时"悄悄不再实现某接口"，编译期才发现）、接口意外实现（方法撞名）；对比 Java/C# 显式声明（编译器立即校验，但实现耦合定义）。收束：Go 的选择服务于"**消费方定义接口**"（accept interfaces, return structs）——小接口 + 消费端声明的习惯用法要能说出来。',
           ],
@@ -1138,7 +1138,7 @@ export const backendTrack: Track = {
           tags: ['Stream', '背压', '高并发'],
           points: [
             '问题：`readable.pipe(writable)` 时若**读取速度 > 写入速度**（如读磁盘写网络），数据会在内存里无限堆积——不处理背压的大文件代理服务 OOM 是 Node 经典事故。',
-            '机制：Writable 维护内部缓冲与 **highWaterMark**（默认 64KB），write() 返回 false 表示缓冲已满；正确写法是收到 false 后**暂停读取，等 drain 事件再继续**。',
+            '机制：Writable 维护内部缓冲与 **highWaterMark**（Writable 基类默认 16KB，文件流为 64KB），write() 返回 false 表示缓冲已满；正确写法是收到 false 后**暂停读取，等 drain 事件再继续**。',
             '工程实践：优先用**管道抽象**（pipe/stream.pipeline/web 流）让框架自动处理背压；stream.pipeline（Node 10+）还解决了 pipe **错误不传播、不销毁流**的老问题（error 必须监听并 destroy 所有流）。',
             '异步迭代器写法（推荐）：`for await (const chunk of readable)` 配合 await once(writable, "drain")——语义直白且天然背压。',
           ],
@@ -1158,7 +1158,7 @@ export const backendTrack: Track = {
           difficulty: 'intermediate',
           tags: ['Cluster', 'Worker Threads', '多进程'],
           points: [
-            '**cluster**：多**进程**（fork 子进程各自独立 V8/堆），共享监听 socket（master 在内部轮询分发连接，默认 round-robin on Windows/调度策略差异见文档）——用于**多核扩展 HTTP 服务**，进程隔离带来稳定性（子进程崩溃不影响其他 worker），但内存开销大、进程间只能 IPC 消息。',
+            '**cluster**：多**进程**（fork 子进程各自独立 V8/堆），共享监听 socket（master 在内部轮询分发连接，默认 round-robin 分发——Windows 除外，Windows 交给 OS 分发）——用于**多核扩展 HTTP 服务**，进程隔离带来稳定性（子进程崩溃不影响其他 worker），但内存开销大、进程间只能 IPC 消息。',
             '**worker_threads**：单进程内多**线程**，各有独立 V8 实例与事件循环，通过 **SharedArrayBuffer/MessagePort** 高效共享与通信——用于**卸载 CPU 密集任务**（图像处理、加密、大 JSON 解析），内存共享省拷贝，但一个线程崩溃可能波及进程。',
             '选型：横向扩容 Web 服务 → cluster（或干脆容器多副本 + K8s，让编排层管扩缩）；CPU 热点函数 → worker_threads 或进程池（piscina）；两者都不是万金油：**能拆成独立服务/队列任务的，优先拆**。',
           ],
@@ -1445,7 +1445,7 @@ export const backendTrack: Track = {
           tags: ['Rust', '并发', 'Send', 'Sync'],
           points: [
             '两个**标记 trait**（零大小的编译期标记）：**Send** = 所有权可以转移到另一个线程；**Sync** = `&T` 可以跨线程共享（T: Sync ⟺ &T: Send）。编译器对跨线程原语（thread::spawn、channel）要求参数满足 Send——**不是运行时检查，是类型系统门槛**。',
-            '数据竞争被编译期排除的机制：竞态需要"两个线程访问同一可变状态且至少一个写"；Rust 里并发写需要 &mut 或内部可变性——而 `Rc`（非原子计数）、`RefCell`（非原子借用计数）被标为 **!Send**，放进 `thread::spawn` 直接编译失败。C++ 里同样的代码能编译通过、靠 memory model 事后治理——**这是两种范式：事后正确 vs 事前禁止**。',
+            '数据竞争被编译期排除的机制：竞态需要"两个线程访问同一可变状态且至少一个写"；Rust 里并发写需要 &mut 或内部可变性——而 `Rc` 是 !Send + !Sync（非原子计数），`RefCell` 是 Send 但 !Sync（非原子借用计数，不能跨线程共享引用）——两种方式放进 thread::spawn 或跨线程共享都直接编译失败。C++ 里同样的代码能编译通过、靠 memory model 事后治理——**这是两种范式：事后正确 vs 事前禁止**。',
             '共享可变的标准姿势：**Arc<Mutex<T>> / Arc<RwLock<T>>**——Mutex 提供"内部可变性 + Sync"（把 &Mutex<T> 变成合法的跨线程可变访问）；**死锁 Rust 不管**（锁排序、超时仍要自己防）——"无畏并发"防的是数据竞争，不是所有并发 bug，这句边界话是高级感所在。',
             'async 场景的延伸考点：future 在 .await 间跨线程调度，要求**整个 future 是 Send**——跨 await 持有 !Send 的东西（如 `std::sync::MutexGuard`）会让 future 整体 !Send，报错位置离根源很远（经典编译器劝退点）；解法是 `tokio::sync::Mutex`（跨 await 安全）或缩小 guard 作用域。',
           ],
@@ -1742,7 +1742,7 @@ export const backendTrack: Track = {
               question: '`select count(*)` 很慢是什么原因？为什么 InnoDB 没有存总行数？',
               points: [
                 'MyISAM 存了总行数（无并发写时直接返回）；InnoDB 的 count 要**看事务视角**——不同 Read View 可见的行数不同，无法存一个全局准确的数，只能扫描（走最小的索引树）。',
-                '优化：业务计数走**汇总表/Redis 计数器**（最终一致 + 对账）；`count(*) ≈ count(1) > count(主键)`（主键要取值，* 由优化器选最小索引）；8.0.13 后并行读加速。',
+                '优化：业务计数走**汇总表/Redis 计数器**（最终一致 + 对账）；`count(*) ≈ count(1) > count(主键)`（主键要取值，* 由优化器选最小索引）；8.0.14 后并行读加速。',
               ],
             },
           ],
