@@ -1333,6 +1333,35 @@ export const csTrack: Track = {
                 '加分收尾：能主动说出"反范式是**用一致性维护成本换读性能**的显式交易，必须有同步机制和对账，否则就是埋雷"，这一句基本能把范式题拿满。',
               ],
             },
+            {
+              question: '怎么求一个关系模式的全部候选键？BCNF 分解怎么拆、什么时候不保持依赖？（浙大真题）',
+              points: [
+                '**候选键快速定位（原题 R(A,B,C,D,E)，F={A→B, BC→D, C→A}）**：只在**右部**出现的属性（B、D）一定不在键里；只在**左部**出现的（E）必在键里；两边都出现的（A、C）待定——对候选集求**属性闭包**：CE⁺ 用 Armstrong 公式推（C→A→B、BC→D）覆盖全部属性 ⇒ 唯一候选键 **{C,E}**（参考答案明确：写 {ACE,BCE} 之类不得分）。',
+                '**正则覆盖（最小覆盖，原题 F={A→CD, C→B, B→D, B→E}）**：合并同左部（B→D、B→E ⇒ B→DE）、删冗余依赖、去冗余属性（A→CD 中的 D 可由 B→D 导出，删）⇒ **Fc = {A→C, C→B, B→DE}**；B⁺ = {B,D,E}——正则覆盖是分解的输入。',
+                '**BCNF 分解与依赖保持（原题）**：对每个**左部不是超键**的依赖拆出子关系，直到所有子关系的依赖左部都是超键 ⇒ R1(B,D,E)、R2(C,B)、R3(A,C)；**BCNF 分解总是无损连接，但不一定保持依赖**（拆掉某条 FD 后它横跨两个子关系，无法在单个关系上 enforced）——**3NF 反之**（保持依赖 + 无损，但允许主属性依赖）——"BCNF 的严格性 vs 3NF 的实用性"是规范化的核心权衡（cs-db-normalization 主答案讲范式动机，本题讲推导与分解方法）。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'cs-db-sql-patterns',
+          title: '"查通过所有供应商下过单的顾客"这类 SQL 怎么写？关系除法与分组聚合的语义陷阱',
+          difficulty: 'intermediate',
+          tags: ['真题改编', 'SQL', '关系除法', '分组聚合'],
+          points: [
+            '**关系除法 = SQL 里的全称量词（"所有/每个"类查询的标准套路）**：SQL 没有全称量词，"通过**所有**供应商购买过商品的顾客"要翻译成**双重否定**：不存在一个（该顾客没有下过单的）供应商——```sql\nSELECT DISTINCT cid FROM Orders o1\nWHERE NOT EXISTS (\n  SELECT 1 FROM Agents a\n  WHERE NOT EXISTS (\n    SELECT 1 FROM Orders o2\n    WHERE o2.cid = o1.cid AND o2.aid = a.aid));\n```（清华 cs19 原题同型："每个用户评分都高于电影 X 的电影"用 **EXCEPT**：全部电影 − 存在某用户评分不高于 X 的电影）。',
+            '**分组去重计数语义（清华原题）**："2018 年**只在一家**校区消费过的卡"——`GROUP BY cno HAVING COUNT(DISTINCT campus) = 1`——**"只/恰好/仅一个"翻译成 count(distinct) 的等值判断**；等价 exists + not exists（不存在两个不同校区的记录）。DISTINCT 在聚合里="分组内去重后计数"，这个细节决定答案对错。',
+            '**分组最值的 >= all 写法（原题）**："紫金港消费总额最大的 pos"——`GROUP BY pno HAVING SUM(amount) >= ALL (SELECT SUM(amount) ... GROUP BY pno)`——子查询重复同样的过滤与分组；现代写法用**窗口函数**（`RANK() OVER (ORDER BY SUM(amount) DESC)` 取 rank=1，并列名次天然处理）——"老写法考语义、新写法考工程"都要会。',
+            '**语义自查清单**：写"所有/每个"→ 双重 NOT EXISTS 或 EXCEPT/除法；写"只/恰好"→ count(distinct)=1；写"最大/前 N"→ >= all 或窗口函数——**见到中文字眼反射出 SQL 模板**是手写题的得分逻辑；写完用"边界数据"（空组、NULL、并列）各过一遍。',
+          ],
+          followUps: [
+            {
+              question: '嵌套 IN 子查询怎么改写成 join？（浙大原题：去嵌套与关系代数）',
+              points: [
+                '元组 IN 子查询 `(cdate, pno) IN (SELECT cdate, pno FROM detail WHERE cno=\'c0002\')` 等价改写为 **self-join**：detail d1 与 detail d2（限定 cno=\'c0002\'）按 (cdate, pno) 等值连接，再连 card 取卡号与姓名——语义一致（IN 去重语义在连接键是候选键时保持）。',
+                '**去嵌套的意义**：老优化器对相关子查询可能逐行执行（外表每行跑一次子查询），改写成 join 后优化器可以统一选连接算法与顺序；关系代数表达（πσ⋈ 与下推）正是优化器的工作语言——"SQL → 关系代数 → 优化"这条线是查询处理题（后端 MySQL 执行题）的理论基础。',
+              ],
+            },
           ],
         },
         {
@@ -1352,6 +1381,14 @@ export const csTrack: Track = {
               points: [
                 '三种写法：① `LEFT JOIN ... WHERE 右表.id IS NULL`（反连接，直观）；② `NOT EXISTS (SELECT 1 FROM 右表 WHERE 条件)`（语义最清晰，通常更优：找到第一条即停，无临时结果集）；③ `NOT IN (SELECT ...)`——**大坑**：子查询结果含 NULL 时整个查询返回空集，必须确保列 NOT NULL 或用 NOT EXISTS 替代。',
                 '顺手比较 EXISTS 与 IN 的选择：子查询小外查询大用 IN，外查询小子查询大用 EXISTS（现代优化器多数会自动改写，但面试口径要说得出原理）。',
+              ],
+            },
+            {
+              question: 'NULL 的比较语义有哪些坑？count(distinct) 怎么对待 NULL？（南大原题）',
+              points: [
+                '**NULL 判等必须用 IS NULL / IS NOT NULL**——`name = NULL` 的结果是 UNKNOWN（三值逻辑），在 WHERE 里永远为假（真题：`NAME = NULL` 是“不正确的操作”）。SQL 的三值逻辑：TRUE/FALSE/**UNKNOWN**——NULL 与任何值比较（包括 NULL = NULL）都是 UNKNOWN，NOT UNKNOWN 还是 UNKNOWN。',
+                '**聚合函数忽略 NULL**（真题）：插入 (1, Alice) 和 (2, Bob, Bishop)，`count(distinct supervisor)` 结果是 **1** 不是 2——Alice 的 supervisor 为 NULL 不计数；count(*) 数行数、count(列) 数非 NULL——这一差异是“为什么 count(1) 和 count(col) 结果不同”的标准答案。',
+                '延伸：NOT IN 遇到 NULL 全空（上一条追问的三种写法）、`<>` 与 NOT 的 UNKNOWN 陷阱、唯一索引允许多个 NULL——**NULL 语义是 SQL 手写题的第一大陷阱来源**。',
               ],
             },
           ],

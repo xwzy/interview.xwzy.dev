@@ -471,6 +471,13 @@ export const backendTrack: Track = {
                 '边界：局部变量、运行时 new 出来的实例本体拿不到（`new ArrayList<String>()` 的实例不知道自己装 String）；这个"**声明处保留、实例处擦除**"的区别就是框架能做泛型解析而你不能 `new T()` 的完整解释——答到这一层基本到顶了。',
               ],
             },
+            {
+              question: 'List<?> 赋值后为什么不能 add 任何元素？（浙大真题：三行代码哪行编译错）',
+              points: [
+                '`List<Double> ls; List<?> lo = ls; lo.add(new Object());` ——第三行**编译错**：`?` 是未知类型（capture-of-?），编译器无法证明任何类型安全地写进去（除 null 外）——**通配符类型是只读的 producer**。读取侧 `ls.get(0)` 也只能得到 Object（不能赋给 String）。',
+                '这就是 PECS 的实操面：`? extends` 只读、`? super` 只写（可写 T 及其子类，读出是 Object）——**编译器用"限制写"换"允许协变赋值"**。想又能读又能写，就用精确类型 `List<Double>`。',
+              ],
+            },
           ],
         },
         {
@@ -678,6 +685,13 @@ export const backendTrack: Track = {
                 'LongAdder：**分散热点**——无竞争走 base CAS，有竞争给当前线程哈希到独立 Cell 累加，sum() 时求和；代价是 sum 是**瞬时非原子快照**（适合统计，不适合需要精确同步值的场景）。ConcurrentHashMap 的 size 用的是同一思想。',
               ],
             },
+            {
+              question: 'wait/notify 为什么定义在 Object 上而不是 Thread？两个对象交叉加锁为什么死锁？（浙大真题）',
+              points: [
+                '**锁在对象上**：Java 的监视器（synchronized）以**每个对象**为单位（锁信息在对象头 Mark Word）——wait/notify 操作的是"所属对象的等待队列"，自然定义在所有对象的根类 Object 上；**必须已持有该对象的锁才能调用**（IllegalMonitorStateException），且要在 synchronized 块内。',
+                '**双对象死锁真题**：`synchronized void work(A other) { synchronized(other) {...} }`——t1 执行 a1.work(a2)（先锁 a1 再锁 a2），t2 执行 a2.work(a1)（先锁 a2 再锁 a1）——**加锁顺序相反**，互相持有对方要的锁 → 死锁。规避：全程序统一加锁顺序 / tryLock 超时 / 缩小锁粒度（与操作系统方向死锁题、MySQL 锁题同一套理论）。',
+              ],
+            },
           ],
         },
         {
@@ -792,7 +806,91 @@ export const backendTrack: Track = {
               ],
             },
           ],
-        }
+        },
+        {
+          id: 'be-java-equals-hashcode',
+          title: '重写 equals 为什么必须同时重写 hashCode？写错参数类型会怎样？',
+          difficulty: 'intermediate',
+          tags: ['真题改编', 'equals', 'hashCode', '集合'],
+          points: [
+            '**契约（必须背）**：equals 相等 ⇒ **hashCode 必须相等**；hashCode 相等 ⇏ equals 相等（哈希碰撞）。不守约的下场：只重写 equals 不重写 hashCode → 两个"相等"对象哈希到不同桶 → **HashSet 去重失效、HashMap get 不到**——存进去的对象换个"相等"的对象去取，返回 null。',
+            '**真题陷阱：重载而非覆写（浙大原题）**：`public boolean equals(Value v)` 参数是 Value 不是 Object——这是**重载**，Object.equals(Object) 原版还在；HashSet 内部经 Object.equals 比较**仍是引用相等**，且 hashCode 未重写 → 两个 i=39 的对象 size = **2** 而不是 1。识别方法：@Override 注解会让这类错误编译报错——**重写 equals 必带 @Override**。',
+            '**教科书实现三件套**：① `if (this == o) return true` 自反短路；② `instanceof`（或 getClass 严格模式）类型检查；③ 逐字段比较（float 用 Float.compare、double 用 Double.compare 处理 NaN/±0）；hashCode 用 **Objects.hash(...)** 生成。顺带：equals 对称/传递/一致性——写自定义 equals 时最容易破坏传递性（子类附加字段），用"组合代替继承"或 getClass 严格模式规避。',
+            '**工程注脚**：Lombok @EqualsAndHashCode、Java record（自动生成并守约）就是为了让人类别再手写这套；能讲出"record 为什么天然守约"是现代 Java 的加分项。',
+          ],
+          followUps: [
+            {
+              question: '包装类 Integer 之间用 == 比较会怎样？equals 呢？',
+              points: [
+                '== 比引用：Integer.valueOf 对 **-128~127 有缓存**（同区间 == 为 true，超出为 false）——开关在 JVM 参数 IntegerCache.high；面试经典题 `127==127` true、`128==128` false。',
+                'equals 比值但有**类型检查**：`Integer.valueOf(1).equals(Long.valueOf(1L))` 为 **false**（先 instanceof Integer 判断，直接返回 false）——跨包装类型比较数值要拆箱用 == 或 compareTo（浙大真题同款）。三元运算符混用 Integer/Double 还会触发**数值提升拆箱成 double**（真题输出 1.0）——装箱类型的"隐式惊喜"三连。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'be-java-string',
+          title: 'String 为什么设计成不可变？字符串常量池和 intern 是怎么工作的？',
+          difficulty: 'basic',
+          tags: ['真题改编', 'String', '不可变', '常量池'],
+          points: [
+            '**不可变的三大动机**：① **安全性**——String 到处被用（类加载名、网络地址、文件路径、Map key），可变则任何持有引用的人都能篡改语义；② **hashCode 缓存**——String 的 hash 在首次计算后缓存（.hash 字段），作为 HashMap key 高频使用时免重复计算——不可变才敢缓存；③ **常量池共享**——同一字面量全局复用一份，不可变才安全可共享。实现上 final char[]（9 后 byte[]）+ 不暴露修改接口。',
+            '**常量池与 == 判等（浙大原题）**：字面量 "ZJU" 编译期进**字符串常量池**（方法区/元空间的运行时常量池对应物），s1 = "ZJU" 指向池中唯一实例；**new String("ZJU") 在堆上新开对象**——s1 == s2 为 **false**（内容相等要用 equals）。',
+            '**原题四连判**：s1="ZJU"、s2=new String("ZJU")、s3="ZJ"、s4=s2.intern()——`s1==s2` **false**（池对象 vs 堆对象）；`s1==s3` **false**（s3 是 "ZJ"，内容就不同）；`s1==s4` **true**——intern() 返回池中的等值实例（堆中不存在则入池，存在则复用）。变体：`s3 += "U"` 是**运行期**用 StringBuilder 新建的堆对象，不进池——所以它 == 任何池字面量都 false。',
+            '**编译期常量折叠的边界**：`final String a = "ZJ"; String s = a + "U";` 编译期折叠 → 指向池对象 == "ZJU" 为 true；但 a 若非 final（运行期拼接）就是堆新对象——**"编译期能确定" 是进池的前提**。工程口径：字符串比较一律 equals（或 Objects.equals 防 null），== 只用来讲常量池原理。',
+          ],
+          followUps: [
+            {
+              question: '大量字符串拼接为什么用 StringBuilder？"+=" 循环里发生了什么？',
+              points: [
+                'String 不可变 ⇒ 每次拼接都要**新建对象并拷贝全部内容**：循环拼接 n 段的代价是 O(n²)；编译器会把一条 `a+b+c` 优化成单个 StringBuilder，但**跨循环的 += 每轮都新建**——循环内拼接必须手动提 StringBuilder（append O(1) 均摊）。',
+                '延伸：Java 9+ 的字符串拼接改用 invokedynamic（StringConcatFactory），运行期选择最优策略（比手写 StringBuilder 更快）——"编译器优化到什么程度"是动态的，但循环内 += 仍是坏味道。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'be-java-exception',
+          title: 'checked 和 unchecked 异常的边界在哪？finally 一定执行吗？',
+          difficulty: 'basic',
+          tags: ['真题改编', '异常', 'finally', 'try-with-resources'],
+          points: [
+            '**两层分类（浙大原题判别）**：**unchecked** = Error + RuntimeException 及其子类（NPE/ClassCastException/IndexOutOfBounds……编译器不强制捕获或声明——多数是编程 bug，捕获反而掩盖问题）；**checked** = 其余（IOException/SQLException……编译器强制 try-catch 或 throws 声明——表示"可预期的外部故障，调用方必须表态"）。原题四选一：FileNotFoundException 是唯一的 checked。',
+            '**设计哲学一句话**：checked 异常表达"**调用方应该处理的业务性失败**"（重试/提示用户），unchecked 表达"**程序 bug 或致命错误**"（修代码而不是捕获）。争议点：Spring/Data 层把 SQLException 包成 unchecked DataAccessException——**强制声明的外部故障在分层架构里变成了噪音**，这是 checked 异常被现代框架"架空"的原因；C++/Go/Python 干脆没有 checked 概念。',
+            '**finally 的执行规则**：正常/异常路径**都执行**（用于释放资源）；**System.exit / JVM 崩溃 / 守护线程被杀时不会执行**。经典陷阱：finally 里 return 会**吞掉 try/catch 的异常与返回值**（finally 的 return 覆盖一切）——阿里规约明令禁止。真题输出题：try 抛 RuntimeException、catch 打印 B 后重抛、finally 打印 D → 结果 B、D 后异常上抛。',
+            '**现代姿势：try-with-resources**：资源类实现 AutoCloseable，编译器生成的 close 调用保证执行且**异常抑制机制**（close 抛的异常挂到主异常 suppressed 数组，不丢失）——比手写 finally close 更安全（手写版 close 的异常会**顶掉**主异常）。多资源按声明的**逆序**关闭。',
+          ],
+          followUps: [
+            {
+              question: 'finally 里的代码会覆盖 try 的返回值吗？',
+              points: [
+                '会：finally 里 return 直接**替换** try/catch 的返回值；finally 里对基本类型局部变量赋值**不影响**已暂存的返回值（返回值在 finally 前已定）。这条规则 + "finally return 吞异常"是同一机制的两侧：finally 在"结果定稿"阶段拥有最终话语权。',
+                '工程纪律：finally 只放清理逻辑，不放 return/赋值；清理用 try-with-resources，让编译器生成正确代码——靠规则而不是靠记忆力。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'be-java-object-lifecycle',
+          title: '在构造器里调用可被覆盖的方法会发生什么？clone 的浅拷贝语义是什么？',
+          difficulty: 'intermediate',
+          tags: ['真题改编', '构造器', '多态', 'clone'],
+          points: [
+            '**经典事故（浙大信科原题）**：父类 A 构造器调用 print()，子类 B 覆写 print() 并访问自己的字段 array——`new B()` 抛 **NullPointerException**。机制：**父类构造器先于子类构造器体执行**，此时 this 的运行时类型已是 B（动态绑定到 B.print()），但 **B 的字段初始化还没发生**（array 为 null）——"方法派发按运行时类型，字段初始化按构造进度"的错位。',
+            '**纪律与对照**：构造器只做构造——**不要调用可被覆盖的方法**（自己 final/private 化，或工厂方法后初始化）。C++ 相反（构造期 vptr 指当前类，调的是本层版本）——但两种语言的结论一致：构造期多态都是坑（C++ 方向的 binding-slicing 题追问有完整对照）。',
+            '**clone 的浅拷贝语义（浙大原题）**：super.clone() 逐字段复制——**引用字段复制的是引用值**：c1.b == c.b 为 **true**（同一对象，setA(3) 双方可见）；对 c1.ii 重新赋值只改 c1 自己的引用。**transient 只对序列化生效，对 clone 无影响**（原题故意放 transient 干扰）。深拷贝要自己实现：重建引用字段或序列化往返——这就是为什么 Effective Java 说"优先用拷贝构造/工厂代替 clone"（Cloneable 接口甚至是空的）。',
+            '**答题结构**：先讲构造顺序（父构造 → 子字段初始化 → 子构造体）→ 指出动态绑定与初始化进度的错位 → 给纪律 → 延伸 clone/序列化两类"对象复制"的浅拷贝共性——把"对象生命周期"串成一条线。',
+          ],
+          followUps: [
+            {
+              question: 'Teacher 和 Student 都是 Person 的子类，(Student) teacher 会怎样？',
+              points: [
+                '**编译错误**（不是运行时异常）：向下转型要求编译期就存在继承关系（Student 是 Teacher 的子类才行）——`instanceof Person` 为 true 也救不了，兄弟类之间没有转换通道（清华原题）。`instanceof` 为 true 只保证"是 Person"，不能推出跨分支转换合法。',
+                '记忆锚：Java 的 cast 只沿**继承链**上下滑动，编译器静态检查链条存在性、运行时检查实际类型（ClassCastException）——兄弟分支在链条上不可达。',
+              ],
+            },
+          ],
+        },
       ],
     },
     {
@@ -1375,6 +1473,98 @@ export const backendTrack: Track = {
             },
           ],
         },
+        {
+          id: 'be-cpp-stl-internals',
+          title: 'STL 容器存放的是对象本身还是引用？为什么 list 不能用 std::sort？',
+          difficulty: 'basic',
+          tags: ['真题改编', 'STL', '迭代器', '容器'],
+          points: [
+            '**STL 是值语义（清华原题）**：往容器里放对象，放进去的是**副本**（拷贝构造或移动构造）——所以元素类型必须可拷贝；把派生类对象放进 `vector<Base>` 会发生**对象切割**（只拷贝基类子对象）；想共享同一对象要存指针/智能指针。这一条是理解 STL 一切行为的起点。',
+            '**迭代器类别决定可用算法**：**vector/deque 是随机访问迭代器**（支持 it+n、it1<it2）；**list/set/map 只有双向迭代器**（只有 ++/--/*/==）；**std::sort 要求随机访问迭代器**——`sort(list.begin(), list.end())` **编译都过不了**（清华原题），list 必须用**成员函数 list::sort**（基于归并，指针链接不需要随机访问）；stack/queue 干脆没有迭代器。',
+            '**map/set 的有序性**：红黑树实现，插入时即按键有序——“对 map 排序”是个伪需求（原题陷阱项）；要对 value 排序应拷到 `vector<pair<K,V>>` 再排。map 的迭代器是双向的：遍历天然有序，但 sort/nth_element 一律不可用。',
+            '**deque 的分段结构（原题：头插谁最快）**：deque = 分段连续缓冲区 + 中央控制数组——**头尾插入都均摊 O(1)**（vector 头插要整体搬移 O(n)）；随机访问仍 O(1)（两级下标换算）。所以“频繁两端增删”选 deque，“频繁中间插删 + 遍历”选 list，“默认首选”是 vector（连续内存缓存友好——与 Cache 局部性题呼应）。',
+          ],
+          followUps: [
+            {
+              question: '为什么遍历习惯写 ++it 而不是 it++？',
+              points: [
+                '前置 ++ 返回自增后的 *this（引用）；后置 ++ 要用 int 哑参区分重载，**必须返回自增前的旧值副本**（清华原题实现：`int operator++(int) { return v; }`）——自定义类型后置版多一次拷贝构造。',
+                '对 int 无所谓（编译器优化掉），对迭代器（含引用计数的结点对象）是真实的额外开销——习惯上循环一律写前置。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'be-cpp-copy-control',
+          title: '什么时候调用拷贝构造、什么时候调用赋值运算符？默认浅拷贝为什么会 double free？',
+          difficulty: 'intermediate',
+          tags: ['真题改编', '拷贝控制', '浅拷贝', 'RVO', '三法则'],
+          points: [
+            '**触发时机的经典陷阱（清华原题）**：拷贝构造只在“**用已有对象初始化新对象**”时触发——`A b = a;`（定义时初始化，虽然有 = 号！）、按值传参、按值返回；`b = a;`（**已存在对象**赋值）走 operator=。一行代码区分：左边是“新声明的变量” → 拷贝构造；左边是“已有的变量” → 赋值。',
+            '**默认拷贝是逐成员浅拷贝（OOP QA 原题）**：编译器生成的拷贝构造把指针成员**原样复制**——两个对象共享同一块堆内存，析构时 **double free**（或一方析构后另一方悬垂）。管理资源的类必须自定义深拷贝，或 `=delete` 禁止拷贝——这就是**三法则**（析构/拷贝构造/拷贝赋值要么全自定义要么全默认）的由来（五法则加上移动两个；RAII 与智能指针题是它的现代解法）。',
+            '**构造与析构顺序（原题）**：构造 = **基类（按继承声明顺序）→ 成员（按类内声明顺序）→ 函数体**；析构严格逆序。成员真实初始化顺序**只由声明顺序决定**，与初始化列表的书写顺序无关——列表顺序与声明顺序不一致是隐蔽 bug 的经典来源（编译器 -Wreorder 会警告）。',
+            '**初始化列表的必要性（原题）**：**const 成员、引用成员、没有默认构造函数的成员对象**只能在初始化列表里初始化（函数体内是“赋值”不是“初始化”，对这三类非法）。',
+            '**RVO/拷贝消除（OOP 原题用 -fno-elide-constructors 验证）**：按值返回临时对象时编译器把“构造临时 → 拷贝到返回位”省略成直接在返回位构造（NRVO）；**C++17 起纯右值的拷贝消除是语言保证**。面试价值：能解释“为什么现代 C++ 按值返回 vector 不再昂贵”，说明你跟上了移动语义之后的语言演进。',
+          ],
+          followUps: [
+            {
+              question: 'explicit 关键字解决什么问题？单参构造函数为什么要警惕？',
+              points: [
+                '单参构造函数默认定义了一条**隐式转换路径**（`A a = 4;` 合法——4 被悄悄转成 A 临时对象）；转换构造 + 转换运算符（operator int()）同时存在还可能形成**二义性转换链**（OOP 原题：一条表达式串联多次用户定义转换）。',
+                'explicit 禁止拷贝初始化式的隐式转换（保留直接初始化与显式 static_cast）——**单参构造默认加 explicit** 是现代 C++ 的评审纪律；C++11 起 conversion operator 也能 explicit。',
+              ],
+            },
+            {
+              question: '数一下这段代码调用了几次构造函数？（清华原题：A* a1[3]; A a2[2]; a2[0]=4; func(a2[0]);）',
+              points: [
+                '**4 次**：a2[2] 对象数组逐个默认构造 2 次；a2[0]=4 走单参转换构造生成临时对象 1 次（再拷贝赋值）；func 按值传参拷贝构造 1 次。**指针数组 a1[3] 一次都不调**（只分配 3 个指针）。',
+                '考点本质：**隐式转换与传值都在悄悄调构造**——面试官用它检验你是否真的理解拷贝控制的每个触发点；能对每一步说出“哪一次、哪种构造”即满分。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'be-cpp-binding-slicing',
+          title: '对象切割是怎么回事？动态绑定发生的必要条件是什么？',
+          difficulty: 'intermediate',
+          tags: ['真题改编', '多态', '对象切割', '静态绑定', '名字隐藏'],
+          points: [
+            '**动态绑定的必要条件（清华 OOP 原题选择题）**：只有通过**基类指针或引用**调用虚函数才走运行期绑定（经 vptr 查 vtable）；**对对象本身调用永远静态绑定**——“有时调 A 的 Do 有时调 B 的 Do”的 p 只能是 **A&**（A* 也行但 p.Do() 语法排除指针；对象/派生对象则永远静态）。',
+            '**对象切割的两条路径（原题输出题）**：① **派生类赋值给基类对象**（`a = b; a.print()` 输出的是基类版本的值——派生新增成员全丢）；② **按值传参**（`void Call(B p)` 传派生对象 c，p.Fun() 输出 A::Fun——p 是被切割的 B 副本，但虚函数 B::Do 仍按 B 的 vtable 输出）。**保住多态的唯一方式：指针或引用传递**。',
+            '**名字隐藏（原题 Hero/Priest）**：派生类定义同名函数会**隐藏基类的全部同名重载**（不是重载！是遮蔽）；函数是否动态绑定**只看基类声明是否 virtual**，与派生类是否再写 virtual 无关——非虚的 attack 即使派生“重定义”也静态绑定到基类版本。修复：`using Base::f;` 把基类重载集引入派生类作用域（原题：f(17.315) 才能命中基类的 f(double)）。',
+            '**与 vtable 题的分工**：那题讲**机制**（虚表如何实现分派、虚析构为什么必要）；本题讲**使用陷阱**（什么时候你以为的多态悄悄失效）——评审 C++ 代码时这三类是高频 bug 源：值传递多态、同名隐藏、构造期调用虚函数。',
+          ],
+          followUps: [
+            {
+              question: 'C++ 构造函数里调用虚函数，会得到多态吗？和 Java 的行为一样吗？',
+              points: [
+                '**C++：不会**——构造期间 vptr 指向**当前正在构造的类**的 vtable（基类构造时 vptr 指基类表），调用的是当前层版本；且访问派生成员是未定义行为。',
+                '**Java：会**（动态绑定始终生效）——但派生类字段尚未初始化，覆写方法读到 null/0（真题：父类构造器调 print()，子类覆写访问未初始化的 array → NullPointerException）。两种语言在“构造期多态”上都建议同一条纪律：**构造器只做构造，不调可被覆盖的方法**（Java 方向的构造器陷阱题同源）。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'be-cpp-object-layout',
+          title: '一个带虚函数的类，sizeof 是多少？vtable 和 vptr 存在哪里？',
+          difficulty: 'advanced',
+          tags: ['真题改编', '对象模型', 'vptr', '内存布局'],
+          points: [
+            '**两个存储位置（OOP QA 原题）**：**vtable 每个多态类一张**（存虚函数地址 + RTTI 信息，放在只读数据段，全体对象共享）；**vptr 每个对象一个**（通常在对象头部，占一个指针宽度）。推论：**含虚函数的空类 sizeof = 8**（64 位下指针宽度），**普通空类 sizeof = 1**（保证不同对象地址唯一——数组元素不重址）。',
+            '**对象布局推演**：无虚函数的类大小 = 成员之和（+对齐 padding）；加了虚函数 = 成员 + vptr（8B）；**多重继承下对象可能有多个 vptr**（每个虚基类子对象一个）——这就是“为什么多继承复杂”的具象化。静态成员不占对象大小（存静态区）；成员函数不占（代码段）。',
+            '**构造期间 vptr 的变化（进阶考点）**：vptr 随构造进度逐层切换——基类构造时指向基类表、进入派生类构造才切到派生表；析构反向。这解释了“构造/析构中调虚函数得不到派生行为”（binding-slicing 题追问的机制根源）。',
+            '**口试延伸题**：`class Node { Node* next; };` 合法吗？——**自身类型的指针/引用成员合法**（大小固定且可用前向声明的不完整类型），**自身类型的对象成员非法**（编译期要无限递归求大小）——链表/树节点全是自引用指针实现（清华原题选择题）。',
+          ],
+          followUps: [
+            {
+              question: 'const 成员函数重载是怎么回事？static 成员函数为什么不能是 const？',
+              points: [
+                '`void print()` 与 `void print() const` 是合法重载（this 指针类型不同：X* const vs const X* const）；**const 对象只能调 const 版本**，非常量对象优先非常量版本（清华原题输出 "23"）——const 参与重载决议。',
+                'static 成员函数**没有 this**，无“常量与否”可言——不能是 const 也不能是 virtual；mutable 成员是 const 函数中唯一的可写例外（常用于缓存/计数）。',
+              ],
+            },
+          ],
+        },
       ],
     },
     {
@@ -1609,6 +1799,63 @@ export const backendTrack: Track = {
               points: [
                 '分库分表：复用 MySQL 成熟生态，性能可预期，但**应用层承担路由、跨片、扩容、分布式 ID 全部复杂度**；适合 SQL 模式稳定、超高频简单查询的海量 C 端场景。',
                 'TiDB/CockroachDB 类：存算分离 + Raft 复制 + 分布式事务对应用透明、水平扩容免迁移；代价是资源占用高、特定负载（高并发点查、重事务）与 MySQL 有差距。选型看团队运维能力、SQL 复杂度与规模增速。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'be-mysql-query-execution',
+          title: '一条 SQL 在数据库里是怎么执行的？join 的几种算法代价差多少？',
+          difficulty: 'intermediate',
+          tags: ['真题改编', '查询处理', '连接算法', 'EXPLAIN', '代价估计'],
+          points: [
+            '**查询处理四步（数据库课件框架）**：**解析**（SQL → 语法树）→ **优化**（关系代数等价改写 + 基于代价选计划：谓词/投影尽早下推、连接顺序、索引选择）→ **执行**（火山模型逐行拉取 / 批量向量化）→ 返回。EXPLAIN 展示的就是优化器的选择：**type**（访问方式：const > ref > range > index > ALL 全表扫描）、**rows**（预估扫描行数）、**key**（实际选用的索引）、**Extra**（Using index 覆盖索引 / Using filesort 排序 / Using temporary 临时表）。',
+            '**连接算法三代**：**Nested Loop（朴素/块）**——双层循环；**索引嵌套循环（INL）**——外表逐行用内表索引探测（MySQL 最常用：驱动表小、内表连接列有索引时最优）；**Block Nested Loop（BNL）→ MySQL 8.0.18 起被 Hash Join 取代**——无索引连接把外表分块装进内存逐块配对，省掉内表的反复全扫。**选择率与基数估计是优化器的账本**（真题公式）：等值连接结果行数 ≈ n1·n2/max(V(列1),V(列2))，再乘过滤条件选择性（日期区间 3/12 就是 ×0.25）。',
+            '**真题算例（南大卷）**：外表选择后剩 2 行，内表按 cno 的 B+ 树索引探测、每行约 8 个连续块——索引嵌套循环代价 ≈ 2×(2 次索引块读 + 8 次数据块读) + 少量 seek，**流水线执行免物化中间结果**。对比朴素 NLJ 需内表全扫（百万行），这就是"连接列必须有索引"的代价学根据。',
+            '**驱动表选择原则**：小结果集驱动大结果集（外循环次数 = 驱动表行数）；STRAIGHT_JOIN 可人工指定顺序对抗优化器误判；三表连接（真题 r1⋈r2⋈r3）：**在连接属性上建索引、从最有选择性的一侧开始**用索引嵌套循环逐层探测——避免先物化大中间结果。',
+          ],
+          followUps: [
+            {
+              question: '为什么 MySQL 8.0 才有 Hash Join？它和索引嵌套循环各自适合什么场景？',
+              points: [
+                '**Hash Join**：对外表建哈希表、内表逐行探测——**一次构建、O(N+M)**，不要求任何索引；但哈希表要装内存（放不下就分区/落盘），且只支持等值连接。**索引 NLJ**：外表每行一次 B+ 树探测（log 级），外表很大时 O(N·logM) 仍优——**内表连接列有索引且外表过滤后行数不大**时它更好。',
+                '8.0 前 MySQL 靠"没有索引就 BNL 全扫"硬扛，是" join 必须小表驱动 + 索引齐全"这类经验教条的根源；Hash Join 补齐后，"join 慢"更多要看统计信息是否过期（ANALYZE TABLE）与列类型是否一致（隐式转换废索引）。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'be-mysql-serializability',
+          title: '怎么判断一个并发调度是"正确"的？前趋图、2PL 与隔离级别的关系是什么？',
+          difficulty: 'advanced',
+          tags: ['真题改编', '可串行化', '2PL', '意向锁', '并发控制'],
+          points: [
+            '**正确性的定义：等价于某个串行执行**（调度可串行化）。**冲突可串行化判别（清华原题套路）**：冲突 = 不同事务、同一数据项、至少一个写——交换两个**非冲突**操作不改变结果；按冲突画**前趋图**（Ti→Tj 表示 Ti 的操作先于 Tj 的冲突操作），**无环 ⇔ 冲突可串行化**（拓扑序即等价的串行顺序）。原题调度 r1(A) w2(A) … w3(B) w4(B) w3(C) w5(C)：T3↔T4 成环 → 不可串行化；**去掉 w3(B)（或 w4(B)）打破环**即恢复。',            '**2PL（两阶段锁）与它的保证**：事务分**增长阶段**（只加锁）与**收缩阶段**（只放锁，放了不能再拿）——**2PL 产生的调度必为冲突可串行化**（前趋图无环可证）。但 2PL **不防死锁**（原题：两个事务都先共享读对方的数据再升级排他写，交错升级互相等待）；死锁靠预防（一次锁全部/按序加锁/超时）或检测（等待图找环，InnoDB 的做法）。',            '**strict 2PL 为什么是工业默认（浙大作业原题三理由）**：① **避免级联回滚**——提交前不放写锁，别人读不到未提交数据（可恢复性/无级联调度的实现基础：真题"T1 写 B 未提交、T2 已读 B、T1 abort ⇒ T2 必须级联回滚，不是 cascadeless"）；② **实现简单**（统一提交时放锁）；③ 并发度损失可接受。InnoDB 的 2PL 就是 strict 变体（commit 时统一释放）。补充进阶：increment 锁模式（自增类操作互相兼容）说明**锁模式的设计空间就是并发度的调节器**。',            '**意向锁与多粒度（浙大复习考点）**：表级锁与行级锁共存需要**意向锁（IS/IX/SIX）**：给行加 S/X 前，先对**全部祖先**（表）加对应意向锁——这样"要锁全表"的事务只需看一眼表级意向锁就知道有没有行锁存在，**不必逐行检查**。规则：加锁自根向叶、释放自叶向根；S/IS 相容、与 X/IX 冲突（IX 之间也相容）。InnoDB 的表级意向锁就是这套协议的实现。',            '**隔离级别的实现视角收束**：RR/RC 下的 MVCC 管"读"，2PL 意义上的锁管"写与当前读"——可串行化（SERIALIZABLE）= 所有读升级为当前读 + 严格 2PL，理论上的可串行化才真正达成；MVCC 的 RR 严格说只是**快照可串行化的近似**（写偏斜问题——两事务各自读各自写不同行、组合起来不一致）。能把"隔离级别 ← 并发控制理论"这条线讲通，就超出了背八股的层次。',
+          ],
+          followUps: [
+            {
+              question: '冲突可串行化和视图可串行化是什么关系？为什么数据库只用前者？',
+              points: [
+                '视图等价三条件（同读初值、同读来源、同末写者）定义的**视图可串行化更宽松**——差异只出现在 blind write（不读就写）场景；**冲突可串行化 ⊂ 视图可串行化**（充分不必要）。',
+                '实用取舍：判定视图可串行化是 **NP-complete**，判定冲突可串行化只要前趋图找环（多项式）——**用"够用的正确性 + 便宜的判定"换"完美的正确性 + 爆炸的判定"**，这是系统设计里反复出现的取舍模式。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'be-mysql-crash-recovery',
+          title: '数据库宕机重启后怎么恢复到一致状态？ARIES 的三个阶段各做什么？',
+          difficulty: 'advanced',
+          tags: ['真题改编', '崩溃恢复', 'ARIES', 'WAL', 'checkpoint'],
+          points: [
+            '**WAL（先写日志）是一切的前提**：日志记录先于数据页落盘（redo log 的 commit 语义，与正文两阶段提交题衔接）——**"改了页但日志没到盘"不可能发生**，恢复才有据可依。经典 WAL 规则 + **steal/no-force** 策略（允许脏页提前写盘、允许提交时不强制刷数据页）才带来缓冲管理的自由——代价是崩溃后必须有一套系统化恢复算法，这就是 **ARIES**。',            '**三阶段（南大真题推演题）**：① **Analysis 分析**——从最近的 checkpoint 开始扫日志，确定崩溃时的**脏页表 DPT** 与**未提交事务表 undo-list**；② **Redo 重做**——**从 DPT 中最小的 RecLSN 开始正向重放**（把所有页恢复到崩溃时刻的状态，包括未提交事务的修改——"重复历史"，重复应用是幂等的）；③ **Undo 回滚**——对 undo-list 里的事务**逆序**回滚，每回滚一条写一条 **CLR（补偿日志记录）**，保证恢复本身再崩溃也能继续。',            '**两个关键计数器（原题考点）**：**LSN**（日志序列号，单调递增）；**RecLSN**（页加入 DPT 时日志的当前末尾——该页上"此 LSN 之前的修改都已在盘"）——**Redo 遇到 LSN < 页的 PageLSN/RecLSN 的记录直接跳过**，这就是"减少不必要 redo"的机制（真题问答）。**checkpoint 的目的**：截断恢复需扫描的日志；频率权衡（真题）——越频繁，正常运行刷盘开销越大、崩溃恢复越快；**对介质故障恢复时间没有影响**（介质恢复靠备份 + 归档日志，不走这条路径）。',            '**undo 为什么反向、redo 为什么正向（浙大作业原题）**：同一数据可能被多次更新（1→2→3）——**undo 逆序**每步恢复"前像"，最终回到最早旧值（正向会停在中间值）；**redo 顺序**重放"后像"，最后一次写入即最终状态。配合 CLR 的"已回滚到哪"标记，恢复算法对"恢复途中再崩溃"幂等——**"正向重放历史、逆向撤销未竟"是 WAL 家族（InnoDB/SQL Server/DB2）的通用骨架**。',
+          ],
+          followUps: [
+            {
+              question: 'group commit 是什么？它解决高并发提交的什么问题？',
+              points: [
+                '瓶颈：每个事务提交都 fsync 一次 redo log，磁盘（尤其 SATA SSD）每秒 fsync 次数有限——高 TPS 下 fsync 排队成为瓶颈。',
+                'group commit：**多个并发事务的日志凑成一批一次 fsync**——一次磁盘操作服务 N 个提交，吞吐近线性提升；binlog 与 redo log 的两阶段提交也要靠内部两阶段提交协调（binlog group commit）。代价是单个事务的提交延迟略增——**用延迟换吞吐**，与数据库批量写入、消息队列攒批是同一设计哲学。',
               ],
             },
           ],

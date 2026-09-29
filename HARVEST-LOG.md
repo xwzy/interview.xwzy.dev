@@ -16,11 +16,11 @@
 | 5a | 编译原理（新领域） | cs-fundamentals.ts 新增 cs-compiler | 11 | — | ✅ 已推送 | 80bcf08 |
 | 5b | 网络安全与密码学（新领域） | network.ts 新增 net-security | 10 | — | ✅ 已推送 | 见 git log |
 | 5c | 数学基础（新领域） | cs-fundamentals.ts 新增 cs-math | 10 | — | ✅ 已推送 | 见 git log |
-| 6 | 后端增厚（MySQL/C++/Java） | backend.ts | — | — | ⬜ 未开始 | — |
+| 6 | 后端增厚（C++/MySQL/Java/SQL） | backend.ts + cs-db | 12 | 12 条 | ✅ 已推送 | 见 git log |
 | 7 | AI / 机器学习 | ai.ts | — | — | ⬜ 未开始 | — |
 | 8 | qa/大数据/移动端/运维扫尾 | 各文件 | — | — | ⬜ 未开始 | — |
 
-题库总量：656（起点）→ **715**（当前）。真题改编题统一打 `tags: ['真题改编']`，可全局搜索筛选。
+题库总量：656（起点）→ **727**（当前）。真题改编题统一打 `tags: ['真题改编']`，可全局搜索筛选。
 
 ## 批 1 · 计算机组成原理（来源：组成原理 43 套试卷 + 清华 912）
 
@@ -73,3 +73,11 @@
 **新题 10**（cs-fundamentals.ts 新领域 cs-math）：cs-math-bayes（贝叶斯+基础率谬误）、cs-math-expectation-covariance（独立 vs 不相关）、cs-math-distributions（常见分布+无记忆性）、cs-math-lln-clt（LLN vs CLT+√n 尺度）、cs-math-estimation（三标准+MSE 分解）、cs-math-hypothesis-testing（p 值+两类错误+A/B 内核）、cs-math-linear-geometry（秩/特征值/谱定理/正定）、cs-math-projection-least-squares（投影+最小二乘几何）、cs-math-convex-optimization（凸性+鞍点+KKT 影子价格）、cs-math-multivariate-normal（边缘 vs 联合+马氏距离）。
 
 **分工**：ML 应用层数学（交叉熵/偏差方差/优化器/PCA）在 ai.ts；随机算法在 cs-algo-random——正文互相注明。丢弃：χ²、MLE 相合证明、合同惯性、古典概型等应试细节。详见 docs/quiz-harvest/seeds-batch5c-math.md。
+
+## 批 6 · 后端增厚 ✅（来源：C/C++ 试卷 40 条 + 数据库课程 30 条 + Java 试卷 10 条）
+
+**新题 12**：C++ 4（be-cpp-stl-internals / copy-control / binding-slicing / object-layout——STL 值语义与迭代器、拷贝控制与 RVO、对象切割与动态绑定、vptr 对象布局）；MySQL 3（be-mysql-query-execution / serializability / crash-recovery——连接算法与代价估计、前趋图与 2PL、ARIES 三阶段）；Java 4（be-java-equals-hashcode / string / exception / object-lifecycle——equals 重载陷阱、常量池 intern、checked 边界、构造器多态陷阱）；SQL 语义 1（cs-fundamentals.ts 的 cs-db-sql-patterns——关系除法/分组语义/去嵌套）。
+
+**追问 12 条**：stl（++it）、copy-control（explicit + 构造次数算例）、binding（构造期多态 C++/Java 对照）、object-layout（const 重载）、equals（Integer 缓存/包装 equals）、string（+= 与 StringBuilder）、exception（finally 覆盖返回值）、generics（List<?> 不可写）、synchronized-lock（wait/notify 归属+双对象死锁）、query-execution（Hash Join vs INL）、serializability（冲突 vs 视图可串行化）、crash-recovery（group commit）、cs-db-normalization（候选键求法+BCNF 分解原题）、cs-db-join（NULL 三值逻辑）。
+
+**分工与丢弃**：B+ 树主干在组成原理/已有 MySQL 题；四大读现象在隔离级别题；内联宏/static 五层/grant-LIKE trivia 等网课细节丢弃。详见 docs/quiz-harvest/seeds-batch6-backend.md。
