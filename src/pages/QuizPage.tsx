@@ -52,12 +52,16 @@ function initialSelectedTopics(tracks: NormalizedTrack[]): Set<string> {
 
 /** 面试官模式：选方向 → 随机组卷 → 现场逐题考察、评分、记录 → 自动存档并生成面试小结。
  *  本文件持有组卷状态机；答题态与完成态 UI 见 quiz/ 子组件。 */
+/** 真题改编题的统一标签（与搜索页的真题筛选共用同一数据标记） */
+const EXAM_TAG = '真题改编'
+
 export default function QuizPage() {
   const [phase, setPhase] = useState<Phase>('setup')
   const [candidate, setCandidate] = useState('')
   const [ordered, setOrdered] = useState(false)
   const [onlyFavorites, setOnlyFavorites] = useState(false)
   const [onlyUnmastered, setOnlyUnmastered] = useState(false)
+  const [onlyExam, setOnlyExam] = useState(false)
   const { tracks, questionIndex, questionById } = useBank()
   const [selectedTopics, setSelectedTopics] = useState<Set<string>>(() =>
     initialSelectedTopics(tracks),
@@ -88,9 +92,10 @@ export default function QuizPage() {
           selectedTopics.has(r.topic.id) &&
           (diff === 'all' || r.question.difficulty === diff) &&
           (!onlyFavorites || favorites.has(r.question.id)) &&
-          (!onlyUnmastered || !mastered.has(r.question.id)),
+          (!onlyUnmastered || !mastered.has(r.question.id)) &&
+          (!onlyExam || (r.question.tags ?? []).includes(EXAM_TAG)),
       ),
-    [questionIndex, selectedTopics, diff, onlyFavorites, favorites, onlyUnmastered, mastered],
+    [questionIndex, selectedTopics, diff, onlyFavorites, favorites, onlyUnmastered, onlyExam, mastered],
   )
 
   const toggleTopic = (topicId: string) => {
@@ -487,6 +492,15 @@ export default function QuizPage() {
                 className="h-3.5 w-3.5 accent-blue-600"
               />
               只抽未掌握
+            </label>
+            <label className="flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-300">
+              <input
+                type="checkbox"
+                checked={onlyExam}
+                onChange={(e) => setOnlyExam(e.target.checked)}
+                className="h-3.5 w-3.5 accent-violet-600"
+              />
+              只抽真题
             </label>
             {selectedTopics.size > 0 && (
               <button
