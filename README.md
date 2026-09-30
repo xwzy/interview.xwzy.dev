@@ -72,6 +72,11 @@ PWA 有 Service Worker 缓存，旧缓存会在新版次访问时后台更新）
 
 ## 如何补充题库
 
+> **扩充/补题前先读**：[`HARVEST-LOG.md`](HARVEST-LOG.md)（历次扩充总账：各批来源、新增与丢弃清单）与
+> [`docs/quiz-expansion-plan.md`](docs/quiz-expansion-plan.md)（工序与检查项）。既有工序：定点收割种子 →
+> 对照总账查重（宁丢不重）→ 改写为口试题（要点加粗 + 层层追问）→ `npm run verify` 门禁 → 事实复核。
+> 批量扩充时新题统一打 `tags: ['真题改编']`，并在总账同步记录。
+
 所有题目都是纯数据，在 `src/data/` 下按方向一个文件：
 
 1. 新建 `src/data/your-track.ts`，导出一个 `Track` 对象（类型见 `src/types.ts`），题目 id 使用统一前缀（如 `be-`、`fe-`）。
