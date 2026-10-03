@@ -28,6 +28,7 @@
 | 15 | 二期·全库事实审查 | 全库 7 题 | 0 | 修复 14 处 | ✅ 已完成 | 见 git log |
 | 16 | 二期·ai-cv 第二批（DIP/3D DL/计算摄影） | ai.ts ai-cv | 8 | 8 条（含新题内） | ✅ 已完成 | 见 git log |
 | 17 | 二期·ai-cv 第三批（NeRF/MVS/单目深度） | ai.ts ai-cv | 5 | 5 条（含新题内） | ✅ 已完成 | 见 git log |
+| 18 | 二期·qa 存量增强（软工试卷剩余语料） | qa.ts | 0 | 6 条 | ✅ 已完成 | 见 git log |
 
 题库总量：656（起点）→ **770**（当前）。真题改编题统一打 `tags: ['真题改编']`，可全局搜索筛选。
 二期方案见 `docs/quiz-expansion-plan-v2.md`（批号自 11 起续编）。
@@ -213,3 +214,17 @@ B 树高度公式、VC 维谱系、张正友 ≥3 姿态、F=K⁻ᵀEK⁻¹ 方�
 **边界纪律**：课件未覆盖的细节（NeRF 位置编码、MVSNet 概率体、monodepth 自监督）不出题、追问只标（通用补充）给方向。至此参考库 CV 方向高价值语料收割完毕。
 
 详见 docs/quiz-harvest/seeds-v2-batch5-3d.md。
+
+
+## 批 18 · 二期·qa 存量增强 ✅（来源：软工试卷/题库剩余语料）
+
+**追问 6 条**：qa-basics-case-design（三角形 216 等价类/NextDate 2-28 原题——等价类保广度边界值保深度）、
+qa-basics-test-levels（自底向上要驱动不要桩/Alpha 有开发在场 Beta 无——1997/2003 原题）、
+qa-basics-smoke-regression（smoke=rolling integration/回归随集成滚动）、qa-automation-roi
+（"自动化免除回归"判断题 False/加权设备平台矩阵）、qa-automation-appium（手势三难原题）、
+qa-sec-pentest-boundary（WebApp 可测要素 Authentication/Encryption/Penetration，Firewalls 不是）。
+
+**跳过**（语料无对口，如实记录）：bug-lifecycle、po-pattern、platform、stability、ai-browser、ssrf、fuzzing、
+supply-chain——试卷以 1997-2008 传统软工为主，自动化平台/现代安全主题无素材。
+
+至此参考库对题库 15 个方向的可贡献语料全部收割完毕。
