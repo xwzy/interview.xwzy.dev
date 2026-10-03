@@ -29,6 +29,7 @@
 | 16 | 二期·ai-cv 第二批（DIP/3D DL/计算摄影） | ai.ts ai-cv | 8 | 8 条（含新题内） | ✅ 已完成 | 见 git log |
 | 17 | 二期·ai-cv 第三批（NeRF/MVS/单目深度） | ai.ts ai-cv | 5 | 5 条（含新题内） | ✅ 已完成 | 见 git log |
 | 18 | 二期·qa 存量增强（软工试卷剩余语料） | qa.ts | 0 | 6 条 | ✅ 已完成 | 见 git log |
+| 19 | 二期·第二轮事实审查（批 16~18 新增内容） | ai.ts + qa.ts + backend.ts | 0 | 修复 4 处 | ✅ 已完成 | 见 git log |
 
 题库总量：656（起点）→ **770**（当前）。真题改编题统一打 `tags: ['真题改编']`，可全局搜索筛选。
 二期方案见 `docs/quiz-expansion-plan-v2.md`（批号自 11 起续编）。
@@ -228,3 +229,19 @@ qa-sec-pentest-boundary（WebApp 可测要素 Authentication/Encryption/Penetrat
 supply-chain——试卷以 1997-2008 传统软工为主，自动化平台/现代安全主题无素材。
 
 至此参考库对题库 15 个方向的可贡献语料全部收割完毕。
+
+
+## 批 19 · 二期·第二轮事实审查 ✅（对象：批 16~18 新增内容）
+
+2 个审查 agent：A 审 ai-cv 全部 23 题（公式/年份/机制逐项核对：E=T×R 方向、形态学对偶式、Otsu 公式、
+RANSAC 最小采样、K 公式、F 数算例、论文年份等均无误）；B 审 qa.ts 全文 + backend/os 批 11/12/14 新增追问
+（ReadView/cascadeless 定义、pid_max、-fno-common、sigsuspend、适配策略等核对无误）。
+
+**修复 4 处 P1（无 P0）**：
+- ai-cv-srgan-perceptual：SRGAN 的 content loss 写成像素 MSE——论文从提出之日起就是 **VGG 特征空间 MSE**（像素 MSE 是 SRResNet 的目标函数），追问的"后来才换 VGG"一并改正；
+- ai-cv-mvsnet：代价体构建写成"相关性计算"（那是传统 plane-sweep photo-consistency 的说法）——MVSNet 用的是 **warp 后跨视图特征的方差**一致性；
+- be-mysql-btree：页分裂奇偶规则写反——分裂时参与分配的是 L+1 个 key，**容量 L 为奇数才恰好均分**；
+- qa-basics-test-levels：Alpha 场所误写为"用户实际环境"——经典口径是 **Alpha 在开发方场所**（与 vv-acceptance 题一致），Beta 才在用户环境。
+
+**通过确认**：216 等价类内部一致、NextDate 算例、ReadView 判定、直方图 1000 桶、8×ncores arena、
+sigsuspend 竞态、适配策略与边界标记等复核无误。
