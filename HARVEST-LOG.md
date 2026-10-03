@@ -21,8 +21,14 @@
 | 8 | qa 增厚（软件工程试卷） | qa.ts + backend 追问 | 5 | 2 条 | ✅ 已推送 | 见 git log |
 | 9 | 语料缺口补采（B+树计算/矩阵论/ML系统设计） | cs-fund/ai | 3 | 2 条 | ✅ 已推送 | 见 git log |
 | 10 | 计算机体系结构增厚 | computer-architecture.ts | 4 | 6 条 | ✅ 已推送 | 见 git log |
+| 11 | 二期·数据库深挖 | backend.ts + cs-db | 1 | 4 条 | ✅ 已完成 | 见 git log |
+| 12 | 二期·计算机系统/CSAPP 补强 | network.ts + os.ts + computer-organization.ts | 1 | 6 条 | ✅ 已完成 | 见 git log |
+| 13 | 二期·计算机视觉新领域 | ai.ts 新增 ai-cv | 10 | 10 条（含新题内） | ✅ 已完成 | 见 git log |
+| 14 | 二期·存量优化 pass（os/co/ca） | os.ts + computer-organization.ts + computer-architecture.ts | 0 | 44 条 | ✅ 已完成 | 见 git log |
+| 15 | 二期·全库事实审查 | 全库 7 题 | 0 | 修复 14 处 | ✅ 已完成 | 见 git log |
 
-题库总量：656（起点）→ **745**（当前）。真题改编题统一打 `tags: ['真题改编']`，可全局搜索筛选。
+题库总量：656（起点）→ **757**（当前）。真题改编题统一打 `tags: ['真题改编']`，可全局搜索筛选。
+二期方案见 `docs/quiz-expansion-plan-v2.md`（批号自 11 起续编）。
 
 > 批 8 范围说明：原计划的"大数据/移动端/运维各 +3~4"在参考库中无对口语料（无对应课程材料），如实跳过；批 8 聚焦有真实试卷支撑的 qa 方向。
 
@@ -80,7 +86,7 @@
 
 ## 批 6 · 后端增厚 ✅（来源：C/C++ 试卷 40 条 + 数据库课程 30 条 + Java 试卷 10 条）
 
-**新题 12**：C++ 4（be-cpp-stl-internals / copy-control / binding-slicing / object-layout——STL 值语义与迭代器、拷贝控制与 RVO、对象切割与动态绑定、vptr 对象布局）；MySQL 3（be-mysql-query-execution / serializability / crash-recovery——连接算法与代价估计、前趋图与 2PL、ARIES 三阶段）；Java 4（be-java-equals-hashcode / string / exception / object-lifecycle——equals 重载陷阱、常量池 intern、checked 边界、构造器多态陷阱）；SQL 语义 1（cs-fundamentals.ts 的 cs-db-sql-patterns——关系除法/分组语义/去嵌套）。
+**新题 12**：C++ 4（be-cpp-stl-internals / be-cpp-copy-control / be-cpp-binding-slicing / be-cpp-object-layout——STL 值语义与迭代器、拷贝控制与 RVO、对象切割与动态绑定、vptr 对象布局）；MySQL 3（be-mysql-query-execution / be-mysql-serializability / be-mysql-crash-recovery——连接算法与代价估计、前趋图与 2PL、ARIES 三阶段）；Java 4（be-java-equals-hashcode / be-java-string / be-java-exception / be-java-object-lifecycle——equals 重载陷阱、常量池 intern、checked 边界、构造器多态陷阱）；SQL 语义 1（cs-fundamentals.ts 的 cs-db-sql-patterns——关系除法/分组语义/去嵌套）。
 
 **追问 12 条**：stl（++it）、copy-control（explicit + 构造次数算例）、binding（构造期多态 C++/Java 对照）、object-layout（const 重载）、equals（Integer 缓存/包装 equals）、string（+= 与 StringBuilder）、exception（finally 覆盖返回值）、generics（List<?> 不可写）、synchronized-lock（wait/notify 归属+双对象死锁）、query-execution（Hash Join vs INL）、serializability（冲突 vs 视图可串行化）、crash-recovery（group commit）、cs-db-normalization（候选键求法+BCNF 分解原题）、cs-db-join（NULL 三值逻辑）。
 
@@ -115,3 +121,74 @@
 **追问 6 条**：ca-coh-directory（目录消息流原题大题+写无效 vs 写更新）、ca-par-smt（藏延迟 6 线程 CMU 原题）、ca-pw-ecc-ras（软错误翻转 MESI 状态位清华 2014 原题）、ca-ilp-window（2 发射升 3 发射无加速原题）+ 新题内 2 条。
 
 **分工**：乱序机制总览/分支预测代价/MESI 状态机/SMT 资源划分等既有题未动。详见 docs/quiz-harvest/seeds-batch10-arch.md。
+
+## 批 11 · 二期·数据库深挖 ✅（来源：浙大数据库作业 hw9~hw14 + 清华近似查询作业）
+
+**新题 1**（cs-fundamentals.ts，cs-db）：cs-db-approximate-matching（模糊/近似查询——q-gram 签名倒排 + 计数过滤定理 + Jaccard/编辑距离度量选择 + pg_trgm/ES fuzzy/ngram/向量检索对照；追问 PPJoin 过滤一族）。
+
+**追问 4 条**：be-mysql-btree（页分裂偏右优化/删除借与合并/内部 ≥2 指针 vs 叶子 1 key/InnoDB 不激进合并）；be-mysql-index-failure（否定谓词：等值否定无区间、范围否定德摩根改写——hw11 15.6 原题）；be-mysql-query-execution（基数估计均匀假设/直方图分桶——hw11 16.20 原题/误差复合放大与 EXPLAIN ANALYZE）；be-mysql-serializability（可恢复→cascadeless→strict 三级阶梯——hw12 17.7 + hw13 18.18）。
+
+**丢弃**：hw13 的 lock point/T34T35/increment 锁/strict 三理由、hw12 前趋图与 ACID、hw14 undo 反向/checkpoint/RecLSN（批 6 已按原题写进 serializability/crash-recovery 正文）；hw10 join 代价手算与混合 merge-join（笔试细节）；hw14 交互式事务恢复（边缘）；hw9 LSM 合并微调（cs-db-lsm 已覆盖，留批 4 复查）。
+
+详见 docs/quiz-harvest/seeds-v2-batch1-db.md。
+
+
+## 批 12 · 二期·计算机系统/CSAPP 补强 ✅（来源：北大 ICS 2013-2017 期中期末带答案试卷）
+
+**新题 1**（network.ts，net-security）：net-sec-buffer-overflow（缓冲区溢出攻防——strcpy 覆盖返回地址原题、金丝雀汇编指纹、NX/ASLR/ROP 分层防御、金丝雀绕过面；追问绕过与组合防御）。
+
+**追问 6 条**：os-compile-link-load（静态库链接顺序/强弱符号/链接器不看类型——2014/2015 期末原题）；os-process-fork（stdio 缓冲被 fork 复制→输出重复——2015 期末原题）；os-scene-signal-exit（pending 位合并 waitpid 循环 + alarm/pause 竞态与 sigsuspend 正解——2015 期末信号三连）；co-mem-vm-tlb（改页表后必须 invlpg——2015 期末第六题）；co-data-complement（浮点/整数恒等式判断 + 无溢出求均值——2016 期中原题）；os-mem-malloc（手写 malloc：边界标记/适配策略/分离空闲链表——试卷选择题改设计题）。
+
+**丢弃**：TLB/Cache/Page 命中组合、dup 共享偏移、PV 顺序、线程共享变量、TCP 四元组连接数（现有题已覆盖）；cretXX/浮点填表/Y86/cache 画表/手工翻译等纯笔试题；结构体对齐（co-scene-alignment 已有）。
+
+详见 docs/quiz-harvest/seeds-v2-batch2-csapp.md。
+
+
+## 批 13 · 二期·计算机视觉新领域 ✅（来源：浙大 CV 课件 53 份）
+
+**新领域 ai-cv**（ai.ts，10 题）：image-formation（针孔/畸变/景深）、camera-calibration（DLT/张正友——回忆卷原题）、filtering-sampling（混叠/Nyquist/金字塔带通）、edge-canny（双阈值——回忆卷原题）、features-harris-sift（λ1λ2 分类/不变性账本/gradient vs raw patch——考纲原题）、ransac（迭代次数公式——回忆卷原题，课件缺页按通用教材口径补）、optical-flow-lk（孔径问题/与 Harris 同源）、epipolar-sfm（E/F 矩阵/八点法/PnP/BA；追问 GD-Newton-GN-LM 谱系——课件原题重点）、stereo-depth（z=fB/d/基线权衡/结构光 vs LiDAR）、detection-segmentation（两阶段 vs 单阶段——课件原话/FCN-U-Net-Mask R-CNN 谱系；追问 anchor-free）。每题带 1 条追问。
+
+**丢弃**：CNN 基础（ai-dl 已覆盖）；ImageNet 年份时间线等 trivia；课件未覆盖主题（Hough/Mean-Shift/Eigenface/ICP）记入留白不硬写。
+
+**分包体量**：ai 分包 173KB，远低于 frontend 282KB 先例，未触发拆分条件。
+
+详见 docs/quiz-harvest/seeds-v2-batch3-cv.md。
+
+
+## 批 14 · 二期·存量优化 pass（第一批：os/co/ca）✅
+
+**做法**：脚本筛出追问 ≤1 的浅题 365 道；对语料可对口的 os（19）/组成原理（20）/体系结构（9）三个方向，
+agent 通读浙大 OS 内核系列课件（Linux内存管理/内核/文件系统/系统调用/进程管理 + ch5~ch9）、
+组成原理（L2/L4/L6a/L9 + 复习题带答案）、体系结构（CAQA6e + 2021 Arch 课件系列），逐题拟 1 条追问并落地。
+
+**落地 44 条**（os 18、co 18、ca 8），素材为课件硬细节：EXIT_ZOMBIE=16/clone flags/monitor DP test() 条件/
+kswapd 页帧生命周期链/ext2 i_block[15]/sys_open 四步/WAL redo-undo 判定/VFS 四对象函数指针表（os）；
+1e20 NaN 原例/load-use 必停一拍/RISC philosophy 人名表/IBM 360/91 不精确异常史/7200RPM 半圈 4.17ms/RAID1 20TB vs RAID5 2.5TB/菊花链不公平/中断屏蔽字原题（co）；
+CPI 1.2@2ns 算例/Roofline 公式/1-bit 循环错 2 次/(m,n) 预测器与锦标赛/SIMD 限制清单与 MMX→AVX-512 年份线/E 态省 invalidate/NUMA 数据放置归软件/LL-SC 与缓存副本自旋（ca）。
+
+**跳过**：os-io-iouring、co-bus-boot（语料无支撑）；co-data-char-encoding、co-data-bitwise（素材太薄、价值低）。
+
+**范围说明**：sd/fe/be/ai/ops/mob 等方向的浅题在参考库中无对口语料（语料以基础课程为主），
+按二期方案"无对口语料如实记录"处理，不硬补；如需继续增厚，走批 5 事实审查或后续工程经验型专题（不属语料搬运）。
+
+
+## 批 15 · 二期·全库事实审查 ✅
+
+**做法**：3 个审查 agent 分方向通读（os/co/ca、backend/network、cs-fund/ai），审查数值算例、机制描述、
+版本归属、概念区分，宁可漏报不可误报；另用脚本核对 91 道 `真题改编` 标记与总账的溯源（8 处只记简称，已补全 id）。
+
+**修复 14 处**（1 P0 + 13 P1）：
+- **P0**：co-mem-tlb——"TLB 命中几十纳秒"量级方向性错误 → 1~几周期（亚纳秒级，与 L1 同量级）。
+- **P1 ×13**：i_pipe 是 inode 字段非 task_struct 字段；MESI 追问"写命中走 RFO"应为写缺失；ARM "DSM" 应为 DSB；
+  zombie 追问 pid 32768 补版本口径（4.15 前默认）；AVX 年份 2010 → 2008 规范/2011 硬件；
+  os-mem-oom 的 2.4 时代三链模型改为现代 anon/file 双 LRU + mglu；ai-cv-ransac "本质矩阵 8 对是最小数目"
+  → 最小采样本质 5/基本 7，8 是八点法；cs-db-approximate-matching "一次编辑破坏 k 个 q-gram" → 至多 q 个；
+  ai-cv-camera-calibration "QR 分解" → RQ 分解（K 上三角）；ai-llm-decoding 截断/调温顺序 → 先调温后截断（主流实现口径）；
+  be-redis-persistence 的 aof_rewrite_buf 补"7.0 MP-AOF 已移除"；net-scene-mtu-blackhole 以太网头 18B → 14B（8+8+20+14=50 对齐）；
+  net-scene-long-fat-pipe 同句 RTT 40ms 笔误统一为 35ms 口径。
+
+**审查通过确认**（抽样复算无误）：B+ 树 2000 万行算例、BDP/Mathis/香农算例、ReadView 判定规则、ARIES、
+Raft 投票约束、GCM nonce、GBN/SR 窗口、Amdahl 2.47、Roofline、MESIF/MOESI 阵营、贝叶斯疾病检测数值、
+B 树高度公式、VC 维谱系、张正友 ≥3 姿态、F=K⁻ᵀEK⁻¹ 方向等。
+
+**二期收尾**：批 11~15 共 +12 题（745 → 757）/ +64 条追问（1107 → 1173）；方案 doc 见 quiz-expansion-plan-v2.md。

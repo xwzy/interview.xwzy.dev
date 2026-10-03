@@ -67,6 +67,13 @@ export const osTrack: Track = {
                 'D 状态进程堆积通常意味着**存储层故障或严重 IO 阻塞**（如 NFS 挂载失效、磁盘坏道），load average 升高但 CPU 使用率很低。',
               ],
             },
+            {
+              question: '进程退出后为什么还要保留 task_struct？TASK_UNINTERRUPTIBLE 和 TASK_INTERRUPTIBLE 在信号处理上有什么本质区别？',
+              points: [
+                'task_struct 用 `state` 与 `exit_state` 两组位区分可运行性与退出态：**EXIT_ZOMBIE=16、EXIT_DEAD=32**；僵尸态已释放内存、文件等资源，**只保留 task_struct 等父进程 wait4()/waitpid() 回收**——"回收的到底是 PCB 不是内存"这句话能说准就赢了。',
+                '**TASK_UNINTERRUPTIBLE** 即使资源就绪也不能被信号/中断唤醒（D 状态的本体）；**TASK_INTERRUPTIBLE** 可被信号唤醒；两者合成 **TASK_NORMAL** 供 wake_up 使用——kill -9 杀不掉 D 状态进程在内核数据结构层面的解释。',
+              ],
+            },
           ],
         },
         {
@@ -95,6 +102,14 @@ export const osTrack: Track = {
                 'prefork/thread pool 把创建成本从请求路径挪到启动时，请求只做 accept + 分发；Go/Java 等运行时则用 goroutine/线程池复用执行流。',
               ],
             },
+            {
+              question: 'fork 前 printf 了一个没有换行的字符串，为什么输出会"重复打印"？（北大 ICS 原题）',
+              points: [
+                '**printf 是库函数，带用户态缓冲**：输出先进 stdio 缓冲区，遇到**换行**（行缓冲、连终端时）、缓冲满、显式 fflush 或进程退出才真正 write。fork 前缓冲区里残留的 "2" 是**进程内存的一部分**——fork 把它**原样复制进子进程**，于是父子的缓冲区里各有一份 "2"，各自退出时各 flush 一次，输出重复。',
+                '**对照：write 没有用户缓冲**，系统调用直接落内核——所以混合 printf/write 的输出顺序看起来"乱"（write 立即出现、printf 攒着）。fork 后立刻 exec 的场景不受影响：exec 丢弃原进程映像，但**进程退出时的 flush 语义**让 exec 前未刷新的缓冲可能丢也可能重，经典坑。',
+                '**工程规避**：fork 前先 `fflush(NULL)`（刷新所有输出流），多进程写日志干脆 `setvbuf` 设无缓冲或让各进程用独立日志文件——"fork 前清缓冲"是 CSAPP 式经典题，也是多进程日志重复行事故的根源。',
+              ],
+            },
           ],
         },
         {
@@ -117,6 +132,13 @@ export const osTrack: Track = {
                 '消息传递类 IPC 把同步隐含在内（内核保证原子投递），牺牲少量拷贝换来**安全性、隔离性和容错**——这正是微服务"消息即边界"的哲学。',
               ],
             },
+            {
+              question: '管道在 Linux 里为什么能"像文件一样操作"？它和共享内存各自落在哪些内核数据结构上？',
+              points: [
+                '**管道被实现为一种文件**：走统一文件接口读写，管道关联的是 pipefs 的 inode（`i_pipe` 是 inode 的字段，进程经 files_struct → file 间接引用）——"一切皆文件"在 IPC 上的兑现，也是 shell 重定向能无缝接管道的根源。',
+                '**共享内存**落在 `vm_area_struct` 的 **VM_SHM / VM_SHARED** 标志上（映射层的共享而非文件层）；task_struct 里的 `sem_undo`、`semsleeping` 则支撑**信号量**通信——三种 IPC 在内核里是三套数据结构，不是三种 API 包装。',
+              ],
+            },
           ],
         },
         {
@@ -136,6 +158,13 @@ export const osTrack: Track = {
               points: [
                 '僵尸进程**早已死亡**，没有任何执行上下文可接收信号；kill 只是把信号投递给仍能执行信号的进程，对 ZOMBIE 无效。',
                 'kill 的本质是"向目标进程的 pending 队列投递信号"，由内核在目标进程被调度时交付——所以它治的是活进程，僵尸要靠**父进程 wait**或父进程死亡后收养解决。',
+              ],
+            },
+            {
+              question: '父进程先于子进程退出时，子进程由谁接管？父进程一直不 wait，系统层面什么限制会先爆？',
+              points: [
+                '`do_exit()` 会**变更进程族亲关系**：孤儿进程托付给 **init（pid=1）**，由它 wait4() 回收——容器里"PID 1 要当 init"的内核机制根源。',
+                'EXIT_ZOMBIE 下进程仍占据 **task_struct 与 PID**（4.15 之前的经典内核默认 pid_max=32768，其后默认即提为上限 4194304——与正文口径衔接），用户进程数还有 `ulimit -u` 配额——僵尸堆积先耗尽的是**进程配额**而不是内存，fork 失败的直接原因。',
               ],
             },
           ],
@@ -187,6 +216,13 @@ export const osTrack: Track = {
                 '进入可能长时间阻塞的 syscall 前，goroutine 关联的 **M 会与 P 解绑（P 被摘走）**，sysmon 监控到 syscall 超时会把这个 P 交给（或创建）另一个 M 继续跑其他 goroutine。',
                 'syscall 返回后 M 尝试重新获取 P，拿不到就进入休眠队列，goroutine 进入全局队列等待调度。',
                 '网络 IO 则根本不阻塞 M：注册进 **netpoller（epoll/kqueue）**，goroutine 被 gopark，就绪后再放回运行队列。',
+              ],
+            },
+            {
+              question: 'Linux 没有独立的"线程"实体，pthread_create 到底走了哪个系统调用？共享粒度由什么决定？',
+              points: [
+                'Linux 用 **clone() 创建轻量级进程（LWP）当线程**：`do_fork()` 的 clone_flags 决定共享粒度——**CLONE_VM**（共享 mm_struct）、**CLONE_FILES**（共享打开文件表）、CLONE_FS、CLONE_SIGHAND；共享 mm 时引用计数 `mm_users` 递增。',
+                '**fork 与 pthread 的区别只是 flags 组合**：fork 什么都不共享、线程全共享——同一套 do_fork 代码路径，这是"Linux 线程就是共享资源的进程"说法的实现依据。对照：**内核线程**用 kernel_thread() 创建，只有内核地址空间、无用户态。',
               ],
             },
           ],
@@ -246,6 +282,14 @@ export const osTrack: Track = {
                 '位置无关代码访存要经 GOT 间接寻址，理论略慢（通常 <5%）——安全与性能的又一处权衡。',
               ],
             },
+            {
+              question: '静态库的链接顺序为什么会报"未定义引用"？强弱符号规则是什么？（北大 ICS 原题）',
+              points: [
+                '**链接器从左到右扫描命令行**：遇到当前未解析的引用才去**后方**的库里抽取对应目标模块——所以库要放在**引用它的目标文件之后**（`gcc main.c lib.a` 对，`gcc lib.a main.c` 错：扫到库时还没有未解析引用，模块没被抽取，后面 main 的调用解析不到）。相互调用的多个库要在命令行**重复出现或排好序**；"只拷贝被引用的模块"也解释了静态库为什么不会让可执行文件无谓变大。',
+                '**强弱符号三规则（另一道期末原题）**：已初始化的全局变量/函数是**强符号**，未初始化的全局变量是**弱符号**，static 是**局部符号不参与解析**；强弱冲突选强、多个弱符号任选其一——两个 .c 各定义一个未初始化全局 `int x` 不报错但共享同一变量，是诡异 bug 的经典来源。',
+                '**链接器只看符号名、不看类型**（原题：头文件声明 `extern long long a`、定义 `int a[2]`，链接照样通过）——类型检查是编译器按"翻译单元"做的事，跨目标文件的类型不一致只在运行时爆。根治靠编译告警（-fno-common，GCC 10+ 已默认）、LTO 或至少 header-only 声明。',
+              ],
+            },
           ],
         },
         {
@@ -274,6 +318,14 @@ export const osTrack: Track = {
                 '**完整 checklist（顺序即答案）**：① 停止接新流量（从注册中心摘除 / readiness 置 not-ready，等传播窗口）；② 停 accept 并给存量请求设**处理超时上限**；③ 按依赖逆序收尾（回复未决 RPC、提交 MQ offset、flush 并 fsync 日志/临时文件、释放锁）；④ **总超时后主动自杀**（防某个环节挂死拖满宽限期被 SIGKILL 硬拆——自己控制在干净点退出永远优于被 9 杀）。',
                 '**卡死的高发点**：退出钩子里做了**同步阻塞操作**（等一个已经不健康的下游、抢锁、等线程池 shutdown 而 worker 卡在 IO）；正确姿势是钩子里只做“置位 + 等待带超时”，重活由独立的退出协调线程执行；**in-flight 请求的记账**（正在处理数）要在入口/出口埋点，否则“等存量”就是等一个测量不到的数。',
                 '**验证方法**：优雅退出是代码路径就要有测试——CI 里发 SIGTERM 断言 N 秒内退出且 exit 0；线上用滚动发布的 502 率做回归指标（优雅退出失败的第一现场就是发布时错峰报错，与运维方向的滚动发布专题衔接——那边讲 k8s 编排视角，这里讲进程内信号视角）。',
+              ],
+            },
+            {
+              question: '信号会"丢"吗？阻塞期间收到十个同类信号，解除后会处理几次？（北大 ICS 原题）',
+              points: [
+                '**不排队、会合并**：内核为每个信号只维护**一个 pending 位**——阻塞期间收到十个 SIGCHLD，解除阻塞后**只处理一次**。所以信号处理器必须循环 `waitpid(-1, ..., WNOHANG)` 收割到返回 0 为止，只 wait 一次就会漏收僵尸（"为什么我 kill 了子进程还有僵尸"的经典根因）。',
+                '**alarm+pause 自制 sleep 的竞态**（原题三连）：`signal(SIGALRM, handler); alarm(n); pause();` ——若调度让 alarm 先触发、pause 后执行，pause 将**永远睡死**（信号已消费完）；同时它会**覆盖进程原有的 alarm**，还用 signal 改了全局处置。正解：**sigaction 注册 + sigsuspend（原子地"解除阻塞并等待"）**——竞态窗口的消除靠的是"检查与等待合并成一个原子操作"，与多线程"先解锁后 wait"用 condition variable 的道理同构。',
+                '**可重入性收束**：处理器函数在信号打断的任意点执行——里面只能用异步信号安全函数（write 可以、printf/malloc 不行），或干脆只置一个 `volatile sig_atomic_t` 标志由主循环处理。这套约束和"信号处理器里加锁死锁"的事故是同一件事的两面。',
               ],
             },
           ],
@@ -452,6 +504,13 @@ export const osTrack: Track = {
                 '**原子拿齐 = 事务的两阶段申请**：要么全部资源申请成功、要么全部回滚——分布式事务 TCC/2PC 是它的远程放大版。',
               ],
             },
+            {
+              question: '管程版哲学家（Dijkstra 方案）里 test() 函数靠什么条件放人？它还遗留什么问题？',
+              points: [
+                '**monitor DP 方案**：维护 `state[5]`（THINKING/HUNGRY/EATING）与条件变量 `self[5]`；`test(i)` 要求**左右邻居 (i+4)%5 与 (i+1)%5 都不在 EATING 且自己 HUNGRY** 才放行——把"拿两只筷子"变成原子判定，破坏循环等待。',
+                '课件同时指出遗留缺陷：**左右邻居持续交替进食时，中间的哲学家可能饿死**——死锁解决了、饥饿还在，"活锁/饥饿是死锁之外的另一类活性问题"用这个例子讲最清楚。',
+              ],
+            },
           ],
         },
         {
@@ -471,6 +530,13 @@ export const osTrack: Track = {
               points: [
                 '**持锁顺序事故**：拿住 course1 的锁去等/检查 course2，course2 满时若**不释放 course1 就返回**，锁就泄漏了——后续所有换课操作都堵在 course1 上，实质死锁。',
                 '正解两选一：**先确认再退选**（一次性原子检查两门课），或**统一加锁顺序 + 所有路径保证释放**（finally/defer）——与死锁预防题的"按序加锁"互证。',
+              ],
+            },
+            {
+              question: '经典读者写者解法里，第一个读者和最后一个读者分别在做什么？写者饿死发生在哪个窗口？',
+              points: [
+                '共享 `readcount`（初值 0）+ **mutex**（保护 readcount 自身）+ **wrt**（读写互斥）：**第一个读者 readcount==1 时 wait(wrt)** 把写者挡在门外，**最后一个读者 readcount==0 时 signal(wrt)** 放行；写者只做 wait/signal(wrt)。',
+                '饿死窗口：**只要读者流不断（readcount 不降回 0），wrt 永远握在读者方**——写者无限等待。这就是"读者优先"策略的机制根源，公平版要加一个排队信号量让"读者到了但写者在等"时新读者排队（与正文变体题的方案互相印证）。',
               ],
             },
           ],
@@ -581,6 +647,13 @@ export const osTrack: Track = {
                 '这也是虚假唤醒要用 while 复查条件的原因：从 wait 醒来到重新拿到锁之间，条件可能已被其他线程消费掉。',
               ],
             },
+            {
+              question: '三个信号量的初值各是什么？把 wait(empty) 和 wait(mutex) 顺序反过来会出什么问题？',
+              points: [
+                '**mutex=1**（互斥）、**full=0**（计已有产品数）、**empty=N**（计空槽数）；生产者 wait(empty)→wait(mutex)，消费者 wait(full)→wait(mutex)——**同步信号量在互斥信号量之前**。',
+                '顺序反了的后果：缓冲满时生产者**先持有 mutex 再在 wait(empty) 上睡眠**——消费者取产品也需要 mutex，永远拿不到，**持锁睡眠直接死锁**。课件还用 count++/count-- 的寄存器交错（S0~S5 六步）演示无互斥时的 race condition——两件事合起来就是"同步在前、互斥在后"口诀的完整论证。',
+              ],
+            },
           ],
         },
         {
@@ -601,6 +674,13 @@ export const osTrack: Track = {
               points: [
                 '服务器上没有显式优先级时，表现为**锁持有者被调度器饿死或被 cgroup 限流**：如持锁线程落在被 throttle 的 cgroup、或被绑核策略挤占，等待者集体超时——本质都是"关键等待路径依赖了一个不再运行的持锁者"。',
                 '排查共性：看到大量线程等同一把锁但持锁者 CPU 时间不增长，就是它的变体。',
+              ],
+            },
+            {
+              question: 'Linux 里 nice 值是怎么影响一个任务实际拿到多少 CPU 的？',
+              points: [
+                'task_struct 三字段分工：`prio`（0~99 实时 / 100~139 普通）、`static_prio`（对应 nice −20~19，经 set_user_nice() 修改）、`rt_priority`。',
+                '**CFS 的兑现公式**：`vruntime += delta_exec × NICE_0_LOAD / weight`——nice 越小权重越大、vruntime 涨得越慢，在红黑树 cfs_rq 里总被优先选中——"nice 不是抢占优先级而是权重"在 CFS 数据结构层面说得清。',
               ],
             },
           ],
@@ -762,6 +842,14 @@ export const osTrack: Track = {
                 '排查对照："空闲内存明明够但大块分配失败"先怀疑外碎片（/proc/buddyinfo 看高阶余量，见伙伴系统题）；"RSS 高但活跃对象少"是分配器碎片（上一条追问）——**两种碎片两种病，药方完全不同**。',
               ],
             },
+            {
+              question: '面试手写题：让你自己实现一个 malloc，块结构和空闲链表怎么设计？（北大 ICS 原题）',
+              points: [
+                '**块格式是第一步**：每个块 = **头部（块大小 + 分配位 + 可选脚部）+ 有效载荷 + 填充**——头部要支撑两件事：free 时知道本块多大、向前向后合并时定位邻居（**边界标记 boundary tag**：块尾再放一份大小，支持从尾部回退遍历）。对齐按最宽类型（8/16 字节），头部利用"大小总是 8 的倍数、低 3 位空闲"把标志位**塞进大小的低位**——位级复用是 malloc lab 的第一课。',
+                '**空闲块组织与适配策略**（北大试卷原题选择题）：**首次适配**（从头找第一个放得下的：快，但链表**前部聚集小碎片**）、**下次适配**（从上次位置继续找：分布更均匀、利用率略降）、**最佳适配**（找最小够用块：碎片最小但每次全扫——配合**按大小递增**排序空闲链表，第一个命中即最优）。工程正解是**分离空闲链表**（按 2 的幂分 size class 各一条链，类内首次/最佳），ptmalloc 的 bin、tcmalloc 的 size class 全是这一思想的产物。',
+                '**策略与合并**：splitting（大块切出需要的，余下留链表）与 coalescing（释放时按边界标记合并邻居，防碎片化）；再往上才是正文那层——分配器向 OS 批发（brk/mmap 扩展堆段）。答题时主动给"吞吐 vs 利用率"的取舍线：首次适配换吞吐、最佳适配换利用率、分离链表两者兼得——一句话说清为什么真实分配器都长那样。',
+              ],
+            },
           ],
         },
         {
@@ -783,6 +871,13 @@ export const osTrack: Track = {
                 '返回结构体走的是**隐藏的返回值参数（RVO/NRVO 优化）**：调用方在调用前就准备好返回对象的地址，被调方直接在那块内存上构造，不存在悬垂；而返回"结构体的指针"仍然危险。',
               ],
             },
+            {
+              question: '4GB 虚拟空间里内核空间和用户空间怎么分界？堆的范围在 mm_struct 里由哪几个字段描述？',
+              points: [
+                '经典 32 位布局按 **PAGE_OFFSET** 分界：**低 3G 用户空间 + 高 1G 内核空间**——"为什么用户指针不能直接解引用内核地址"的分界线就是它（64 位下同理是 47 位签扩地址分界）。',
+                'mm_struct 里 **start_brk/brk 描述堆的起止**（brk 系统调用推动的就是这个字段）、**start_stack** 是栈起点，另有 start_code/end_code、arg_start/arg_end 等；/proc/pid/maps 里 `08048000 r-xp`（代码）与 `bfffe000 rwxp`（栈，匿名映射）就是这些字段的用户态投影。',
+              ],
+            },
           ],
         },
         {
@@ -802,6 +897,13 @@ export const osTrack: Track = {
               points: [
                 'swap 只是延迟爆炸：回收/换页的 IO 成本会让进程在 OOM 前先经历**长时间假死**（maj_flt 风暴），对延迟敏感服务比快速失败更糟。',
                 '数据库持有大量热点页，被换出后单次查询可能触发大量随机换入，性能雪崩；且 PostgreSQL 等依赖自己管理缓存，OS 缓存帮不上忙反添乱——常见做法 swapiness 调 0~1 或干脆禁用。',
+              ],
+            },
+            {
+              question: '物理内存告急时，内核是谁、按什么顺序把页面回收掉的？哪些页帧永远不会被换出？',
+              points: [
+                'OOM Killer 之前有**两道前置防线**：**kswapd 守护线程**在空闲页低于水位时按 LRU 回收——经典内核是 active/inactive 双链（2.4 时代细分过 dirty/clean 三链），现代内核拆成 **anon/file 两套 LRU 并演进到多代 LRU（mglru）**，但"冷页逐出、热页保留"的页龄思想不变；direct reclaim（try_to_free_pages 同步回收）是分配路径上的兜底。',
+                '**只有与用户空间建立映射的页帧才可换出**：内核页帧与内核映像常驻内存不换出；mmap 映射文件的页帧"交换区"就是被映射文件本身（脏页回写文件而非 swap）——"哪些内存能回收"决定了 OOM 前系统还能挣扎多久。',
               ],
             },
           ],
@@ -885,6 +987,13 @@ export const osTrack: Track = {
                 '可接受的原因：段表很小（每进程十几个段），且最终映射被 **TLB 整条缓存**（虚拟地址 → 物理地址），命中后多级结构不产生额外访存——**TLB 是一切"多级翻译"的万能补偿器**。',
               ],
             },
+            {
+              question: 'IA32 同时支持分段和分页，Linux 为什么主要用分页？32 位线性地址是怎么切分的？',
+              points: [
+                'IA32 线性地址 **10 位页目录 + 10 位页表 + 12 位页内偏移**，页面 4KB；Linux 把理论上三级页表的 PGD 与 PMD 合二为一退化为二级；页表项的 **P（在内存）/R/W/U/S/A（访问）/D（脏）**位支撑换页与 COW。',
+                '**分段被弱化成平坦模式**：页面可映射到任一物理页帧，换页与共享都容易；分段粒度大、内部碎片严重（通用补充）——"硬件支持两套，OS 只认真用一套"是移植性与简洁性的工程选择。',
+              ],
+            },
           ],
         },
       ],
@@ -947,6 +1056,13 @@ export const osTrack: Track = {
                 'Nginx 对启用 SSL 的站点会提示 sendfile 不生效（kTLS 技术是解法：把对称加密下沉到内核，sendfile 出口加密，重新让路径变"零拷贝"）。',
               ],
             },
+            {
+              question: 'sendfile 省掉 CPU 拷贝之外，mmap+write 消掉的是哪一类拷贝？read 路径上 page cache 起什么作用？',
+              points: [
+                '常规 read/write 都经 **page cache**：每个文件由 `struct address_space` 管理（clean_pages/dirty_pages 链表），缺页时调 `a_ops->readpage()` 从磁盘读入——"read 的数据其实先落在内核页缓存"是零拷贝讨论的前提。',
+                '**do_mmap() 把文件映射进用户空间**（file 为 NULL 即匿名映射；PROT_READ/WRITE/EXEC × MAP_SHARED/MAP_PRIVATE）——mmap 消掉的是"**内核缓冲区 → 用户缓冲区**"这次拷贝，数据 user 直接读页缓存；sendfile 则连用户态都不进。两种方案各消一次拷贝，组合对照着讲才完整。',
+              ],
+            },
           ],
         },
         {
@@ -996,6 +1112,13 @@ export const osTrack: Track = {
                 'TIME_WAIT 治理：用连接池/长连接减少主动关闭、增大端口范围、开启 `tcp_tw_reuse`（时间戳开启时安全）；`tcp_tw_recycle` 因 NAT 问题已从内核移除。',
               ],
             },
+            {
+              question: 'fd 到底是数组的什么？进程级和系统级各有什么上限、在哪里查看和调整？',
+              points: [
+                'fd 是进程 `files_struct.fd[]` **数组的下标**，元素指向内核 file 结构（经典内核 NR_OPEN=256，现代已大幅放大）；0/1/2 在系统启动时分配为标准输入/输出/错误；fork 后父子**下标相同的元素指向同一 file 结构，f_count 计数加 1**——与文件表题的两级结构互相印证。',
+                '上限分两层：进程级 `ulimit -n`（ulimit -Sn/-Hn 软硬），系统级 **/proc/sys/fs/file-max**——"Too many open files 先分清是进程撞墙还是系统撞墙"的排查起点。',
+              ],
+            },
           ],
         },
         {
@@ -1015,6 +1138,13 @@ export const osTrack: Track = {
               points: [
                 '瓶颈从 CPU 计算变成**网络 IO（读写 socket、协议解析）**，引入 IO 线程并行处理网络读写，而**命令执行仍单线程**——并发安全模型不变，复杂度只加在网络层。',
                 '这是通用规律：事件循环 + 单线程执行 + IO 并行化，是"保留简单性同时突破 IO 瓶颈"的折中范式。',
+              ],
+            },
+            {
+              question: 'file_operations 里哪个函数指针对应异步读？select/poll 的就绪通知在驱动层靠什么实现？',
+              points: [
+                '**file_operations 里的 aio_read/aio_write** 就是异步入口（io_submit 系统调用族调用它们）——Linux AIO 的"内核原生异步"只在驱动层这条路径成立，缓冲文件 IO 不走它（这正是 io_uring 要解决的断层）。',
+                '**驱动层 `poll` 函数指针**：调用后进程睡眠，"直到就绪时被唤醒"——select/poll/epoll 的就绪通知最终都落到每个 file 的 poll 回调（内部等待队列）；Reactor 的事件分发在内核的这一小块函数指针上完成。',
               ],
             },
           ],
@@ -1118,6 +1248,13 @@ export const osTrack: Track = {
                 '把两个数字记成"**连续怕改、链接怕找**"，三种分配的取舍就全通了。',
               ],
             },
+            {
+              question: 'ext2 的 i_block[15] 是怎么做到"小文件访问快、又支持大文件"的？',
+              points: [
+                '**ext2_inode 的 i_block[15]**：前 **12 项直接块**（小文件一次定位）、第 13 项一级间接、14/15 项二、三级间接——容量扩展到 TB 级而小文件零额外寻址，"UNIX 分配方式"（正文索引分配一派）的具体形态。',
+                '配套的块分配策略尽量保持连续：优先与上次分配块**相邻** → 附近 64 块内 → 本组 8 个连续空闲块 → 本组任意 → 其他组——索引分配也在为"读的时候顺序"争取局部性。',
+              ],
+            },
           ],
         },
         {
@@ -1138,6 +1275,13 @@ export const osTrack: Track = {
                 'x 位 = **穿越（traverse）**：允许按已知名字访问目录下的文件——路径解析每经过一个目录分量都要检查它；**列出目录内容**要的才是 r 位。',
                 '经典现场：没有 x 位时，即使知道确切文件名 open 也失败（Permission denied）；`ls 目录` 报错但 `ls 目录/已知文件名` 可以——"不列内容，只穿越"。',
                 '线上排 `Permission denied` 别只看目标文件——**沿途每一级目录的 x 位**都要过关（容器/挂载目录权限问题的高发点）。',
+              ],
+            },
+            {
+              question: 'open 返回前内核做了哪几步？为什么重复打开同一文件得到不同 fd 却指向同一 inode？',
+              points: [
+                '**sys_open() 四步**：getname() 取路径 → **get_unused_fd()** 找空闲描述符 → **open_namei()/path_walk() 路径解析**得 dentry → **dentry_open()** 初始化 file 对象 → **fd_install()** 执行 `current->files->fd[fd] = file`——每步都能对应到正文两级表的一层。',
+                '每次 open **新建一个 file 结构**（各持独立 f_pos），但它们的 f_inode 指向**同一个 inode**；系统级"打开文件表"就是把所有 file 串成的链表——"fd ≠ file ≠ inode 三层对象"在代码路径上走一遍，比背概念牢。',
               ],
             },
           ],
@@ -1162,6 +1306,13 @@ export const osTrack: Track = {
                 '本质是"一致性强度 × 性能"的档位选择：数据库用 O_DIRECT 自管缓存绕开这套，普通服务默认 ordered 足够。',
               ],
             },
+            {
+              question: '日志文件系统的理论原型是什么？恢复时靠什么区分该 redo 还是 undo？',
+              points: [
+                '**write-ahead logging（课件 ch6 原子事务一节）**：日志记录 `<Ti starts>`、`<Ti, 数据项, 旧值, 新值>`、`<Ti commits>`，**日志先于数据到达稳定存储**——文件系统日志（ext4 jbd2）与数据库 WAL 是同一原理。',
+                '恢复规则：**有 starts 无 commits → undo（按旧值回滚）；两者都有 → redo**；undo/redo 必须**幂等**（恢复途中再崩溃也安全）；**checkpoint**（刷日志 → 刷脏数据 → 写 checkpoint 记录）截短扫描范围——fsck 是"离线全盘对账"，日志法把恢复缩到"最近一个检查点以来的事务"。',
+              ],
+            },
           ],
         },
         {
@@ -1181,6 +1332,13 @@ export const osTrack: Track = {
               points: [
                 '每个 mount 实例 = 一个 superblock + 挂载点，**同名路径按挂载顺序遮挡**（后挂的盖先挂的）。overlayfs 把镜像层（lower，只读）与容器层（upper，可写）叠加：**读命中上层，写触发 copy-up**——先把文件从 lower 复制到 upper 再改。',
                 '推论：容器里改的文件进的是 upper 层，镜像层永远不变——"容器删了文件宿主机还在、镜像不变升级可复用"都由此而来；`mount`、`df`、`/proc/self/mountinfo` 是排查三件套。',
+              ],
+            },
+            {
+              question: 'VFS 只有内存中没有磁盘实体，它的四大对象分别对应磁盘上什么？"统一接口"靠哪组函数指针落地？',
+              points: [
+                '四对象与磁盘实体的对应：**superblock** ↔ 文件系统超级块（ext2 装载时 ext2_fill_super() 填 ext2_sb_info）、**inode** ↔ 磁盘 FCB（i_dev+i_ino 唯一定位）、**dentry** ↔ 路径组成部分（d_parent/d_child 构成树，内存可有缓存无磁盘实体）、**file** ↔ open 的会话（持 f_pos，close 销毁）。',
+                '统一性靠**四组操作函数指针表**：s_op→super_operations、i_op→inode_operations、**f_op→file_operations**、d_op→dentry_operations；各文件系统经 **file_system_type 注册链表**（get_sb/kill_sb）挂载接入——"/proc 也有 file_operations"就是这套抽象的极致体现。',
               ],
             },
           ],
