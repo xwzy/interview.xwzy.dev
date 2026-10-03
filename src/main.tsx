@@ -2,7 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router'
 import App from './App'
-import ErrorBoundary from './components/ErrorBoundary'
+import { RouteErrorBoundary } from './components/ErrorBoundary'
 import AuthGate from './components/AuthGate'
 import { AuthProvider } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
@@ -16,7 +16,7 @@ import './index.css'
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter basename={import.meta.env.BASE_URL}>
-      <ErrorBoundary>
+      <RouteErrorBoundary>
         <AuthProvider>
           <AuthGate>
             <ThemeProvider>
@@ -36,7 +36,7 @@ createRoot(document.getElementById('root')!).render(
             </ThemeProvider>
           </AuthGate>
         </AuthProvider>
-      </ErrorBoundary>
+      </RouteErrorBoundary>
     </BrowserRouter>
   </StrictMode>,
 )
@@ -55,9 +55,14 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator) {
 // 部署新版本后，旧标签页请求已不存在的懒加载 chunk 会失败——自动刷新恢复。
 // 10 秒内只自动刷新一次，防止弱网/代理下 preload 持续失败形成刷新循环。
 window.addEventListener('vite:preloadError', () => {
-  const key = 'interview-preload-reload-at'
-  const last = Number(sessionStorage.getItem(key) || 0)
-  if (Date.now() - last < 10_000) return
-  sessionStorage.setItem(key, String(Date.now()))
+  // 存储被禁（隐私模式等）时去重逻辑自身抛错会挡住 reload——必须兜住，保证刷新一定执行
+  try {
+    const key = 'interview-preload-reload-at'
+    const last = Number(sessionStorage.getItem(key) || 0)
+    if (Date.now() - last < 10_000) return
+    sessionStorage.setItem(key, String(Date.now()))
+  } catch {
+    // 无法读写存储时退化为直接刷新（有刷新循环风险，但比永远打不开好）
+  }
   window.location.reload()
 })

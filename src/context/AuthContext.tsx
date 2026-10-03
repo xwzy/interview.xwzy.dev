@@ -5,6 +5,8 @@ import { LS_KEYS } from '../lib/storageKeys'
 const EXPECTED_HASH = '8de1e564872c61f19bddd5cec6223167000de9d0ed2d21d12c093a333c5ed58f'
 
 async function sha256Hex(text: string): Promise<string> {
+  // 非安全上下文（如 http:// 非 localhost）下 crypto.subtle 不存在，抛错而非返回错误结果
+  if (!crypto?.subtle) throw new Error('当前环境不支持安全加密接口（需 HTTPS 或 localhost）')
   const data = new TextEncoder().encode(text)
   const buf = await crypto.subtle.digest('SHA-256', data)
   return Array.from(new Uint8Array(buf))

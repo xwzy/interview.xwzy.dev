@@ -15,18 +15,34 @@ const MAX_ENTRIES = 150
 /** 导航请求（HTML）网络优先的超时：超时后回退缓存，弱网挂起不再白屏等待 */
 const NAV_TIMEOUT_MS = 4000
 
+/** 旧版本缓存的保留宽限期：刚激活时不立即删旧缓存——已打开的旧标签页仍会请求旧
+    hash 资源（旧文件已不在新部署里），立刻删除会让旧页面断供 404。宽限后清理；
+    若 SW 在宽限期内被终止，下次激活会重新走这套逻辑，最终仍会被清理 */
+const OLD_CACHE_GRACE_MS = 60 * 60 * 1000
+
+/** 离线壳资源永不淘汰：APP_ROOT 是离线导航回退，manifest/图标缺失会让 PWA 安装静默失败 */
+const SHELL_URLS = new Set([
+  APP_ROOT,
+  new URL('manifest.webmanifest', APP_ROOT).href,
+  new URL('favicon.svg', APP_ROOT).href,
+  new URL('icon-192.png', APP_ROOT).href,
+  new URL('icon-512.png', APP_ROOT).href,
+])
+
 async function pruneCache() {
   const cache = await caches.open(CACHE)
   const keys = await cache.keys()
-  if (keys.length <= MAX_ENTRIES) return
+  const evictable = keys.filter((k) => !SHELL_URLS.has(new URL(k.url).href))
+  if (evictable.length <= MAX_ENTRIES) return
   // keys 按插入顺序；条目命中时会"删除重插"移到队尾（见 fetch 处理），近似 LRU 淘汰最久未用的
-  await Promise.all(keys.slice(0, keys.length - MAX_ENTRIES).map((k) => cache.delete(k)))
+  const excess = evictable.length - MAX_ENTRIES
+  await Promise.all(evictable.slice(0, excess).map((k) => cache.delete(k)))
 }
 
-/** 命中缓存后刷新位置：delete + put 把条目移到队尾，pruneCache 淘汰的才是"最久未使用" */
-async function refreshCachePosition(request, response) {
+/** 命中缓存后刷新位置：delete + put 把条目移到队尾，pruneCache 淘汰的才是"最久未使用"。
+    注意必须传入"返回之前就 clone 好"的副本——等 await 之后再 clone，body 已被浏览器消费，会抛错 */
+async function refreshCachePosition(request, copy) {
   const cache = await caches.open(CACHE)
-  const copy = response.clone()
   await cache.delete(request)
   await cache.put(request, copy)
   await pruneCache()
@@ -37,15 +53,8 @@ self.addEventListener('install', (event) => {
     (async () => {
       const cache = await caches.open(CACHE)
       // 逐项容错预缓存：单个资源失败不阻断 install（addAll 是原子的，一处失败全盘失败）
-      const shell = [
-        APP_ROOT,
-        new URL('manifest.webmanifest', APP_ROOT).href,
-        new URL('favicon.svg', APP_ROOT).href,
-        new URL('icon-192.png', APP_ROOT).href,
-        new URL('icon-512.png', APP_ROOT).href,
-      ]
       await Promise.all(
-        shell.map(async (url) => {
+        [...SHELL_URLS].map(async (url) => {
           try {
             await cache.add(url)
           } catch {
@@ -60,11 +69,16 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches
-      .keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
-      .then(pruneCache)
-      .then(() => self.clients.claim()),
+    (async () => {
+      setTimeout(() => {
+        caches
+          .keys()
+          .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+          .catch(() => {})
+      }, OLD_CACHE_GRACE_MS)
+      await pruneCache()
+      await self.clients.claim()
+    })(),
   )
 })
 
@@ -89,8 +103,9 @@ self.addEventListener('fetch', (event) => {
       (async () => {
         const hit = await caches.match(request)
         if (hit) {
-          // 不 await：回位写缓存不应拖慢响应返回
-          refreshCachePosition(request, hit).catch(() => {})
+          // 同步 clone 后再交给回位逻辑（不 await）：既不拖慢响应，又保证 body 未被消费
+          const copy = hit.clone()
+          refreshCachePosition(request, copy).catch(() => {})
           return hit
         }
         const response = await fetch(request)

@@ -37,13 +37,15 @@ export default function App() {
   useEffect(() => {
     if (isLowBandwidth()) return
     const preload = () => {
-      void import('./pages/QuizPage')
-      void import('./pages/TrackPage')
-      void import('./pages/TopicPage')
-      void import('./pages/SearchPage')
-      void import('./pages/HistoryPage')
-      void import('./pages/SettingsPage')
-      void import('./pages/NotFoundPage')
+      // 部署新版后旧 chunk 404 会 reject：静默即可，vite:preloadError 处理器负责自动刷新
+      const silent = (p: Promise<unknown>) => p.catch(() => {})
+      silent(import('./pages/QuizPage'))
+      silent(import('./pages/TrackPage'))
+      silent(import('./pages/TopicPage'))
+      silent(import('./pages/SearchPage'))
+      silent(import('./pages/HistoryPage'))
+      silent(import('./pages/SettingsPage'))
+      silent(import('./pages/NotFoundPage'))
     }
     const w = window as Window & {
       requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number

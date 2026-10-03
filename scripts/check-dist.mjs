@@ -32,6 +32,13 @@ if (refs.length === 0) {
 
 let failures = 0
 for (const ref of refs) {
+  // 子路径部署时要求所有引用必须带 base 前缀——否则即使文件碰巧存在，
+  // 线上也是"部分资源缺前缀 404 白屏"，必须直接判失败而不是静默放行
+  if (base !== '/' && !ref.startsWith(base)) {
+    console.error(`[check-dist] 引用缺少 base 前缀 ${base}: ${ref}`)
+    failures += 1
+    continue
+  }
   const rel = ref.startsWith(base) ? ref.slice(base.length) : ref.slice(1)
   const file = join(dist, rel)
   if (!existsSync(file)) {
@@ -54,7 +61,7 @@ for (const f of ['sw.js', 'manifest.webmanifest']) {
     failures += 1
   }
 }
-if (existsSync('dist/404.html')) {
+if (existsSync(join(dist, '404.html'))) {
   console.error('[check-dist] 不应发布 404.html（CF Pages 以 index.html 做 SPA 回退）')
   failures += 1
 }

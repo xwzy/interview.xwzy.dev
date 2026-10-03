@@ -128,7 +128,8 @@ export function BankProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const retry = useCallback(() => {
-    loadPromiseRef.current = null
+    // 失败路径已把 ref 置空；这里挡住连点重试导致的并发加载（弱网下放大失败面）
+    if (loadPromiseRef.current) return
     ensureLoaded()
   }, [ensureLoaded])
 

@@ -6,12 +6,18 @@
  * 内容不变 → 版本号稳定（可重复构建），不会无谓地作废用户缓存。
  */
 import { createHash } from 'node:crypto'
-import { readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 
 const TOKEN = '__SW_BUILD_ID__'
 const dist = resolve('dist')
 const swPath = join(dist, 'sw.js')
+for (const f of [join(dist, 'index.html'), swPath]) {
+  if (!existsSync(f)) {
+    console.error(`[sw-version] 缺失 ${f}——构建顺序异常或 vite build 未成功`)
+    process.exit(1)
+  }
+}
 const html = readFileSync(join(dist, 'index.html'), 'utf8')
 
 // index.html 引用了全部带 hash 的产物名，其内容摘要即可代表本次构建

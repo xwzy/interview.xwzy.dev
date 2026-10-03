@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react'
+import { useLocation } from 'react-router'
 
 interface Props {
   children: ReactNode
@@ -49,4 +50,10 @@ export default class ErrorBoundary extends Component<Props, State> {
     }
     return this.props.children
   }
+}
+
+/** 路由感知包装：切换路由时 key 变化触发重挂载、复位错误状态，单页崩溃后其余页面仍可导航恢复 */
+export function RouteErrorBoundary({ children }: { children: ReactNode }) {
+  const location = useLocation()
+  return <ErrorBoundary key={location.pathname}>{children}</ErrorBoundary>
 }

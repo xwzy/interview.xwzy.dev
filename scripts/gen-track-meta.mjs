@@ -33,6 +33,11 @@ try {
   const require = createRequire(import.meta.url)
   const { loadAllTracks } = await import(pathToFileURL(bundlePath).href)
   const tracks = await loadAllTracks()
+  if (!Array.isArray(tracks) || tracks.length === 0) {
+    // loader 静默返回空（如数据文件 bug 导致 import 全部失败）时必须在此拦截，
+    // 否则生成空 trackMeta 且构建"成功"，首页直接空白
+    throw new Error('loadAllTracks() 返回空——请检查 src/data/ 下的数据文件')
+  }
 
   const meta = tracks.map((t) => ({
     id: t.id,

@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext'
 export default function AuthGate({ children }: { children: ReactNode }) {
   const { authed, login } = useAuth()
   const [password, setPassword] = useState('')
-  const [error, setError] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
   if (authed) return <>{children}</>
@@ -14,10 +14,21 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     e.preventDefault()
     if (!password.trim() || submitting) return
     setSubmitting(true)
-    const ok = await login(password)
+    let ok = false
+    let envError = false
+    try {
+      ok = await login(password)
+    } catch {
+      ok = false
+      envError = true
+    }
     setSubmitting(false)
     if (!ok) {
-      setError(true)
+      setError(
+        envError
+          ? '当前环境不支持安全加密接口，请通过 HTTPS 或 localhost 访问'
+          : '密码不正确，请重试',
+      )
       setPassword('')
     }
   }
@@ -42,13 +53,13 @@ export default function AuthGate({ children }: { children: ReactNode }) {
             autoFocus
             onChange={(e) => {
               setPassword(e.target.value)
-              setError(false)
+              setError(null)
             }}
             placeholder="访问密码"
             aria-label="访问密码"
             className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100 dark:border-white/10 dark:bg-white/5 dark:text-slate-100 dark:focus:border-blue-500/50 dark:focus:ring-blue-500/20"
           />
-          {error && <p className="text-left text-xs text-rose-500">密码不正确，请重试</p>}
+          {error && <p className="text-left text-xs text-rose-500">{error}</p>}
           <button
             type="submit"
             disabled={submitting || !password.trim()}

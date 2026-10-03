@@ -292,7 +292,8 @@ export default function QuizPage() {
 
   // 键盘快捷键：空格/回车展示要点，← → 切题，1/2/3 评分（每次渲染重挂载，避免闭包过期）
   useEffect(() => {
-    if (phase !== 'running') return
+    // 队列为空时不再响应快捷键：避免 goNext 走 finish 分支写入空记录
+    if (phase !== 'running' || queue.length === 0) return
     const handler = (e: KeyboardEvent) => {
       // 输入法组词确认的回车不是快捷键
       if (e.isComposing) return

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useMasteryState, useMasteryActions } from '../context/MasteryContext'
 import { useVerdicts } from '../context/InterviewContext'
 import { useSessions } from '../context/SessionContext'
@@ -37,10 +37,20 @@ export default function SettingsPage() {
   const [message, setMessage] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null)
   const [confirmClear, setConfirmClear] = useState<string | null>(null)
 
+  // 连续 flash 时先清掉前一个定时器，避免旧定时器把新消息提前清掉
+  const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const flash = (kind: 'ok' | 'err', text: string) => {
     setMessage({ kind, text })
-    setTimeout(() => setMessage(null), 3000)
+    if (flashTimerRef.current) clearTimeout(flashTimerRef.current)
+    flashTimerRef.current = setTimeout(() => setMessage(null), 3000)
   }
+
+  useEffect(
+    () => () => {
+      if (flashTimerRef.current) clearTimeout(flashTimerRef.current)
+    },
+    [],
+  )
 
   const handleExport = () => {
     const backup: BackupFile = {
