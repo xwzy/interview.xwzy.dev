@@ -26,8 +26,9 @@
 | 13 | 二期·计算机视觉新领域 | ai.ts 新增 ai-cv | 10 | 10 条（含新题内） | ✅ 已完成 | 见 git log |
 | 14 | 二期·存量优化 pass（os/co/ca） | os.ts + computer-organization.ts + computer-architecture.ts | 0 | 44 条 | ✅ 已完成 | 见 git log |
 | 15 | 二期·全库事实审查 | 全库 7 题 | 0 | 修复 14 处 | ✅ 已完成 | 见 git log |
+| 16 | 二期·ai-cv 第二批（DIP/3D DL/计算摄影） | ai.ts ai-cv | 8 | 8 条（含新题内） | ✅ 已完成 | 见 git log |
 
-题库总量：656（起点）→ **757**（当前）。真题改编题统一打 `tags: ['真题改编']`，可全局搜索筛选。
+题库总量：656（起点）→ **765**（当前）。真题改编题统一打 `tags: ['真题改编']`，可全局搜索筛选。
 二期方案见 `docs/quiz-expansion-plan-v2.md`（批号自 11 起续编）。
 
 > 批 8 范围说明：原计划的"大数据/移动端/运维各 +3~4"在参考库中无对口语料（无对应课程材料），如实跳过；批 8 聚焦有真实试卷支撑的 qa 方向。
@@ -192,3 +193,13 @@ Raft 投票约束、GCM nonce、GBN/SR 窗口、Amdahl 2.47、Roofline、MESIF/M
 B 树高度公式、VC 维谱系、张正友 ≥3 姿态、F=K⁻ᵀEK⁻¹ 方向等。
 
 **二期收尾**：批 11~15 共 +12 题（745 → 757）/ +64 条追问（1107 → 1173）；方案 doc 见 quiz-expansion-plan-v2.md。
+
+
+## 批 16 · 二期·ai-cv 第二批 ✅（来源：数字图像处理系列 + 3D DL + 计算摄影课件）
+
+**新题 8**（ai-cv）：histogram-gamma（CDF 均衡/伽马 2.2 物理来源/sRGB 线性空间追问）、median-morphology（椒盐/开闭/顶帽）、frequency-domain（卷积定理/振铃机制/同态滤波）、segmentation-classic（Otsu 算例/分水岭/图割 Ncut/SLIC）、hough-transform（参数空间投票算例/随机 Hough/车道线追问）、stitching-homography（8 自由度/两情形/圆柱投影/鬼影接缝追问）、point-cloud（PointNet 对称函数/PointNet++ FPS）、hdr-deconvolution（曝光包围合并/Wiener/病态与先验）。
+
+**丢弃**：采样混叠（第一批已覆盖）、链码/不变矩 trivia。**留白**：NeRF/MVSNet、SRGAN 超分（可作第三批）。
+**分包**：ai 191KB，低于 frontend 282KB 先例。
+
+详见 docs/quiz-harvest/seeds-v2-batch4-dip3d.md。
