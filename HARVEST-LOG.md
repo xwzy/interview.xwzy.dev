@@ -27,8 +27,9 @@
 | 14 | 二期·存量优化 pass（os/co/ca） | os.ts + computer-organization.ts + computer-architecture.ts | 0 | 44 条 | ✅ 已完成 | 见 git log |
 | 15 | 二期·全库事实审查 | 全库 7 题 | 0 | 修复 14 处 | ✅ 已完成 | 见 git log |
 | 16 | 二期·ai-cv 第二批（DIP/3D DL/计算摄影） | ai.ts ai-cv | 8 | 8 条（含新题内） | ✅ 已完成 | 见 git log |
+| 17 | 二期·ai-cv 第三批（NeRF/MVS/单目深度） | ai.ts ai-cv | 5 | 5 条（含新题内） | ✅ 已完成 | 见 git log |
 
-题库总量：656（起点）→ **765**（当前）。真题改编题统一打 `tags: ['真题改编']`，可全局搜索筛选。
+题库总量：656（起点）→ **770**（当前）。真题改编题统一打 `tags: ['真题改编']`，可全局搜索筛选。
 二期方案见 `docs/quiz-expansion-plan-v2.md`（批号自 11 起续编）。
 
 > 批 8 范围说明：原计划的"大数据/移动端/运维各 +3~4"在参考库中无对口语料（无对应课程材料），如实跳过；批 8 聚焦有真实试卷支撑的 qa 方向。
@@ -203,3 +204,12 @@ B 树高度公式、VC 维谱系、张正友 ≥3 姿态、F=K⁻ᵀEK⁻¹ 方�
 **分包**：ai 191KB，低于 frontend 282KB 先例。
 
 详见 docs/quiz-harvest/seeds-v2-batch4-dip3d.md。
+
+
+## 批 17 · 二期·ai-cv 第三批 ✅（来源：3D 深度学习 + 计算摄影课件）
+
+**新题 5**（ai-cv）：monocular-depth-scale（尺度歧义/scale-invariant loss/MegaDepth 13 万对）、implicit-representation（mesh 不可微→隐式表示→NeRF→NeuS SDF，advanced）、deep-matching（SuperPoint heatmap+度量学习）、mvsnet（cost volume 框架与端到端化）、srgan-perceptual（PSNR 23.53 vs 21.15 的感知权衡原数值）。
+
+**边界纪律**：课件未覆盖的细节（NeRF 位置编码、MVSNet 概率体、monodepth 自监督）不出题、追问只标（通用补充）给方向。至此参考库 CV 方向高价值语料收割完毕。
+
+详见 docs/quiz-harvest/seeds-v2-batch5-3d.md。
