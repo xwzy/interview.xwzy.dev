@@ -221,9 +221,9 @@ export default function SearchPage() {
                         {meta.label}
                       </span>
                     </div>
-                    <h3 className="mt-1.5 font-medium leading-relaxed">
+                    <h2 className="mt-1.5 font-medium leading-relaxed">
                       <Highlight text={item.question.title} kw={keyword} />
-                    </h3>
+                    </h2>
                     {snippetPoint && (
                       <p className="mt-1 line-clamp-2 text-sm text-slate-500 dark:text-slate-400">
                         <Highlight text={snippetPoint} kw={keyword} />

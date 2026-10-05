@@ -90,7 +90,7 @@ function QuestionItemImpl({
               </button>
             ))}
           </div>
-          <h3 className="mt-1.5 font-medium leading-relaxed">
+          <h2 className="mt-1.5 font-medium leading-relaxed">
             <button
               type="button"
               onClick={() => setOpen((o) => !o)}
@@ -99,7 +99,7 @@ function QuestionItemImpl({
             >
               {question.title}
             </button>
-          </h3>
+          </h2>
           <button
             type="button"
             onClick={() => setOpen((o) => !o)}

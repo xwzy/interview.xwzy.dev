@@ -27,7 +27,7 @@ export default function TrackPage() {
 
   return (
     <div className="space-y-6">
-      <nav className="flex items-center gap-1.5 text-sm text-slate-500 dark:text-slate-400">
+      <nav aria-label="所在位置" className="flex items-center gap-1.5 text-sm text-slate-500 dark:text-slate-400">
         <Link to="/" className="hover:text-blue-600 dark:hover:text-blue-400">
           题库
         </Link>
@@ -82,7 +82,7 @@ export default function TrackPage() {
                 )}
               >
                 <div className="flex items-baseline gap-3">
-                  <span className="font-mono text-sm text-slate-300 dark:text-slate-600">
+                  <span className="font-mono text-sm text-slate-500 dark:text-slate-400">
                     {String(i + 1).padStart(2, '0')}
                   </span>
                   <h2 className="font-semibold group-hover:text-blue-600 dark:group-hover:text-blue-400">
@@ -112,7 +112,7 @@ export default function TrackPage() {
                     ) : null,
                   )}
                   <div className="ml-auto flex w-40 items-center gap-2">
-                    <ProgressBar value={tPct} barClass={theme.bar} className="flex-1" />
+                    <ProgressBar value={tPct} barClass={theme.bar} className="flex-1" label={`${topic.name} 掌握进度`} />
                     <span className="text-[11px] tabular-nums text-slate-500 dark:text-slate-400">
                       {tDone}/{topic.questions.length}
                     </span>

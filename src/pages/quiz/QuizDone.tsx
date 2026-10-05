@@ -143,7 +143,7 @@ export default function QuizDone({
                       </span>
                     )}
                   </div>
-                  <h3 className="mt-1.5 font-medium">{item.question.title}</h3>
+                  <h2 className="mt-1.5 font-medium">{item.question.title}</h2>
                   {note && (
                     <p className="mt-2 rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600 dark:bg-white/5 dark:text-slate-300">
                       💬 {note}

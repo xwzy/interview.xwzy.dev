@@ -173,7 +173,7 @@ export default function TopicPage() {
 
   return (
     <div className="space-y-5">
-      <nav className="flex flex-wrap items-center gap-1.5 text-sm text-slate-500 dark:text-slate-400">
+      <nav aria-label="所在位置" className="flex flex-wrap items-center gap-1.5 text-sm text-slate-500 dark:text-slate-400">
         <Link to="/" className="hover:text-blue-600 dark:hover:text-blue-400">
           题库
         </Link>

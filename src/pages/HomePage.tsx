@@ -159,7 +159,7 @@ function ModeCardBody({ mode }: { mode: (typeof usageModes)[number] }) {
     <>
       <div className="flex items-center gap-2.5">
         <span className="text-2xl">{mode.icon}</span>
-        <h3 className="font-semibold">{mode.title}</h3>
+        <h2 className="font-semibold">{mode.title}</h2>
       </div>
       <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
         {mode.description}

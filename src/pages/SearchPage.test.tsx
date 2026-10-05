@@ -20,7 +20,7 @@ describe('SearchPage', () => {
     expect(count).toBeTruthy()
 
     // 第一条结果的标题包含关键词（matchRank：标题命中 rank 0 排最前）
-    const firstTitle = screen.getAllByRole('heading', { level: 3 })[0]
+    const firstTitle = screen.getAllByRole('heading', { level: 2 })[0]
     expect(firstTitle.textContent).toContain('索引')
     expect(firstTitle.querySelector('mark')).toBeTruthy()
   })

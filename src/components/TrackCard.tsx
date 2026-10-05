@@ -34,7 +34,7 @@ function TrackCardImpl({ track, done }: TrackCardProps) {
           {track.icon}
         </span>
         <div className="min-w-0">
-          <h3 className="font-semibold">{track.name}</h3>
+          <h2 className="font-semibold">{track.name}</h2>
           <p className="text-xs text-slate-500 dark:text-slate-400">
             {track.topics.length} 个领域 · {allQuestions.length} 道题
           </p>
@@ -57,7 +57,7 @@ function TrackCardImpl({ track, done }: TrackCardProps) {
             {Math.round(pct)}%
           </span>
         </div>
-        <ProgressBar value={pct} barClass={theme.bar} />
+        <ProgressBar value={pct} barClass={theme.bar} label={`${track.name} 掌握进度`} />
       </div>
     </Link>
   )

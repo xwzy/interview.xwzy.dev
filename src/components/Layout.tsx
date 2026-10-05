@@ -49,7 +49,7 @@ function Header() {
           <span className="hidden font-semibold tracking-tight sm:inline">面试宝典</span>
         </Link>
 
-        <nav className="flex min-w-0 items-center gap-0.5 sm:gap-1">
+        <nav aria-label="主导航" className="flex min-w-0 items-center gap-0.5 sm:gap-1">
           <NavLink to="/" end className={navLinkClass}>
             题库
           </NavLink>
