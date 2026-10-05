@@ -285,7 +285,7 @@ export const bigDataTrack: Track = {
             {
               question: '改了任务的并行度或代码逻辑，状态怎么恢复？什么情况下状态会"丢"？',
               points: [
-                '**rescale**：Flink 1.11+ 的统一重分配——Keyed State 按 key group 哈希天然可重分布（key 归属变了而已）；Operator State 按约定重新分配（EvenSplit：union/round-robin 模式不同）。前提是**从 checkpoint/savepoint 恢复**，这就是为什么"改并行度要带状态重启"而不是直接改配置。',
+                '**rescale**：Flink 1.2+ 的 key group 重分配——Keyed State 按 key group 哈希天然可重分布（key 归属变了而已）；Operator State 按约定重新分配（EvenSplit：union/round-robin 模式不同）。前提是**从 checkpoint/savepoint 恢复**，这就是为什么"改并行度要带状态重启"而不是直接改配置。',
                 '**状态会丢/失效的清单**：没开 checkpoint 或没配持久化存储（状态只在内存）；**代码改动导致算子链/状态名变化**（operator id 变了，旧状态对不上——大改动用 `uid()` 显式固定算子 id）；**序列化 schema 不兼容**（Pojo 字段增删有兼容规则，TypeInformation 变化）；TTL 过期被清理（不是 bug 是设计）。答出"uid 显式命名"这条，说明真正维护过长期运行的流任务。',
               ],
             },
@@ -363,7 +363,7 @@ export const bigDataTrack: Track = {
               question: '某个分区（如 Kafka 某个空闲 partition）长期不来数据，水位线会怎样？怎么解决？',
               points: [
                 '多并行度下 watermark 取**各输入通道最小值**——一个空闲分区的水位线不动，全局水位线被卡死，窗口迟迟不触发（经典生产事故：夜间无流量的低峰业务分区拖住整条链路）。',
-                '解法：Flink 1.11+ 的 **withIdleness**（分区空闲超时后将其排除出 watermark 计算，代价是空闲分区迟到数据算迟到）；或业务侧保证心跳/空数据流入。这题考的是"知道水位线是 per-channel 协调的"这个实现层细节。',
+                '解法：Flink 1.8+ 的 **withIdleness**（分区空闲超时后将其排除出 watermark 计算，代价是空闲分区迟到数据算迟到）；或业务侧保证心跳/空数据流入。这题考的是"知道水位线是 per-channel 协调的"这个实现层细节。',
               ],
             },
           ],

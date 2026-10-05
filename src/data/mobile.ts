@@ -215,7 +215,7 @@ export const mobileTrack: Track = {
             '**范式转变是第一层**：View 体系是**命令式**——开发者持有 View 引用，状态变化后手动 find/setText/notify（"怎么改"）；Compose 是**声明式**——UI 只是 `@Composable` 函数对状态的映射 `UI = f(state)`，状态变了就**重新执行相关函数**（重组 Recomposition）生成新 UI 树，框架负责 diff 出最小变更（"要什么"）。React/Vue/SwiftUI 全是同一范式，前端经验可平移。',
             '**性能模型变了**：View 体系每个控件是一个 Java 对象 + 一棵深 View 树，measure/layout 两趟递归，层级深了就慢（嵌套 layout 权重问题）；Compose 的 Composable 函数执行生成**轻量的 LayoutNode 树**，智能重组只重跑**读取了变化状态**的函数（作用域最小化），且支持**跳过未变参数**（@Stable/@Immutable 稳定性推断）。会答"**重组范围怎么缩小**"（状态下沉、lambda 延迟读取、derivedStateOf、remember 缓存）才是性能题的得分点。',
             '**为什么能提效（工程视角）**：① **无适配器/无 XML**——列表直接 `LazyColumn` 写 Kotlin，消灭 Adapter/ViewHolder 模板代码；② **状态单一数据源**——UI 状态机化（MVI 风格顺理成章），界面错乱类 bug 大幅减少；③ **组合优于继承**——复用靠函数组合而不是继承 View/自定义控件；④ **预览与工具链**——@Preview 所见即所得。代价也要会讲：学习曲线（重组心智模型）、部分老 API/库仍需 View 互操作（AndroidView/ComposeView 桥接）。',
-            '与 SwiftUI/Flutter 对比收束：三者是声明式 UI 在三个平台的实现——**SwiftUI 原生绑定 Apple 生态，Compose 自绘引擎（Skia）与 Flutter 思路相同但接入 Android 系统能力更深**；跨端选型见 Flutter/RN 对比题，本题重点是把"声明式 + 重组 + 状态驱动"讲透。',
+            '与 SwiftUI/Flutter 对比收束：三者是声明式 UI 在三个平台的实现——**SwiftUI 原生绑定 Apple 生态；Compose 在 Android 上复用平台渲染管线（Canvas/RenderNode/HWUI），不是 Flutter 式自绘——只有 Compose Multiplatform（Skiko）跨桌面/iOS 时才自带 Skia；Flutter 则完全自绘、接管整条渲染管线**；跨端选型见 Flutter/RN 对比题，本题重点是把"声明式 + 重组 + 状态驱动"讲透。',
           ],
           followUps: [
             {

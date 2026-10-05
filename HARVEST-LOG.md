@@ -32,6 +32,7 @@
 | 19 | 二期·第二轮事实审查（批 16~18 新增内容） | ai.ts + qa.ts + backend.ts | 0 | 修复 4 处 | ✅ 已完成 | 见 git log |
 | 20 | 三期·核心方向第二轮事实审查（backend/frontend 全量） | backend.ts + frontend.ts | 0 | 修复 10 处 | ✅ 已完成 | 见 git log |
 | 21 | 三期·核心方向第二轮事实审查（network/os/cs-fundamentals 全量） | network.ts + os.ts + cs-fundamentals.ts | 0 | 修复 11 处 | ✅ 已完成 | 见 git log |
+| 22 | 三期·剩余方向第二轮事实审查（system-design/co/ca/mobile/big-data/ops/career 全量） | 7 个数据文件 | 0 | 修复 11 处 | ✅ 已完成 | 见 git log |
 
 题库总量：656（起点）→ **770**（当前）。真题改编题统一打 `tags: ['真题改编']`，可全局搜索筛选。
 二期方案见 `docs/quiz-expansion-plan-v2.md`（批号自 11 起续编）。
@@ -288,3 +289,22 @@ sigsuspend 竞态、适配策略与边界标记等复核无误。
 **通过确认**：3 个 agent 共列 48 条核对无误项（TIME_WAIT/RTO/Reno、VXLAN MTU 算术、RSA/DH 手算、GCM nonce 界限、僵尸态内核位、Belady 反例 9/10、buddy XOR=1536、多级页表数学、零拷贝账目、卡特兰数、主定理、贝叶斯 32%/99.6%、编译器谱系与 LALR 冲突结论、912 判断题全对等）。存疑 20+ 条经裁决未达上报标准（LTE 切换术语、CTS 广播简化、SQLite 线程模式生态差异、io_uring 对 MySQL 的表述等），保持不动。
 
 结论：三个方向合计 169 题，二轮错误密度 11/169 ≈ 6.5%（高于 backend/frontend 的 3.6%，crypto 与算法手算类题目更容易藏数值错误）。至此 5 个最大方向（backend/frontend/network/os/cs-fundamentals，共 445 题）全部完成第二轮事实审查。
+
+## 批 22 · 三期·剩余方向第二轮事实审查 ✅（对象：system-design 41 + computer-architecture 42 + computer-organization 36 + mobile 33 + ops 34 + big-data 27 + career 36 = 249 题 全量）
+
+3 个审查 agent 逐题逐条核对，主会话逐条独立裁决后落改。**零 P1 机制错误**——10 处确认全部是数值/版本/人名级。
+
+**修复 11 处**：
+- ca-quant-scene-amdahl：负向 Amdahl 算例 0.9+0.1×10=**1.9**（原写 1.8，把加速倍数错算成 9）；
+- sd-bloom-dedup：布隆"误判率每降一个数量级内存翻倍"夸大——m/n=1.44·log₂(1/p)，每数量级约 **+4.8 bit/元素**（1%→0.1% 实际约 1.5 倍），改为"每降两个数量级约翻一倍"；
+- ca-quant-benchmarks：TPC-E 指标名 tpmE → **tpsE**（不存在 tpmE）；
+- co-cpu-precise-exception + ca-ilp-ooo（两处）：IBM 360/91 年份 **1969 → 1966–1967**（交付 1967、Tomasulo 论文 1967，与 H&P 教材口径一致）；
+- mo-android-compose（面试误导最重的一处）：**Jetpack Compose 在 Android 上复用平台渲染管线（Canvas/RenderNode/HWUI），不是 Flutter 式自绘**——自带 Skia 的是 Compose Multiplatform（Skiko）；原句"与 Flutter 思路相同"会把资深岗常见追问题答错；
+- bd-flink-state：key group rescale 版本 **1.11+ → 1.2+**（Flink 1.2 的主打特性）；
+- bd-flink-watermark：withIdleness 版本 **1.11+ → 1.8+**（FLIP-22 随 WatermarkStrategy 落地）；
+- ops-finops：Spot 中断通知"一般提前 2 分钟"以偏概全——**AWS 2 分钟，GCP/Azure 约 30 秒**；
+- career-growth ×2：**Will Wilson → Will Larson**（staffeng.com 作者）、**Oswald → Gergely Orosz**（engguidebook.com 作者）。
+
+**通过确认**：3 个 agent 共列 53 条核对无误项（布隆 12GB 算例、容量估算 QPS、Amdahl/Roofline 正向算例、MESI/MESIF/MOESI、SECDED 72/64、Android ANR 阈值全表、Binder 一次拷贝、KVC 取值序、RN 新架构、HDFS/JournalNode、Spark 宽窄依赖、Flink 2PC、法条 80%/6 个月等），另 25+ 条存疑经裁决保持不动。
+
+**三期二轮审查总账（批 20~22）**：5+7=12 个数据文件、745 题全量完成第二轮事实审查，共修复 32 处（P1×5、P2/数值×22、笔误措辞×5），整体错误密度约 4.3%，无一处机制性硬伤漏网到二轮之后。至此全库 15 个方向均至少完成两轮事实审查。
