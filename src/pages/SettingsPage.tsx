@@ -95,7 +95,7 @@ export default function SettingsPage() {
   }
 
   const handleImport = async (file: File) => {
-    let backup: BackupFile | null = null
+    let backup: BackupFile | null
     try {
       backup = sanitizeBackup(JSON.parse(await file.text()))
     } catch {

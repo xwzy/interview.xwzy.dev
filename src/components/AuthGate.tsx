@@ -14,7 +14,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     e.preventDefault()
     if (!password.trim() || submitting) return
     setSubmitting(true)
-    let ok = false
+    let ok: boolean
     let envError = false
     try {
       ok = await login(password)
