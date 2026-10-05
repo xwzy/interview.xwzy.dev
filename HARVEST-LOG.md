@@ -31,6 +31,7 @@
 | 18 | 二期·qa 存量增强（软工试卷剩余语料） | qa.ts | 0 | 6 条 | ✅ 已完成 | 见 git log |
 | 19 | 二期·第二轮事实审查（批 16~18 新增内容） | ai.ts + qa.ts + backend.ts | 0 | 修复 4 处 | ✅ 已完成 | 见 git log |
 | 20 | 三期·核心方向第二轮事实审查（backend/frontend 全量） | backend.ts + frontend.ts | 0 | 修复 10 处 | ✅ 已完成 | 见 git log |
+| 21 | 三期·核心方向第二轮事实审查（network/os/cs-fundamentals 全量） | network.ts + os.ts + cs-fundamentals.ts | 0 | 修复 11 处 | ✅ 已完成 | 见 git log |
 
 题库总量：656（起点）→ **770**（当前）。真题改编题统一打 `tags: ['真题改编']`，可全局搜索筛选。
 二期方案见 `docs/quiz-expansion-plan-v2.md`（批号自 11 起续编）。
@@ -266,3 +267,24 @@ sigsuspend 竞态、适配策略与边界标记等复核无误。
 **通过确认**：2 个 agent 共列 40+ 条核对无误项（HashMap 树化、CHM 分段、G1 Region、Redis 集群位图、Kafka 幂等、事件循环钳制、Vue3.5 响应式重写、RSC 可序列化集合等），另 12 条存疑项经裁决未达上报标准（如 Shenandoah 用 Brooks 指针而非着色指针的并列表述、fsync always 策略区分等），保持不动——宁缺毋滥。
 
 结论：核心两方向二审后错误密度约 10/276 题 ≈ 3.6%（一轮后为 14/全库），题库事实质量持续收敛。
+
+## 批 21 · 三期·核心方向第二轮事实审查 ✅（对象：network.ts 61 题 + os.ts 43 题 + cs-fundamentals.ts 65 题 全量）
+
+3 个审查 agent 逐题逐条核对，主会话逐条独立裁决后落改（错误的"修正"比漏报危害大）。
+
+**修复 11 处（network 3 + os 4 + cs-fundamentals 4）**：
+- net-scene-long-fat-pipe（P1 数值）：Mathis 反推 130Mbps 所需丢包率 0.01% → **0.001%**（吞吐 ∝ 1/√p，快 10 倍要丢包低 100 倍；与同句前半的自洽算术对齐）；
+- net-scene-tls-certificate（P2）：证书有效期演进链跳步——行业上限为 **5 年 → 39 个月 → 825 天 → 398 天**（2026 起继续缩短），"90 天"是 ACME 生态签发期而非上限，照背会被判错；
+- net-http-semantics：笔误 0-RTL → 0-RTT；
+- os-process-thread-model（P2）：GMP 解绑时机——**enteresyscall 时 M 仍持 P（_Psyscall）**，sysmon 超时才 retake 摘走；"进入 syscall 前解绑"与运行时无法预知阻塞的事实矛盾（且与同要点后半句自相矛盾）；
+- os-io-file-allocation（P2 算术）：200 条记录插在第 30 条前应移动 **171 条**（原 170 条是经典差一错误），移动 342 次 + 写新记录 1 次 ≈ **343 次块访问**（原 341 与 170×2 都对不上；与链接分配 31 次的口径拉齐）；
+- os-scene-cpu-usage（P2）：**us 不含 ni**——/proc/stat 中 user 与 nice 是互斥的独立计数器，top 也是分开两列；
+- os-io-zero-copy：措辞自相矛盾——"CPU 全程搬运"改为"**其中 2 次由 CPU 搬运**，另 2 次是 DMA"（与括号枚举对齐）；
+- cs-algo-btree-math（P1）：AVL 删除"旋转至多 O(1)"写反——**AVL 删除最坏 O(log n) 次旋转**（失衡沿祖先链传播），这正是与红黑树 O(1) 的经典对比；原句与同文件 red-black-tree 题直接矛盾；
+- cs-algo-red-black-tree（P1）："AVL 插入/删除 O(log n) 次旋转"——**插入至多 1 次单旋/双旋**，删除才 O(log n)；红黑树"插入 ≤2、删除 ≤3"的数字本就正确；
+- cs-algo-sort-compare（P2）：三路快排大量重复的复杂度——**期望 O(n log k)**（熵形式，Sedgewick），O(n·k) 是 pivot 总取极端值的最坏情况；
+- cs-db-normalization（P2）：候选键题的属性归类与自带 F 集不符（B 两边都有非"只在右部"、E 不出现非"只在左部"、C 只在左部非"两边都有"）——按 F={A→B, BC→D, C→A} 修正归类为"只在左部→C、不出现→E、只在右部→D、两边都有→A、B"；**结论 {C,E} 本身正确**（CE⁺ 可验证覆盖全属性）。
+
+**通过确认**：3 个 agent 共列 48 条核对无误项（TIME_WAIT/RTO/Reno、VXLAN MTU 算术、RSA/DH 手算、GCM nonce 界限、僵尸态内核位、Belady 反例 9/10、buddy XOR=1536、多级页表数学、零拷贝账目、卡特兰数、主定理、贝叶斯 32%/99.6%、编译器谱系与 LALR 冲突结论、912 判断题全对等）。存疑 20+ 条经裁决未达上报标准（LTE 切换术语、CTS 广播简化、SQLite 线程模式生态差异、io_uring 对 MySQL 的表述等），保持不动。
+
+结论：三个方向合计 169 题，二轮错误密度 11/169 ≈ 6.5%（高于 backend/frontend 的 3.6%，crypto 与算法手算类题目更容易藏数值错误）。至此 5 个最大方向（backend/frontend/network/os/cs-fundamentals，共 445 题）全部完成第二轮事实审查。
