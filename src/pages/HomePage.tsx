@@ -78,7 +78,7 @@ export default function HomePage() {
             <span className="font-medium text-slate-900 dark:text-white">个人刷题</span>
             共享同一套题库，一个站点全搞定。
           </p>
-          <div className="mt-4 flex flex-wrap items-center justify-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-2 text-xs text-slate-600 dark:text-slate-400">
             <span className="rounded-full bg-slate-100 px-3 py-1 dark:bg-white/10">
               {tracks.length} 大方向
             </span>

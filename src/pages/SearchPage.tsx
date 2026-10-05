@@ -156,7 +156,7 @@ export default function SearchPage() {
           className={cx(
             'rounded-xl border px-4 py-3 text-sm font-medium transition-colors',
             favOnly
-              ? 'border-amber-400 bg-amber-400/90 text-white'
+              ? 'border-amber-700 bg-amber-700 text-white'
               : 'border-slate-200 bg-white text-slate-600 hover:border-amber-300 hover:text-amber-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-300',
           )}
         >
@@ -170,7 +170,7 @@ export default function SearchPage() {
           className={cx(
             'rounded-xl border px-4 py-3 text-sm font-medium transition-colors',
             examOnly
-              ? 'border-violet-400 bg-violet-400/90 text-white'
+              ? 'border-violet-700 bg-violet-700 text-white'
               : 'border-slate-200 bg-white text-slate-600 hover:border-violet-300 hover:text-violet-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-300',
           )}
         >
@@ -179,11 +179,11 @@ export default function SearchPage() {
       </div>
 
       {keyword === '' && !favOnly && !examOnly ? (
-        <p className="text-sm text-slate-400 dark:text-slate-500">
+        <p className="text-sm text-slate-500 dark:text-slate-400">
           输入关键词，在全部方向的题目、要点、追问与标签中查找；或点「只看收藏」「只看真题」按类浏览。
         </p>
       ) : results.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-slate-300 p-10 text-center text-sm text-slate-400 dark:border-white/15 dark:text-slate-500">
+        <div className="rounded-2xl border border-dashed border-slate-300 p-10 text-center text-sm text-slate-500 dark:text-slate-400 dark:border-white/15">
           {favOnly && keyword === '' ? (
             <>
               还没有收藏的题目。在
@@ -198,7 +198,7 @@ export default function SearchPage() {
         </div>
       ) : (
         <>
-          <p aria-live="polite" className="text-xs text-slate-400 dark:text-slate-500">
+          <p aria-live="polite" className="text-xs text-slate-500 dark:text-slate-400">
             共 {results.length} 条结果
             {results.length > visibleCount && `，已显示前 ${visibleCount} 条`}
           </p>
@@ -213,7 +213,7 @@ export default function SearchPage() {
                     to={`/tracks/${item.track.id}/${item.topic.id}#${item.question.id}`}
                     className="block rounded-xl border border-slate-200 bg-white p-4 transition-colors hover:border-blue-300 dark:border-white/10 dark:bg-white/[0.03] dark:hover:border-blue-500/40"
                   >
-                    <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400 dark:text-slate-500">
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
                       <span>
                         {item.track.icon} {item.track.name} · {item.topic.name}
                       </span>

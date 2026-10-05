@@ -79,7 +79,7 @@ export default function QuizDone({
             onClick={onCopy}
             className={cx(
               'rounded-lg px-5 py-2 text-sm font-semibold text-white transition-colors',
-              copied ? 'bg-emerald-500' : 'bg-blue-600 hover:bg-blue-700',
+              copied ? 'bg-emerald-700' : 'bg-blue-600 hover:bg-blue-700',
             )}
           >
             {copied ? '✓ 小结已复制' : '复制面试小结 📋'}
@@ -115,7 +115,7 @@ export default function QuizDone({
             <li key={item.question.id}>
               <div className="rounded-xl border border-slate-200 bg-white dark:border-white/10 dark:bg-white/[0.03]">
                 <div className="p-4">
-                  <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400 dark:text-slate-500">
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
                     <span className="font-mono">{String(i + 1).padStart(2, '0')}</span>
                     <span>
                       {item.track.name} · {item.topic.name}
@@ -151,7 +151,7 @@ export default function QuizDone({
                   )}
                 </div>
                 <details className="group border-t border-slate-100 dark:border-white/5">
-                  <summary className="cursor-pointer list-none px-4 py-2.5 text-xs font-medium text-slate-400 hover:text-blue-600 dark:text-slate-500 dark:hover:text-blue-400">
+                  <summary className="cursor-pointer list-none px-4 py-2.5 text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400">
                     展开参考要点与追问
                   </summary>
                   <div className="border-t border-slate-100 px-4 pb-4 pt-3 dark:border-white/5">

@@ -16,7 +16,7 @@ const NotFoundPage = lazy(() => import('./pages/NotFoundPage'))
 
 function PageLoader() {
   return (
-    <div className="flex justify-center py-24 text-sm text-slate-400 dark:text-slate-500">
+    <div className="flex justify-center py-24 text-sm text-slate-500 dark:text-slate-400">
       加载中…
     </div>
   )

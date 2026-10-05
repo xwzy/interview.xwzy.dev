@@ -27,7 +27,7 @@ export default function TrackPage() {
 
   return (
     <div className="space-y-6">
-      <nav className="flex items-center gap-1.5 text-sm text-slate-400 dark:text-slate-500">
+      <nav className="flex items-center gap-1.5 text-sm text-slate-500 dark:text-slate-400">
         <Link to="/" className="hover:text-blue-600 dark:hover:text-blue-400">
           题库
         </Link>
@@ -88,7 +88,7 @@ export default function TrackPage() {
                   <h2 className="font-semibold group-hover:text-blue-600 dark:group-hover:text-blue-400">
                     {topic.name}
                   </h2>
-                  <span className="ml-auto text-xs text-slate-400 dark:text-slate-500">
+                  <span className="ml-auto text-xs text-slate-500 dark:text-slate-400">
                     {topic.questions.length} 题
                   </span>
                 </div>
@@ -113,7 +113,7 @@ export default function TrackPage() {
                   )}
                   <div className="ml-auto flex w-40 items-center gap-2">
                     <ProgressBar value={tPct} barClass={theme.bar} className="flex-1" />
-                    <span className="text-[11px] tabular-nums text-slate-400 dark:text-slate-500">
+                    <span className="text-[11px] tabular-nums text-slate-500 dark:text-slate-400">
                       {tDone}/{topic.questions.length}
                     </span>
                   </div>

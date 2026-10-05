@@ -60,7 +60,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
             className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100 dark:border-white/10 dark:bg-white/5 dark:text-slate-100 dark:focus:border-blue-500/50 dark:focus:ring-blue-500/20"
           />
           {error && (
-            <p role="alert" className="text-left text-xs text-rose-500">
+            <p role="alert" className="text-left text-xs text-rose-600">
               {error}
             </p>
           )}
@@ -73,7 +73,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
           </button>
         </form>
 
-        <p className="mt-5 text-[11px] leading-relaxed text-slate-400 dark:text-slate-500">
+        <p className="mt-5 text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
           登录状态保存在本浏览器，无需重复输入
         </p>
       </div>

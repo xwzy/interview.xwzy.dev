@@ -30,7 +30,7 @@ export default class ErrorBoundary extends Component<Props, State> {
           <p className="max-w-md text-sm text-slate-500 dark:text-slate-400">
             页面渲染时出现异常，已自动拦截以避免整站白屏。可尝试刷新，或返回首页。
           </p>
-          <details className="max-w-md text-left text-xs text-slate-400 dark:text-slate-500">
+          <details className="max-w-md text-left text-xs text-slate-500 dark:text-slate-400">
             <summary className="cursor-pointer select-none hover:text-slate-600 dark:hover:text-slate-300">
               技术详情
             </summary>

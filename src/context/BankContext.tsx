@@ -221,7 +221,7 @@ export function FullBankGate({ children }: { children: ReactNode }) {
         <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-violet-600 text-lg font-bold text-white">
           Q
         </span>
-        <p className="text-sm text-slate-400 dark:text-slate-500">题库加载中…</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400">题库加载中…</p>
       </div>
     )
   }

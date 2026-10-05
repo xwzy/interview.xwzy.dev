@@ -59,14 +59,14 @@ export default function QuizRunning({
             'rounded-lg border px-3 py-1.5 text-sm transition-colors',
             confirmExit
               ? 'border-rose-400 bg-rose-500 text-white'
-              : 'border-slate-200 text-slate-400 hover:border-rose-300 hover:text-rose-500 dark:border-white/10 dark:hover:border-rose-500/40',
+              : 'border-slate-200 text-slate-500 dark:text-slate-400 hover:border-rose-300 hover:text-rose-500 dark:border-white/10 dark:hover:border-rose-500/40',
           )}
         >
           {confirmExit ? '再点一次确认返回（进度已存草稿，可恢复）' : '← 结束并返回'}
         </button>
         <span className="ml-auto flex items-center gap-3 text-sm font-medium tabular-nums text-slate-500 dark:text-slate-400">
           <ElapsedTimer key={item.question.id} startTs={startTs} />
-          {candidate.trim() && <span className="text-slate-400">{candidate.trim()}</span>}
+          {candidate.trim() && <span className="text-slate-500 dark:text-slate-400">{candidate.trim()}</span>}
           <span>
             第 {index + 1} / {total} 题
           </span>
@@ -75,7 +75,7 @@ export default function QuizRunning({
       <ProgressBar value={((index + 1) / total) * 100} label="考察进度" />
 
       <article className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-white/10 dark:bg-white/[0.03]">
-        <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400 dark:text-slate-500">
+        <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
           <span>
             {item.track.icon} {item.track.name} · {item.topic.name}
           </span>
@@ -95,7 +95,7 @@ export default function QuizRunning({
               <button
                 type="button"
                 onClick={onCollapse}
-                className="text-xs font-medium text-slate-400 transition-colors hover:text-blue-600 dark:text-slate-500 dark:hover:text-blue-400"
+                className="text-xs font-medium text-slate-500 dark:text-slate-400 transition-colors hover:text-blue-600 dark:hover:text-blue-400"
               >
                 🙈 收起要点
               </button>
@@ -103,7 +103,7 @@ export default function QuizRunning({
           </div>
         ) : (
           <div className="mt-6 flex flex-col items-start gap-3 border-t border-dashed border-slate-200 pt-5 dark:border-white/10">
-            <p className="text-sm text-slate-400 dark:text-slate-500">
+            <p className="text-sm text-slate-500 dark:text-slate-400">
               先让候选人作答，再对照参考要点与追问链（快捷键：空格 展示要点）。
             </p>
             <button
@@ -117,7 +117,7 @@ export default function QuizRunning({
         )}
 
         <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-4 dark:border-white/5">
-          <span className="text-xs font-medium text-slate-400 dark:text-slate-500">现场评分</span>
+          <span className="text-xs font-medium text-slate-500 dark:text-slate-400">现场评分</span>
           {VERDICT_ORDER.map((v) => {
             const vm = verdictMeta[v]
             const active = verdict === v
@@ -138,7 +138,7 @@ export default function QuizRunning({
               </button>
             )
           })}
-          <span className="ml-auto hidden text-[11px] text-slate-400 sm:inline dark:text-slate-500">
+          <span className="ml-auto hidden text-[11px] text-slate-500 dark:text-slate-400 sm:inline">
             快捷键：空格 要点 · 1/2/3 评分 · ← → 切题
           </span>
         </div>

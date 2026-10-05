@@ -173,7 +173,7 @@ export default function TopicPage() {
 
   return (
     <div className="space-y-5">
-      <nav className="flex flex-wrap items-center gap-1.5 text-sm text-slate-400 dark:text-slate-500">
+      <nav className="flex flex-wrap items-center gap-1.5 text-sm text-slate-500 dark:text-slate-400">
         <Link to="/" className="hover:text-blue-600 dark:hover:text-blue-400">
           题库
         </Link>
@@ -213,7 +213,7 @@ export default function TopicPage() {
 
         {topic.references && topic.references.length > 0 && (
           <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-4 dark:border-white/5">
-            <span className="text-xs font-medium text-slate-400 dark:text-slate-500">
+            <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
               📖 延伸资料
             </span>
             {topic.references.map((ref) => (
@@ -248,7 +248,7 @@ export default function TopicPage() {
               <button
                 type="button"
                 onClick={closeForm}
-                className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                className="text-xs text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
               >
                 取消
               </button>
@@ -290,7 +290,7 @@ export default function TopicPage() {
               rows={2}
               className="w-full resize-y rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-blue-400 dark:border-white/10 dark:bg-white/5 dark:text-slate-100 dark:focus:border-blue-500/50"
             />
-            {formError && <p className="text-xs text-rose-500">{formError}</p>}
+            {formError && <p className="text-xs text-rose-600">{formError}</p>}
             <div className="flex items-center gap-3">
               <button
                 type="submit"
@@ -298,7 +298,7 @@ export default function TopicPage() {
               >
                 {form.id ? '保存修改' : '添加题目'}
               </button>
-              <span className="text-xs text-slate-400 dark:text-slate-500">
+              <span className="text-xs text-slate-500 dark:text-slate-400">
                 保存后立即生效于刷题、出题与搜索
               </span>
             </div>
@@ -345,11 +345,11 @@ export default function TopicPage() {
       </div>
 
       {topic.questions.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-slate-300 p-10 text-center text-sm text-slate-400 dark:border-white/15 dark:text-slate-500">
+        <div className="rounded-2xl border border-dashed border-slate-300 p-10 text-center text-sm text-slate-500 dark:text-slate-400 dark:border-white/15">
           这个领域还没有题目，点上方「添加自定义题目」创建第一题。
         </div>
       ) : filtered.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-slate-300 p-10 text-center text-sm text-slate-400 dark:border-white/15 dark:text-slate-500">
+        <div className="rounded-2xl border border-dashed border-slate-300 p-10 text-center text-sm text-slate-500 dark:text-slate-400 dark:border-white/15">
           没有符合条件的题目，换个筛选条件试试。
         </div>
       ) : (

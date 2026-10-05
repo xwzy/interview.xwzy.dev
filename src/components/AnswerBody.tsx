@@ -70,7 +70,7 @@ export default function AnswerBody({ question }: { question: NormalizedQuestion 
   const keys = useMemo(() => followUpKeys(question.followUps), [question.followUps])
   return (
     <div>
-      <p className="mb-1 text-xs font-medium uppercase tracking-wide text-slate-400 dark:text-slate-500">
+      <p className="mb-1 text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
         参考要点
       </p>
       <div className="md-body">

@@ -76,7 +76,7 @@ export default function HistoryPage() {
 
       {sorted.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-slate-300 p-12 text-center dark:border-white/15">
-          <p className="text-sm text-slate-400 dark:text-slate-500">
+          <p className="text-sm text-slate-500 dark:text-slate-400">
             还没有考察记录。去
             <Link to="/quiz" className="mx-1 font-medium text-blue-600 hover:underline dark:text-blue-400">
               面试出题
@@ -98,7 +98,7 @@ export default function HistoryPage() {
                     <h2 className="font-semibold">
                       {session.candidate || '未命名候选人'}
                     </h2>
-                    <span className="text-xs text-slate-400 dark:text-slate-500">
+                    <span className="text-xs text-slate-500 dark:text-slate-400">
                       {formatDate(session.createdAt)} · {session.items.length} 题
                       {totalDurationOf(session) > 0 &&
                         ` · 总用时 ${formatDuration(totalDurationOf(session))}`}
@@ -111,7 +111,7 @@ export default function HistoryPage() {
                           'rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors',
                           copyState?.id === session.id
                             ? copyState.ok
-                              ? 'border-emerald-400 text-emerald-600 dark:text-emerald-300'
+                              ? 'border-emerald-600 text-emerald-700 dark:text-emerald-300'
                               : 'border-rose-400 text-rose-600 dark:text-rose-300'
                             : 'border-slate-200 text-slate-600 hover:border-blue-300 hover:text-blue-600 dark:border-white/10 dark:text-slate-300 dark:hover:border-blue-500/40',
                         )}
@@ -141,7 +141,7 @@ export default function HistoryPage() {
                           'rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors',
                           confirmingId === session.id
                             ? 'border-rose-400 bg-rose-500 text-white'
-                            : 'border-slate-200 text-slate-400 hover:border-rose-300 hover:text-rose-500 dark:border-white/10 dark:hover:border-rose-500/40',
+                            : 'border-slate-200 text-slate-500 dark:text-slate-400 hover:border-rose-300 hover:text-rose-500 dark:border-white/10 dark:hover:border-rose-500/40',
                         )}
                       >
                         {confirmingId === session.id ? '确认删除？' : '删除'}
@@ -165,7 +165,7 @@ export default function HistoryPage() {
                   </div>
 
                   <details className="group mt-3">
-                    <summary className="cursor-pointer list-none text-xs font-medium text-slate-400 hover:text-blue-600 dark:text-slate-500 dark:hover:text-blue-400">
+                    <summary className="cursor-pointer list-none text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400">
                       展开整卷（{session.items.length} 题）
                     </summary>
                     <ol className="mt-3 space-y-2.5 border-t border-slate-100 pt-3 dark:border-white/5">
@@ -174,7 +174,7 @@ export default function HistoryPage() {
                         return (
                           // 导入的手工备份可能同卷含重复 questionId，序号兜底保证 key 唯一
                           <li key={`${i}-${item.questionId}`} className="text-sm">
-                            <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400 dark:text-slate-500">
+                            <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
                               <span className="font-mono">{String(i + 1).padStart(2, '0')}</span>
                               {r && (
                                 <span>

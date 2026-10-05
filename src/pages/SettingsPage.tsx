@@ -265,7 +265,7 @@ export default function SettingsPage() {
             }}
           />
         </div>
-        <p className="mt-2 text-xs text-slate-400 dark:text-slate-500">
+        <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
           Markdown 导出包含全部方向/领域/题目/要点/追问（含自定义题目），适合打印或导入笔记工具。
         </p>
       </section>
@@ -287,7 +287,7 @@ export default function SettingsPage() {
             📲 安装到本设备
           </button>
         ) : (
-          <p className="mt-3 text-xs leading-relaxed text-slate-400 dark:text-slate-500">
+          <p className="mt-3 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
             当前浏览器未提供一键安装：
             iOS 请在 Safari 中点「分享 → 添加到主屏幕」；Android/桌面 Chrome 在地址栏或菜单里选「安装应用」。
           </p>

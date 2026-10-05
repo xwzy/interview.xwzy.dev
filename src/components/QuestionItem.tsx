@@ -67,7 +67,7 @@ function QuestionItemImpl({
           {/* 元信息行不放进展开按钮：标签可点击跳搜索，交互元素嵌在 button 内
               违反 ARIA 嵌套规则（读屏忽略/键盘行为交错），平级摆放才是合法结构 */}
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-mono text-xs text-slate-400 dark:text-slate-500">
+            <span className="font-mono text-xs text-slate-500 dark:text-slate-400">
               {String(index + 1).padStart(2, '0')}
             </span>
             <span className={cx('rounded px-1.5 py-0.5 text-[11px] font-medium', meta.className)}>
@@ -84,7 +84,7 @@ function QuestionItemImpl({
                 type="button"
                 title={`查看「${tag}」标签下的全部题目`}
                 onClick={() => navigate(`/search?q=${encodeURIComponent(tag)}`)}
-                className="relative cursor-pointer rounded text-xs text-slate-400 transition-colors after:absolute after:-inset-1.5 after:content-[''] hover:text-blue-600 dark:text-slate-500 dark:hover:text-blue-400"
+                className="relative cursor-pointer rounded text-xs text-slate-500 dark:text-slate-400 transition-colors after:absolute after:-inset-1.5 after:content-[''] hover:text-blue-600 dark:hover:text-blue-400"
               >
                 #{tag}
               </button>
@@ -105,7 +105,7 @@ function QuestionItemImpl({
             onClick={() => setOpen((o) => !o)}
             aria-hidden
             tabIndex={-1}
-            className="mt-1 inline-block text-xs text-slate-400 dark:text-slate-500"
+            className="mt-1 inline-block text-xs text-slate-500 dark:text-slate-400"
           >
             {open ? '收起要点 ▲' : '展开要点 ▼'}
           </button>
@@ -122,8 +122,8 @@ function QuestionItemImpl({
               // 命中区扩大：刷题最高频操作，视觉样式不变（纵向扩 4px，与相邻按钮不重叠）
               'relative rounded-full border px-2 py-0.5 text-xs transition-colors after:absolute after:-inset-x-2 after:-inset-y-1 after:content-[""]',
               favorite
-                ? 'border-amber-400 bg-amber-400/90 text-white'
-                : 'border-slate-200 text-slate-400 hover:border-amber-300 hover:text-amber-500 dark:border-white/10 dark:hover:border-amber-500/40',
+                ? 'border-amber-700 bg-amber-700 text-white'
+                : 'border-slate-200 text-slate-500 dark:text-slate-400 hover:border-amber-300 hover:text-amber-500 dark:border-white/10 dark:hover:border-amber-500/40',
             )}
           >
             {favorite ? '★ 已收藏' : '☆ 收藏'}
@@ -136,7 +136,7 @@ function QuestionItemImpl({
             className={cx(
               'relative rounded-full border px-2.5 py-1 text-xs font-medium transition-colors after:absolute after:-inset-x-2 after:-inset-y-1 after:content-[""]',
               mastered
-                ? 'border-emerald-500 bg-emerald-500 text-white'
+                ? 'border-emerald-700 bg-emerald-700 text-white'
                 : 'border-slate-300 text-slate-500 hover:border-emerald-400 hover:text-emerald-600 dark:border-white/20 dark:text-slate-400 dark:hover:border-emerald-500/50 dark:hover:text-emerald-300',
             )}
           >

@@ -8,17 +8,17 @@ export const verdictMeta: Record<
   pass: {
     label: '通过',
     icon: '👍',
-    activeClass: 'border-emerald-500 bg-emerald-500 text-white',
+    activeClass: 'border-emerald-700 bg-emerald-700 text-white',
   },
   fail: {
     label: '不通过',
     icon: '👎',
-    activeClass: 'border-rose-500 bg-rose-500 text-white',
+    activeClass: 'border-rose-700 bg-rose-700 text-white',
   },
   maybe: {
     label: '待定',
     icon: '➖',
-    activeClass: 'border-amber-500 bg-amber-500 text-white',
+    activeClass: 'border-amber-700 bg-amber-700 text-white',
   },
 }
 

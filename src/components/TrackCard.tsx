@@ -51,7 +51,7 @@ function TrackCardImpl({ track, done }: TrackCardProps) {
           <span
             className={cx(
               'font-medium',
-              pct >= 100 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500',
+              pct >= 100 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400',
             )}
           >
             {Math.round(pct)}%

@@ -448,7 +448,7 @@ export default function QuizPage() {
                         return next
                       })
                     }
-                    className="ml-auto text-xs font-medium text-slate-400 hover:text-blue-600 dark:hover:text-blue-400"
+                    className="ml-auto text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400"
                   >
                     {allSelected ? '取消该方向' : '全选该方向'}
                   </button>
@@ -470,7 +470,13 @@ export default function QuizPage() {
                         )}
                       >
                         {topic.name}
-                        <span className={cx('ml-1', active ? 'opacity-80' : 'opacity-60')}>
+                        <span
+                          className={cx(
+                            'ml-1',
+                            // 透明度会把白字稀释到 4.5:1 以下：选中芯片用全白，未选中用明确色阶
+                            active ? '' : 'text-slate-500 dark:text-slate-300',
+                          )}
+                        >
                           {topic.questions.length}
                         </span>
                       </button>
@@ -554,7 +560,7 @@ export default function QuizPage() {
                 清空选择
               </button>
             )}
-            <span className="text-xs text-slate-400 dark:text-slate-500">
+            <span className="text-xs text-slate-500 dark:text-slate-400">
               当前题池 {pool.length} 题
             </span>
             <button
