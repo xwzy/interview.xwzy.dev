@@ -28,7 +28,7 @@
 
 ## 技术栈
 
-Vite 7 · React 19 · TypeScript（strict）· Tailwind CSS 4 · React Router 7 · react-markdown
+Vite 8 · React 19 · TypeScript（strict）· Tailwind CSS 4 · React Router 7 · react-markdown
 
 ## 本地开发
 
