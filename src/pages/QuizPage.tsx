@@ -351,12 +351,22 @@ export default function QuizPage() {
     return () => window.removeEventListener('keydown', handler)
   })
 
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   const copySummary = async () => {
     if (!summary) return
     const ok = await copyText(summary.text)
     setCopied(ok)
-    setTimeout(() => setCopied(false), 2000)
+    if (copyTimerRef.current) clearTimeout(copyTimerRef.current)
+    copyTimerRef.current = setTimeout(() => setCopied(false), 2000)
   }
+
+  useEffect(
+    () => () => {
+      if (copyTimerRef.current) clearTimeout(copyTimerRef.current)
+    },
+    [],
+  )
 
   if (phase === 'setup') {
     return (

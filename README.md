@@ -117,6 +117,10 @@ README 与 index.html 里的题量/追问统计也由 `src/data/stats.test.ts` �
 静态 JS 里，懂浏览器控制台的人可以绕过登录直接读数据。如需真正的私有化，请在 Cloudflare 前面加
 Zero Trust / Access 等服务端鉴权。
 
+门禁常量 `CREDENTIALS` 支持两种格式：历史格式为无盐 SHA-256（抗离线爆破弱）；推荐运行
+`node scripts/hash-password.mjs` 生成 **PBKDF2（600k 轮 + 随机盐）** 常量替换，公开 bundle 中
+不再包含密码的快哈希。替换后已登录旧设备的会话失效一次，需重新输入密码。
+
 ## 性能
 
 - **双层题库加载**：首屏主包（约 110KB gzip）内联全部方向的**元数据**（方向/领域/题目 id 与难度，约 17KB gzip），
