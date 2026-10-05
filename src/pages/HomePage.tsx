@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { Link, useNavigate } from 'react-router'
-import { useBankMeta, useCustomQuestions } from '../context/BankContext'
+import { useBankContext, useBankMeta, useCustomQuestions } from '../context/BankContext'
 import { useFavoritesState } from '../context/FavoritesContext'
 import { useMasteryState } from '../context/MasteryContext'
 import { useSessions } from '../context/SessionContext'
@@ -27,6 +27,7 @@ const usageModes = [
 export default function HomePage() {
   // 元数据随主包同步可用：首页不等待任何题目内容分包
   const { tracks, totalTopicCount, totalQuestionCount, questionIds, entries } = useBankMeta()
+  const { bank } = useBankContext()
   const navigate = useNavigate()
   const mastered = useMasteryState()
   const favorites = useFavoritesState()
@@ -51,6 +52,9 @@ export default function HomePage() {
   const goRandom = () => {
     const pick = entries[Math.floor(Math.random() * entries.length)]
     if (!pick) return
+    // metaBank 内联在主包、题目内容在分包：两包版本极端情况下可能错位
+    // （如部署间隙拿到新主包+旧分包），题库已就绪时先校验题目存在再跳转
+    if (bank && !bank.questionById.has(pick.questionId)) return
     navigate(`/tracks/${pick.trackId}/${pick.topicId}#${pick.questionId}`)
   }
   const personalStats = [

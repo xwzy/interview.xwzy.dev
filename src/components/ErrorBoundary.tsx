@@ -28,8 +28,16 @@ export default class ErrorBoundary extends Component<Props, State> {
           <p className="text-4xl">🧯</p>
           <h1 className="text-lg font-bold">页面出了点问题</h1>
           <p className="max-w-md text-sm text-slate-500 dark:text-slate-400">
-            {this.state.error.message}
+            页面渲染时出现异常，已自动拦截以避免整站白屏。可尝试刷新，或返回首页。
           </p>
+          <details className="max-w-md text-left text-xs text-slate-400 dark:text-slate-500">
+            <summary className="cursor-pointer select-none hover:text-slate-600 dark:hover:text-slate-300">
+              技术详情
+            </summary>
+            <pre className="mt-2 overflow-x-auto whitespace-pre-wrap break-all rounded-lg bg-slate-100 p-3 dark:bg-white/5">
+              {this.state.error.message}
+            </pre>
+          </details>
           <div className="mt-2 flex gap-3">
             <button
               type="button"

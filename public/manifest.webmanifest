@@ -3,10 +3,11 @@
   "short_name": "面试宝典",
   "description": "各岗位面试知识按领域分类整理，面试官出题与个人刷题共享一套题库。",
   "lang": "zh-CN",
+  "id": "/",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#f8fafc",
+  "background_color": "#0f172a",
   "theme_color": "#0f172a",
   "icons": [
     {
@@ -20,6 +21,12 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     },
     {
       "src": "/favicon.svg",

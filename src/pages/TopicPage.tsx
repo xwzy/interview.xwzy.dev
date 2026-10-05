@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { Link, useLocation, useParams } from 'react-router'
 import { useBank, useCustomQuestions } from '../context/BankContext'
 import { useMasteryState } from '../context/MasteryContext'
@@ -66,15 +66,21 @@ export default function TopicPage() {
     })
   }, [topic, keyword, diff, status, mastered, favorites])
 
-  // 带 hash 进入（搜索结果、随机一题）时滚动定位到目标题目
+  // 带 hash 进入（搜索结果、随机一题）时滚动定位到目标题目。
+  // 用签名去重：增删改自定义题会重建 track/topic 对象导致 effect 重跑，
+  // 不能以对象引用为滚动依据，否则提交表单后视图会被强行拉回 hash 题
+  const lastScrollSigRef = useRef('')
   useEffect(() => {
     if (!location.hash || !track || !topic) return
+    const sig = `${location.hash}|${trackId}|${topicId}`
+    if (lastScrollSigRef.current === sig) return
+    lastScrollSigRef.current = sig
     const id = location.hash.slice(1)
     const timer = setTimeout(() => {
       document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }, 120)
     return () => clearTimeout(timer)
-  }, [location.hash, track, topic])
+  }, [location.hash, track, topic, trackId, topicId])
 
   // 稳定引用：配合 QuestionItem 的 memo，筛选输入时已渲染的题卡不重渲染
   const handleEdit = useCallback(
@@ -143,7 +149,15 @@ export default function TopicPage() {
         .split('\n')
         .map((line) => line.trim())
         .filter(Boolean)
-        .map((question) => ({ question, points: [] })),
+        .map((question) => ({
+          question,
+          // 编辑表单只收集追问问题文本：备份导入的自定义题可能带追问要点，
+          // 按 question 文本回填原要点，否则保存一次就会把要点永久清空
+          points:
+            (form.id ? getCustom(form.id)?.followUps : undefined)?.find(
+              (f) => f.question === question,
+            )?.points ?? [],
+        })),
       createdAt: new Date().toISOString(),
     }
     if (form.id) updateCustom(payload)
@@ -187,7 +201,7 @@ export default function TopicPage() {
               </span>
               <span className="font-medium">{Math.round(pct)}%</span>
             </div>
-            <ProgressBar value={pct} barClass={theme.bar} />
+            <ProgressBar value={pct} barClass={theme.bar} label={`${topic.name}掌握进度`} />
           </div>
         </div>
 
@@ -324,7 +338,11 @@ export default function TopicPage() {
         </button>
       </div>
 
-      {filtered.length === 0 ? (
+      {topic.questions.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-slate-300 p-10 text-center text-sm text-slate-400 dark:border-white/15 dark:text-slate-500">
+          这个领域还没有题目，点上方「添加自定义题目」创建第一题。
+        </div>
+      ) : filtered.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-slate-300 p-10 text-center text-sm text-slate-400 dark:border-white/15 dark:text-slate-500">
           没有符合条件的题目，换个筛选条件试试。
         </div>

@@ -1,13 +1,16 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router'
 import { useTheme } from '../context/ThemeContext'
 import { themeModeMeta } from '../lib/themeMeta'
 import { subscribeStorageWriteFailed } from '../lib/usePersistentState'
 import { cx } from '../lib/utils'
+import PwaUpdateBanner from './PwaUpdateBanner'
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   cx(
-    'whitespace-nowrap rounded-lg px-2 py-1.5 text-xs font-medium transition-colors sm:px-3 sm:text-sm',
+    // 命中区扩大：视觉尺寸不变，纵向伪元素外扩 6px（横向相邻的导航项只扩纵向，
+    // 避免命中区相互抢占），移动端导航更易点中
+    'relative whitespace-nowrap rounded-lg px-2 py-1.5 text-xs font-medium transition-colors after:absolute after:inset-x-0 after:-inset-y-1.5 after:content-[""] sm:px-3 sm:text-sm',
     isActive
       ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
       : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white',
@@ -64,6 +67,7 @@ function Header() {
               value={keyword}
               onChange={(e) => setKeyword(e.target.value)}
               placeholder="搜索题目 / 知识点…"
+              aria-label="搜索题目"
               className="w-40 md:w-56 rounded-lg border border-slate-200 bg-slate-50 py-1.5 pl-8 pr-3 text-sm outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100 dark:border-white/10 dark:bg-white/5 dark:text-slate-100 dark:focus:border-blue-500/50 dark:focus:ring-blue-500/20"
             />
             <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400">
@@ -98,6 +102,36 @@ function ScrollToTop() {
     window.scrollTo(0, 0)
   }, [pathname])
   return null
+}
+
+/** 每个路由的页面标题：浏览器标签页可区分，读屏窗口列表可辨认 */
+const ROUTE_TITLES: Array<[prefix: string, title: string]> = [
+  ['/quiz', '面试出题'],
+  ['/search', '搜索'],
+  ['/history', '考察记录'],
+  ['/settings', '数据管理'],
+]
+
+const DEFAULT_TITLE = '面试宝典 · 互联网技术面试知识库'
+
+function RouteTitle() {
+  const { pathname } = useLocation()
+  useEffect(() => {
+    const hit = ROUTE_TITLES.find(([prefix]) => pathname.startsWith(prefix))
+    document.title = hit ? `${hit[1]} · 面试宝典` : DEFAULT_TITLE
+  }, [pathname])
+  return null
+}
+
+/** 导航后的焦点管理：把焦点移入主内容区，读屏用户才能感知"页面已切换"。
+    页面自行管理焦点（如搜索框 autoFocus）时跳过 */
+function useFocusMainOnNavigate(mainRef: React.RefObject<HTMLElement | null>) {
+  const { pathname } = useLocation()
+  useEffect(() => {
+    if (document.activeElement === document.body) {
+      mainRef.current?.focus({ preventScroll: true })
+    }
+  }, [pathname, mainRef])
 }
 
 /** localStorage 写盘失败横幅：静默丢进度比报错更糟，至少要让用户知道并引导导出备份 */
@@ -135,9 +169,12 @@ function StorageFailBanner() {
 }
 
 export default function Layout() {
+  const mainRef = useRef<HTMLElement>(null)
+  useFocusMainOnNavigate(mainRef)
   return (
     <div className="flex min-h-screen flex-col bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       <ScrollToTop />
+      <RouteTitle />
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-blue-600 focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-white"
@@ -146,7 +183,13 @@ export default function Layout() {
       </a>
       <Header />
       <StorageFailBanner />
-      <main id="main-content" tabIndex={-1} className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 outline-none sm:px-6">
+      <PwaUpdateBanner />
+      <main
+        id="main-content"
+        ref={mainRef}
+        tabIndex={-1}
+        className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 outline-none sm:px-6"
+      >
         <Outlet />
       </main>
     </div>

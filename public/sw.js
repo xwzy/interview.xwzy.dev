@@ -1,6 +1,6 @@
 /* 面试宝典 Service Worker：网络优先、离线回退（静态站点缓存策略） */
 /* CACHE 名里的构建版本令牌由 scripts/inject-sw-version.mjs 在构建后替换——
-   每次部署内容变化都会换新缓存名，activate 时整删旧版本缓存（跨版本清理真正生效） */
+   每次部署内容变化都会换新缓存名，旧缓存按宽限期清理（见 markAndPurgeOldCaches） */
 const CACHE = 'interview-cache-__SW_BUILD_ID__'
 
 /** 应用根目录（从 SW scope 派生，兼容根路径与子路径部署） */
@@ -16,9 +16,51 @@ const MAX_ENTRIES = 150
 const NAV_TIMEOUT_MS = 4000
 
 /** 旧版本缓存的保留宽限期：刚激活时不立即删旧缓存——已打开的旧标签页仍会请求旧
-    hash 资源（旧文件已不在新部署里），立刻删除会让旧页面断供 404。宽限后清理；
-    若 SW 在宽限期内被终止，下次激活会重新走这套逻辑，最终仍会被清理 */
+    hash 资源（旧文件已不在新部署里），立刻删除会让旧页面断供 404。宽限后清理 */
 const OLD_CACHE_GRACE_MS = 60 * 60 * 1000
+
+/** SW 不能靠 setTimeout 做 1 小时级的延时清理——浏览器空闲时（约 30s）就会终止
+    SW，定时器随之死亡。改为把「旧缓存首次被发现的时间」持久化到一个跨版本的元数据
+    缓存里，每次激活与定期检查时删除已过宽限期的旧缓存。这样即使连续多个版本不触发
+    activate，只要 SW 因任意页面导航被唤醒，滞留的旧缓存也会被清掉 */
+const META_CACHE = 'interview-cache-meta'
+
+/** 定期检查旧缓存的间隔（SW 存活期间，fetch 事件驱动） */
+const PURGE_CHECK_INTERVAL_MS = 10 * 60 * 1000
+let lastPurgeCheckAt = 0
+
+/** 元数据缓存里的键：以 URL 形式编码旧缓存名（缓存名只含十六进制，encodeURIComponent 足够） */
+function purgeMarkKey(cacheName) {
+  return new URL(`__purge__/${encodeURIComponent(cacheName)}`, APP_ROOT).href
+}
+
+/** 给每个旧缓存记下首次发现时间，然后删除已过宽限期的旧缓存及其时间戳 */
+async function markAndPurgeOldCaches() {
+  const names = await caches.keys()
+  const meta = await caches.open(META_CACHE)
+  const now = Date.now()
+  await Promise.all(
+    names
+      .filter((n) => n !== CACHE && n !== META_CACHE)
+      .map(async (n) => {
+        const key = purgeMarkKey(n)
+        const hit = await meta.match(key)
+        if (!hit) await meta.put(key, new Response(String(now)))
+      }),
+  )
+  const marks = await meta.keys()
+  await Promise.all(
+    marks.map(async (req) => {
+      const name = decodeURIComponent(new URL(req.url).pathname.split('/__purge__/')[1] ?? '')
+      const hit = await meta.match(req)
+      const markedAt = hit ? Number(await hit.text()) : 0
+      if (!name || !Number.isFinite(markedAt) || markedAt <= 0) return
+      if (now - markedAt < OLD_CACHE_GRACE_MS) return
+      await caches.delete(name)
+      await meta.delete(req)
+    }),
+  )
+}
 
 /** 离线壳资源永不淘汰：APP_ROOT 是离线导航回退，manifest/图标缺失会让 PWA 安装静默失败 */
 const SHELL_URLS = new Set([
@@ -70,12 +112,8 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     (async () => {
-      setTimeout(() => {
-        caches
-          .keys()
-          .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
-          .catch(() => {})
-      }, OLD_CACHE_GRACE_MS)
+      // 宽限期到期的旧缓存在此删除；未到期的留下次激活/定期检查再删
+      await markAndPurgeOldCaches().catch(() => {})
       await pruneCache()
       await self.clients.claim()
     })(),
@@ -95,6 +133,14 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET') return
   const url = new URL(request.url)
   if (url.origin !== self.location.origin) return
+
+  // SW 被任意页面事件唤醒时顺带做一次旧缓存过期检查（节流）：
+  // 长期不部署新版本时 activate 不会重跑，这是宽限期清理能最终执行的兜底路径
+  const now = Date.now()
+  if (now - lastPurgeCheckAt > PURGE_CHECK_INTERVAL_MS) {
+    lastPurgeCheckAt = now
+    markAndPurgeOldCaches().catch(() => {})
+  }
 
   // 带 hash 的构建产物：缓存优先（命中即零网络等待，离线亦可用），未命中回源并写入缓存。
   // 新版本部署后旧 hash 文件会随部署消失，届时命中失败自动回源拿到新 HTML 引用的新资源。

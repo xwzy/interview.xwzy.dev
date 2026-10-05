@@ -20,10 +20,12 @@ export function countMastered(
   return questions.reduce((n, q) => n + (mastered.has(q.id) ? 1 : 0), 0)
 }
 
-/** 秒数格式化为 mm:ss */
+/** 秒数格式化为 mm:ss（整卷总用时可能超过 1 小时，此时显示 h:mm:ss） */
 export function formatDuration(totalSeconds: number): string {
-  const m = Math.floor(totalSeconds / 60)
+  const h = Math.floor(totalSeconds / 3600)
+  const m = Math.floor((totalSeconds % 3600) / 60)
   const s = totalSeconds % 60
+  if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
   return `${m}:${String(s).padStart(2, '0')}`
 }
 

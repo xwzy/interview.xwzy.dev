@@ -62,7 +62,7 @@ export default function QuizRunning({
               : 'border-slate-200 text-slate-400 hover:border-rose-300 hover:text-rose-500 dark:border-white/10 dark:hover:border-rose-500/40',
           )}
         >
-          {confirmExit ? '确认结束？（未存档的备注将丢失）' : '← 结束并返回'}
+          {confirmExit ? '再点一次确认返回（进度已存草稿，可恢复）' : '← 结束并返回'}
         </button>
         <span className="ml-auto flex items-center gap-3 text-sm font-medium tabular-nums text-slate-500 dark:text-slate-400">
           <ElapsedTimer key={item.question.id} startTs={startTs} />
@@ -72,7 +72,7 @@ export default function QuizRunning({
           </span>
         </span>
       </div>
-      <ProgressBar value={((index + 1) / total) * 100} />
+      <ProgressBar value={((index + 1) / total) * 100} label="考察进度" />
 
       <article className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-white/10 dark:bg-white/[0.03]">
         <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400 dark:text-slate-500">

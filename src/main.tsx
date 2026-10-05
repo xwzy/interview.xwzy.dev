@@ -11,6 +11,8 @@ import { VerdictProvider } from './context/InterviewContext'
 import { SessionProvider } from './context/SessionContext'
 import { CustomQuestionsProvider, BankProvider } from './context/BankContext'
 import { FavoritesProvider } from './context/FavoritesContext'
+import { initPwaInstall } from './lib/pwaInstall'
+import { SS_KEYS } from './lib/storageKeys'
 import './index.css'
 
 createRoot(document.getElementById('root')!).render(
@@ -57,12 +59,14 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator) {
 window.addEventListener('vite:preloadError', () => {
   // 存储被禁（隐私模式等）时去重逻辑自身抛错会挡住 reload——必须兜住，保证刷新一定执行
   try {
-    const key = 'interview-preload-reload-at'
-    const last = Number(sessionStorage.getItem(key) || 0)
+    const last = Number(sessionStorage.getItem(SS_KEYS.preloadReloadAt) || 0)
     if (Date.now() - last < 10_000) return
-    sessionStorage.setItem(key, String(Date.now()))
+    sessionStorage.setItem(SS_KEYS.preloadReloadAt, String(Date.now()))
   } catch {
     // 无法读写存储时退化为直接刷新（有刷新循环风险，但比永远打不开好）
   }
   window.location.reload()
 })
+
+// 捕获 beforeinstallprompt，供设置页的「安装应用」入口使用
+initPwaInstall()

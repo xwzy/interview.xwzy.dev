@@ -44,6 +44,11 @@ describe('formatDuration', () => {
     expect(formatDuration(65)).toBe('1:05')
     expect(formatDuration(600)).toBe('10:00')
   })
+
+  it('超过 1 小时显示 h:mm:ss', () => {
+    expect(formatDuration(3600)).toBe('1:00:00')
+    expect(formatDuration(4530)).toBe('1:15:30')
+  })
 })
 
 describe('stripMarkdown', () => {

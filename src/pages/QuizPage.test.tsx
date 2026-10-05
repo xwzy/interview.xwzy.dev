@@ -42,15 +42,15 @@ describe('QuizPage 计时器', () => {
     // vitest 4 假定时器默认不伪造 Date，需显式包含，ElapsedTimer 才能随时钟推进
     vi.useFakeTimers({ now: Date.now(), toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'Date'] })
     fireEvent.click(startBtn)
-    expect(screen.getByTitle('本题用时').textContent).toBe('⏱ 0:00')
+    expect(screen.getByTitle('本题用时').textContent).toBe('⏱本题已用时 0:00')
 
     // 同一题内秒表递增（act 包裹让 interval 触发的状态更新立即刷新渲染）
     act(() => vi.advanceTimersByTime(65_000))
-    expect(screen.getByTitle('本题用时').textContent).toBe('⏱ 1:05')
+    expect(screen.getByTitle('本题用时').textContent).toBe('⏱本题已用时 1:05')
 
     // 切到第二题：计时归零（回归：旧实现会带着上一题的 1:05 起跳）
     fireEvent.click(screen.getByRole('button', { name: '下一题 →' }))
-    expect(screen.getByTitle('本题用时').textContent).toBe('⏱ 0:00')
+    expect(screen.getByTitle('本题用时').textContent).toBe('⏱本题已用时 0:00')
   })
 })
 
@@ -70,7 +70,7 @@ describe('QuizPage 现场快照', () => {
     renderWithProviders(<QuizPage />, { route: '/quiz' })
     const resumeBtn = await screen.findByRole('button', { name: /恢复考察/ }, { timeout: 15_000 })
     fireEvent.click(resumeBtn)
-    expect(screen.getByTitle('本题用时').textContent).toBe('⏱ 0:00')
+    expect(screen.getByTitle('本题用时').textContent).toBe('⏱本题已用时 0:00')
 
     // 连点到最后一只题后完成考察：存档中第一题应带 12s 用时（恢复快照后不丢失）
     fireEvent.click(advanceToLastQuestion())

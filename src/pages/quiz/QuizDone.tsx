@@ -1,7 +1,7 @@
 import { Link } from 'react-router'
 import { verdictMeta, type Verdict } from '../../lib/verdict'
 import { difficultyMeta, type IndexedQuestion } from '../../types'
-import { cx } from '../../lib/utils'
+import { cx, formatDuration } from '../../lib/utils'
 import type { SummaryCounts } from '../../lib/summary'
 import AnswerBody from '../../components/AnswerBody'
 
@@ -13,6 +13,8 @@ interface QuizDoneProps {
   saved: boolean
   copied: boolean
   notes: Record<string, string>
+  /** 整卷总用时（秒）；早于该功能的旧记录可能为 0 */
+  totalDuration: number
   verdictOf: (id: string) => Verdict | undefined
   onCopy: () => void
   onStartAgain: () => void
@@ -27,6 +29,7 @@ export default function QuizDone({
   saved,
   copied,
   notes,
+  totalDuration,
   verdictOf,
   onCopy,
   onStartAgain,
@@ -46,6 +49,11 @@ export default function QuizDone({
               <Link to="/history" className="mx-0.5 font-medium text-blue-600 hover:underline dark:text-blue-400">
                 考察记录
               </Link>
+            </p>
+          )}
+          {totalDuration > 0 && (
+            <p className="mt-1.5 text-xs font-medium text-slate-500 dark:text-slate-400">
+              ⏱ 总用时 {formatDuration(totalDuration)}
             </p>
           )}
           {summary && (

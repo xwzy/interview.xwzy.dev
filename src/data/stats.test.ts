@@ -1,9 +1,11 @@
 import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { buildBank } from './bank'
 import { loadAllTracks } from './trackLoaders'
 
-const repoRoot = new URL('../../', import.meta.url).pathname
+// fileURLToPath 处理 URL 编码与 Windows 盘符；直接取 .pathname 在含空格/中文的路径下会炸
+const repoRoot = fileURLToPath(new URL('../../', import.meta.url))
 
 /**
  * 首页 og 描述与 README 中的题量/追问统计以前是手工同步的，历史上已漂移过（385 vs 651）。

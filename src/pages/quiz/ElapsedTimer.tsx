@@ -9,5 +9,10 @@ export default function ElapsedTimer({ startTs }: { startTs: number }) {
     return () => clearInterval(timer)
   }, [])
   const elapsed = Math.max(0, Math.floor((Date.now() - startTs) / 1000))
-  return <span title="本题用时">⏱ {formatDuration(elapsed)}</span>
+  return (
+    <span title="本题用时">
+      <span aria-hidden>⏱</span>
+      <span className="sr-only">本题已用时</span> {formatDuration(elapsed)}
+    </span>
+  )
 }

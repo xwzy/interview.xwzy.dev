@@ -110,7 +110,18 @@ export function buildBaseBank(rawTracks: Track[]): BaseBank {
  * 也让下游 memo/依赖比较保持稳定）。
  */
 export function mergeCustomBank(base: BaseBank, customQuestions: CustomQuestion[]): Bank {
-  if (customQuestions.length === 0) {
+  // 防御自定义题 id 与内置题/彼此冲突（手工构造的备份文件可能复用内置 id）：
+  // 冲突会让 questionById 后者覆盖前者，出题/评分定位到错误的题。确定性重命名保住内容
+  const baseIds = new Set(base.questionIndex.map((r) => r.question.id))
+  const seenCustomIds = new Set<string>()
+  const deduped = customQuestions.map((cq) => {
+    let id = cq.id
+    while (baseIds.has(id) || seenCustomIds.has(id)) id = `custom-${id}`
+    seenCustomIds.add(id)
+    return id === cq.id ? cq : { ...cq, id }
+  })
+
+  if (deduped.length === 0) {
     const { tracks, questionIndex } = base
     return {
       tracks,
@@ -123,13 +134,13 @@ export function mergeCustomBank(base: BaseBank, customQuestions: CustomQuestion[
 
   // 按 trackId/topicId 归组自定义题目（指向不存在的方向/领域时安全忽略）
   const extras = new Map<string, NormalizedQuestion[]>()
-  for (const cq of customQuestions) {
+  for (const cq of deduped) {
     const key = `${cq.trackId}/${cq.topicId}`
     const list = extras.get(key) ?? []
     list.push(customToNormalized(cq))
     extras.set(key, list)
   }
-  const customIds = new Set(customQuestions.map((q) => q.id))
+  const customIds = new Set(deduped.map((q) => q.id))
 
   // base.tracks.map 保持顺序，tracks[i] 与 base.tracks[i] 一一对应，可直接比对引用
   const tracks: NormalizedTrack[] = base.tracks.map((track) => {

@@ -80,7 +80,10 @@ export default function QuizPage() {
   const [resumable, setResumable] = useState<QuizResumeState | null>(null)
   const startRef = useRef(Date.now())
   const durationsRef = useRef<Record<string, number>>({})
-  const { getVerdict, setVerdict, clearFor } = useVerdicts()
+  /** 本次考察是否已结束存档：双击"完成"/键盘与按钮事件叠加时防止重复 saveSession */
+  const finishedRef = useRef(false)
+  const exitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const { getVerdict, clearFor, toggleVerdict } = useVerdicts()
   const { saveSession } = useSessions()
   const favorites = useFavoritesState()
   const mastered = useMasteryState()
@@ -117,6 +120,7 @@ export default function QuizPage() {
     // 开新卷前清掉这批题上一场遗留的评分，避免上一位候选人的评分带进新卷的小结
     clearFor(queueNext.map((item) => item.question.id))
     persistTopicIds(selectedTopics)
+    finishedRef.current = false
     setQueue(queueNext)
     setNotes({})
     durationsRef.current = {}
@@ -144,6 +148,7 @@ export default function QuizPage() {
       setResumable(null)
       return
     }
+    finishedRef.current = false
     setCandidate(resumable.candidate)
     setNotes(resumable.notes)
     durationsRef.current = { ...resumable.durations }
@@ -172,6 +177,10 @@ export default function QuizPage() {
   }
 
   const finish = () => {
+    // 幂等守卫：低端机上 React 提交被长任务延迟时，双击"完成"或键盘+按钮叠加
+    // 会进入两次 finish，saveSession 各生成一个新 id，考察记录出现重复存档
+    if (finishedRef.current) return
+    finishedRef.current = true
     const currentItem = queue[current]
     if (currentItem) commitTime(currentItem.question.id)
     const items: SessionItem[] = queue.map((item) => ({
@@ -217,20 +226,23 @@ export default function QuizPage() {
     }
   }
 
-  /** 双击确认退出答题：第一次点击进入确认态（3 秒内再点生效） */
+  /** 双击确认退出答题：第一次点击进入确认态（3 秒内再点生效）。
+      退出保留草稿快照，回到组卷页可恢复——与 QuizRunning 的确认文案保持一致 */
   const handleExit = () => {
     if (confirmExit) {
       setPhase('setup')
     } else {
       setConfirmExit(true)
-      setTimeout(() => setConfirmExit(false), 3000)
+      if (exitTimerRef.current) clearTimeout(exitTimerRef.current)
+      exitTimerRef.current = setTimeout(() => setConfirmExit(false), 3000)
     }
   }
 
   const rate = (verdict: Verdict) => {
     const item = queue[current]
     if (!item) return
-    setVerdict(item.question.id, getVerdict(item.question.id) === verdict ? null : verdict)
+    // toggle 判断在 context updater 内部完成：快捷键快速连按不基于过期快照
+    toggleVerdict(item.question.id, verdict)
   }
 
   const currentNote = queue[current] ? (notes[queue[current]!.question.id] ?? '') : ''
@@ -242,6 +254,13 @@ export default function QuizPage() {
 
   // 计时起点在各次状态迁移（start/resume/切题）中同步重置；
   // 不能放到 effect 里——ElapsedTimer 渲染期就读 startRef，effect 重置会晚一帧导致读数错误
+
+  useEffect(
+    () => () => {
+      if (exitTimerRef.current) clearTimeout(exitTimerRef.current)
+    },
+    [],
+  )
 
   // 回到组卷页时读取现场快照（供"恢复上次考察"）；进行中每次状态变化自动续存
   useEffect(() => {
@@ -276,7 +295,18 @@ export default function QuizPage() {
     }
     persist()
     const timer = setInterval(persist, 15_000)
-    return () => clearInterval(timer)
+    // 15s 兜底之外的立即落盘：iOS Safari PWA 常忽略 beforeunload 的挽留弹窗且可能
+    // 直接杀进程，用户切后台/关闭页面前先把快照写全
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') persist()
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+    window.addEventListener('pagehide', persist)
+    return () => {
+      clearInterval(timer)
+      document.removeEventListener('visibilitychange', onVisibility)
+      window.removeEventListener('pagehide', persist)
+    }
   }, [phase, candidate, queue, current, notes])
 
   // 考察进行中离开页面（刷新/关闭）前给出挽留提示，避免评分与备注丢失
@@ -304,7 +334,9 @@ export default function QuizPage() {
         e.preventDefault()
         setRevealed(true)
       } else if (e.key === 'ArrowRight') {
-        goNext()
+        // 最后一题的"下一题"= 结束并存档，面试现场误触一次即定档——
+        // 键盘切题到最后一题为止，生成小结必须显式点击按钮
+        if (current + 1 < queue.length) goNext()
       } else if (e.key === 'ArrowLeft') {
         goPrev()
       } else if (e.key === '1') {
@@ -440,7 +472,7 @@ export default function QuizPage() {
           })}
         </div>
 
-        <section className="sticky bottom-4 z-10 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-lg backdrop-blur dark:border-white/10 dark:bg-slate-900/95">
+        <section className="sticky bottom-4 z-10 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-lg backdrop-blur dark:border-white/10 dark:bg-slate-900/95 [padding-bottom:max(1rem,env(safe-area-inset-bottom))]">
           <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
             <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
               题量
@@ -472,7 +504,7 @@ export default function QuizPage() {
                 type="checkbox"
                 checked={ordered}
                 onChange={(e) => setOrdered(e.target.checked)}
-                className="h-3.5 w-3.5 accent-blue-600"
+                className="h-4 w-4 accent-blue-600"
               />
               由易到难
             </label>
@@ -481,7 +513,7 @@ export default function QuizPage() {
                 type="checkbox"
                 checked={onlyFavorites}
                 onChange={(e) => setOnlyFavorites(e.target.checked)}
-                className="h-3.5 w-3.5 accent-blue-600"
+                className="h-4 w-4 accent-blue-600"
               />
               只抽收藏题
             </label>
@@ -490,7 +522,7 @@ export default function QuizPage() {
                 type="checkbox"
                 checked={onlyUnmastered}
                 onChange={(e) => setOnlyUnmastered(e.target.checked)}
-                className="h-3.5 w-3.5 accent-blue-600"
+                className="h-4 w-4 accent-blue-600"
               />
               只抽未掌握
             </label>
@@ -499,7 +531,7 @@ export default function QuizPage() {
                 type="checkbox"
                 checked={onlyExam}
                 onChange={(e) => setOnlyExam(e.target.checked)}
-                className="h-3.5 w-3.5 accent-violet-600"
+                className="h-4 w-4 accent-violet-600"
               />
               只抽真题
             </label>
@@ -553,6 +585,11 @@ export default function QuizPage() {
   }
 
   // phase === 'done'
+  // 存档时已 commit 当前题用时，此时读取 durationsRef 即为整卷总用时
+  const totalDuration = queue.reduce(
+    (n, item) => n + (durationsRef.current[item.question.id] ?? 0),
+    0,
+  )
   return (
     <QuizDone
       candidate={candidate}
@@ -561,6 +598,7 @@ export default function QuizPage() {
       saved={saved}
       copied={copied}
       notes={notes}
+      totalDuration={totalDuration}
       verdictOf={getVerdict}
       onCopy={copySummary}
       onStartAgain={start}

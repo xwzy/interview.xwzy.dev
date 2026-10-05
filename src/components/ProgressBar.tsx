@@ -5,13 +5,16 @@ interface ProgressBarProps {
   value: number
   barClass?: string
   className?: string
+  /** 可访问名称（读屏读"XX进度条"而非无名的"进度条 50%"） */
+  label?: string
 }
 
-export default function ProgressBar({ value, barClass, className }: ProgressBarProps) {
+export default function ProgressBar({ value, barClass, className, label }: ProgressBarProps) {
   const pct = Math.max(0, Math.min(100, Math.round(value)))
   return (
     <div
       role="progressbar"
+      aria-label={label}
       aria-valuenow={pct}
       aria-valuemin={0}
       aria-valuemax={100}

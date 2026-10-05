@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router'
 import { useBank } from '../context/BankContext'
 import { useSessions, type InterviewSession } from '../context/SessionContext'
@@ -10,6 +10,8 @@ import { cx, formatDuration } from '../lib/utils'
 function formatDate(iso: string): string {
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return iso
+  // 脏数据回退的 epoch 默认值（1970-01-01）照常显示会误导
+  if (d.getFullYear() < 2000) return '时间未知'
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
@@ -36,8 +38,19 @@ function summaryOf(session: InterviewSession, questionById: Map<string, { track:
 export default function HistoryPage() {
   const { questionById } = useBank()
   const { sessions, removeSession } = useSessions()
-  const [copiedId, setCopiedId] = useState<string | null>(null)
+  /** 复制反馈：成功与失败都要可见——失败无提示时用户会以为已复制 */
+  const [copyState, setCopyState] = useState<{ id: string; ok: boolean } | null>(null)
   const [confirmingId, setConfirmingId] = useState<string | null>(null)
+  const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const confirmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(
+    () => () => {
+      if (flashTimerRef.current) clearTimeout(flashTimerRef.current)
+      if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current)
+    },
+    [],
+  )
 
   const sorted = useMemo(
     () => [...sessions].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
@@ -47,10 +60,9 @@ export default function HistoryPage() {
   const copySummary = async (session: InterviewSession) => {
     const { text } = summaryOf(session, questionById)
     const ok = await copyText(text)
-    if (ok) {
-      setCopiedId(session.id)
-      setTimeout(() => setCopiedId(null), 2000)
-    }
+    setCopyState({ id: session.id, ok })
+    if (flashTimerRef.current) clearTimeout(flashTimerRef.current)
+    flashTimerRef.current = setTimeout(() => setCopyState(null), 2000)
   }
 
   return (
@@ -97,12 +109,18 @@ export default function HistoryPage() {
                         onClick={() => copySummary(session)}
                         className={cx(
                           'rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors',
-                          copiedId === session.id
-                            ? 'border-emerald-400 text-emerald-600 dark:text-emerald-300'
+                          copyState?.id === session.id
+                            ? copyState.ok
+                              ? 'border-emerald-400 text-emerald-600 dark:text-emerald-300'
+                              : 'border-rose-400 text-rose-600 dark:text-rose-300'
                             : 'border-slate-200 text-slate-600 hover:border-blue-300 hover:text-blue-600 dark:border-white/10 dark:text-slate-300 dark:hover:border-blue-500/40',
                         )}
                       >
-                        {copiedId === session.id ? '✓ 已复制' : '复制小结 📋'}
+                        {copyState?.id === session.id
+                          ? copyState.ok
+                            ? '✓ 已复制'
+                            : '✕ 复制失败'
+                          : '复制小结 📋'}
                       </button>
                       <button
                         type="button"
@@ -112,7 +130,11 @@ export default function HistoryPage() {
                             setConfirmingId(null)
                           } else {
                             setConfirmingId(session.id)
-                            setTimeout(() => setConfirmingId((c) => (c === session.id ? null : c)), 3000)
+                            if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current)
+                            confirmTimerRef.current = setTimeout(
+                              () => setConfirmingId((c) => (c === session.id ? null : c)),
+                              3000,
+                            )
                           }
                         }}
                         className={cx(
@@ -150,7 +172,8 @@ export default function HistoryPage() {
                       {session.items.map((item, i) => {
                         const r = questionById.get(item.questionId)
                         return (
-                          <li key={item.questionId} className="text-sm">
+                          // 导入的手工备份可能同卷含重复 questionId，序号兜底保证 key 唯一
+                          <li key={`${i}-${item.questionId}`} className="text-sm">
                             <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400 dark:text-slate-500">
                               <span className="font-mono">{String(i + 1).padStart(2, '0')}</span>
                               {r && (

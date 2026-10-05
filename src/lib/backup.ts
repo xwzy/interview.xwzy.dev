@@ -1,4 +1,4 @@
-import type { Verdict } from './verdict'
+import { VALID_VERDICTS, type Verdict } from './verdict'
 import type { CustomQuestion } from '../types'
 import type { InterviewSession } from '../context/SessionContext'
 
@@ -14,8 +14,6 @@ export interface BackupFile {
   favorites: string[]
 }
 
-const VALID_VERDICTS: readonly string[] = ['pass', 'fail', 'maybe']
-
 function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null
 }
@@ -24,9 +22,7 @@ function toVerdict(v: unknown): Verdict | null {
   return typeof v === 'string' && (VALID_VERDICTS as readonly string[]).includes(v)
     ? (v as Verdict)
     : null
-}
-
-function toCustomQuestion(v: Record<string, unknown>): CustomQuestion | null {
+}function toCustomQuestion(v: Record<string, unknown>): CustomQuestion | null {
   if (
     typeof v.id !== 'string' ||
     typeof v.trackId !== 'string' ||
@@ -107,7 +103,7 @@ export function sanitizeBackup(raw: unknown): BackupFile | null {
 
   const verdicts: Record<string, string> = {}
   for (const [id, v] of Object.entries(raw.verdicts)) {
-    if (typeof id === 'string' && typeof v === 'string' && VALID_VERDICTS.includes(v)) {
+    if (typeof id === 'string' && typeof v === 'string' && (VALID_VERDICTS as readonly string[]).includes(v)) {
       verdicts[id] = v
     }
   }

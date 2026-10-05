@@ -3,6 +3,9 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "engines": {
+    "node": ">=20.11"
+  },
   "scripts": {
     "dev": "vite",
     "gen:meta": "node scripts/gen-track-meta.mjs",
@@ -11,7 +14,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "preview": "vite preview",
-    "verify": "npm run gen:meta && npm run lint && npm test && npm run build",
+    "verify": "npm test && npm run lint && npm run build",
     "check:links": "node scripts/check-links.mjs"
   },
   "dependencies": {

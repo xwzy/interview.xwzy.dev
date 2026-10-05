@@ -66,6 +66,39 @@ if (existsSync(join(dist, '404.html'))) {
   failures += 1
 }
 
+// manifest 内容校验：start_url 与图标引用的文件必须真实存在，
+// 且子路径部署时全部路径必须带 base（manifest 不经 vite rebase，靠 inject-sw-version 修补）
+const manifestPath = join(dist, 'manifest.webmanifest')
+if (existsSync(manifestPath)) {
+  try {
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'))
+    const checkManifestRef = (path, what) => {
+      if (typeof path !== 'string' || !path.startsWith('/')) {
+        console.error(`[check-dist] manifest ${what} 不是站内绝对路径: ${path}`)
+        failures += 1
+        return
+      }
+      if (base !== '/' && !path.startsWith(base.replace(/\/$/, '') + '/')) {
+        console.error(`[check-dist] manifest ${what} 缺少 base 前缀 ${base}: ${path}`)
+        failures += 1
+        return
+      }
+      const rel = path.slice(base.length)
+      if (!existsSync(join(dist, rel))) {
+        console.error(`[check-dist] manifest ${what} 指向不存在的文件: ${path}`)
+        failures += 1
+      }
+    }
+    checkManifestRef(manifest.start_url, 'start_url')
+    for (const icon of Array.isArray(manifest.icons) ? manifest.icons : []) {
+      checkManifestRef(icon?.src, `icons(${icon?.sizes ?? '?'})`)
+    }
+  } catch (err) {
+    console.error(`[check-dist] manifest.webmanifest 不是合法 JSON: ${err.message}`)
+    failures += 1
+  }
+}
+
 // CSP 一致性：index.html 内联脚本（如主题初始化）的 sha256 必须出现在 _headers 的
 // script-src 指令里。修改内联脚本后若忘更新 public/_headers 的哈希，构建在此失败——
 // 否则浏览器会直接拒绝执行脚本，线上暗色主题初始化失效

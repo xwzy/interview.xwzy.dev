@@ -40,6 +40,12 @@ describe('题库内容完整性', () => {
     expect(new Set(ids).size).toBe(ids.length)
   })
 
+  it('领域 topic id 全站唯一（bank 的 topicEntries 仅按 topic.id 分组，跨方向重名会静默串数据）', async () => {
+    const bank = buildBank(await loadAllTracks(), [])
+    const topicIds = bank.tracks.flatMap((t) => t.topics.map((tp) => tp.id))
+    expect(new Set(topicIds).size).toBe(topicIds.length)
+  })
+
   it('题目 id 使用所在方向允许的前缀', async () => {
     const bank = buildBank(await loadAllTracks(), [])
     for (const track of bank.tracks) {

@@ -63,12 +63,9 @@ function QuestionItemImpl({
       )}
     >
       <div className="flex items-start gap-3 p-4">
-        <button
-          type="button"
-          onClick={() => setOpen((o) => !o)}
-          className="flex-1 text-left"
-          aria-expanded={open}
-        >
+        <div className="min-w-0 flex-1">
+          {/* 元信息行不放进展开按钮：标签可点击跳搜索，交互元素嵌在 button 内
+              违反 ARIA 嵌套规则（读屏忽略/键盘行为交错），平级摆放才是合法结构 */}
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-mono text-xs text-slate-400 dark:text-slate-500">
               {String(index + 1).padStart(2, '0')}
@@ -82,34 +79,39 @@ function QuestionItemImpl({
               </span>
             )}
             {question.tags?.map((tag) => (
-              <span
+              <button
                 key={tag}
-                role="link"
-                tabIndex={0}
+                type="button"
                 title={`查看「${tag}」标签下的全部题目`}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  navigate(`/search?q=${encodeURIComponent(tag)}`)
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.stopPropagation()
-                    navigate(`/search?q=${encodeURIComponent(tag)}`)
-                  }
-                }}
-                className="cursor-pointer text-xs text-slate-400 transition-colors hover:text-blue-600 dark:text-slate-500 dark:hover:text-blue-400"
+                onClick={() => navigate(`/search?q=${encodeURIComponent(tag)}`)}
+                className="relative cursor-pointer rounded text-xs text-slate-400 transition-colors after:absolute after:-inset-1.5 after:content-[''] hover:text-blue-600 dark:text-slate-500 dark:hover:text-blue-400"
               >
                 #{tag}
-              </span>
+              </button>
             ))}
           </div>
-          <h3 className="mt-1.5 font-medium leading-relaxed">{question.title}</h3>
-          <span className="mt-1 inline-block text-xs text-slate-400 dark:text-slate-500">
+          <h3 className="mt-1.5 font-medium leading-relaxed">
+            <button
+              type="button"
+              onClick={() => setOpen((o) => !o)}
+              className="w-full text-left font-medium leading-relaxed"
+              aria-expanded={open}
+            >
+              {question.title}
+            </button>
+          </h3>
+          <button
+            type="button"
+            onClick={() => setOpen((o) => !o)}
+            aria-hidden
+            tabIndex={-1}
+            className="mt-1 inline-block text-xs text-slate-400 dark:text-slate-500"
+          >
             {open ? '收起要点 ▲' : '展开要点 ▼'}
-          </span>
-        </button>
+          </button>
+        </div>
 
-        <div className="flex shrink-0 flex-col items-end gap-1.5">
+        <div className="flex shrink-0 flex-col items-end gap-2.5">
           <button
             type="button"
             onClick={() => toggleFavorite(question.id)}
@@ -117,7 +119,8 @@ function QuestionItemImpl({
             title={favorite ? '取消收藏' : '收藏此题'}
             aria-label={favorite ? '取消收藏' : '收藏此题'}
             className={cx(
-              'rounded-full border px-2 py-0.5 text-xs transition-colors',
+              // 命中区扩大：刷题最高频操作，视觉样式不变（纵向扩 4px，与相邻按钮不重叠）
+              'relative rounded-full border px-2 py-0.5 text-xs transition-colors after:absolute after:-inset-x-2 after:-inset-y-1 after:content-[""]',
               favorite
                 ? 'border-amber-400 bg-amber-400/90 text-white'
                 : 'border-slate-200 text-slate-400 hover:border-amber-300 hover:text-amber-500 dark:border-white/10 dark:hover:border-amber-500/40',
@@ -131,7 +134,7 @@ function QuestionItemImpl({
             aria-pressed={mastered}
             title={mastered ? '已掌握（点击取消）' : '标记为已掌握'}
             className={cx(
-              'rounded-full border px-2.5 py-1 text-xs font-medium transition-colors',
+              'relative rounded-full border px-2.5 py-1 text-xs font-medium transition-colors after:absolute after:-inset-x-2 after:-inset-y-1 after:content-[""]',
               mastered
                 ? 'border-emerald-500 bg-emerald-500 text-white'
                 : 'border-slate-300 text-slate-500 hover:border-emerald-400 hover:text-emerald-600 dark:border-white/20 dark:text-slate-400 dark:hover:border-emerald-500/50 dark:hover:text-emerald-300',
@@ -140,12 +143,12 @@ function QuestionItemImpl({
             {mastered ? '✓ 已掌握' : '标记掌握'}
           </button>
           {custom && (
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-3">
               <button
                 type="button"
                 onClick={() => onEdit?.(question.id)}
                 title="编辑此题"
-                className="rounded-md border border-slate-200 px-2 py-0.5 text-[11px] text-slate-500 transition-colors hover:border-blue-300 hover:text-blue-600 dark:border-white/10 dark:text-slate-400 dark:hover:border-blue-500/40"
+                className="relative rounded-md border border-slate-200 px-2 py-0.5 text-[11px] text-slate-500 transition-colors after:absolute after:-inset-x-1.5 after:-inset-y-1.5 after:content-[''] hover:border-blue-300 hover:text-blue-600 dark:border-white/10 dark:text-slate-400 dark:hover:border-blue-500/40"
               >
                 ✎ 编辑
               </button>
@@ -159,7 +162,7 @@ function QuestionItemImpl({
                   }
                 }}
                 className={cx(
-                  'rounded-md border px-2 py-0.5 text-[11px] transition-colors',
+                  'relative rounded-md border px-2 py-0.5 text-[11px] transition-colors after:absolute after:-inset-x-1.5 after:-inset-y-1.5 after:content-[""]',
                   confirmDelete
                     ? 'border-rose-400 bg-rose-500 text-white'
                     : 'border-slate-200 text-slate-500 hover:border-rose-300 hover:text-rose-500 dark:border-white/10 dark:text-slate-400 dark:hover:border-rose-500/40',

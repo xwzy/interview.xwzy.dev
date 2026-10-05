@@ -1,3 +1,5 @@
+import { LS_KEYS } from './storageKeys'
+
 /** 出题会话现场快照（sessionStorage，防误刷新丢失） */
 export interface QuizResumeState {
   candidate: string
@@ -9,7 +11,7 @@ export interface QuizResumeState {
   savedAt: string
 }
 
-export const RESUME_KEY = 'interview.quiz-resume.v1'
+export const RESUME_KEY = LS_KEYS.quizResume
 
 function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null

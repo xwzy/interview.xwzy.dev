@@ -29,6 +29,10 @@ describe('buildSummaryText', () => {
     expect(text.split('\n')[1]).toContain('共 3 题：👍 通过 1 · 👎 不通过 1 · ➖ 待定 0 · 未评 1')
   })
 
+  it('统计行包含整卷总用时（README 承诺项）', () => {
+    expect(text.split('\n')[1]).toContain('总用时 2:58')
+  })
+
   it('每题行包含评分、归属与题干', () => {
     expect(text).toContain('01. 【通过】（后端开发 · MySQL）标题一')
     expect(text).toContain('02. 【不通过】（前端开发 · React）标题二')

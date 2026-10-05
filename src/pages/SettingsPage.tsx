@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext'
 import { buildTracksMarkdown } from '../lib/exportMd'
 import { BACKUP_VERSION, sanitizeBackup, type BackupFile } from '../lib/backup'
 import { LS_KEYS } from '../lib/storageKeys'
+import { canInstall, promptInstall, subscribeCanInstall } from '../lib/pwaInstall'
 import { cx } from '../lib/utils'
 
 function download(filename: string, content: string, mime = 'application/json') {
@@ -20,6 +21,13 @@ function download(filename: string, content: string, mime = 'application/json') 
   a.click()
   a.remove()
   URL.revokeObjectURL(url)
+}
+
+/** 文件名时间戳：精确到分钟，同日多次导出不再互相覆盖 */
+function timestamp(): string {
+  const d = new Date()
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}`
 }
 
 /** 数据管理：刷题进度、考察记录的导出 / 导入 / 清空（全部只涉及浏览器本地数据） */
@@ -36,9 +44,22 @@ export default function SettingsPage() {
   const fileRef = useRef<HTMLInputElement>(null)
   const [message, setMessage] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null)
   const [confirmClear, setConfirmClear] = useState<string | null>(null)
+  // 导入成功后进入刷新态：全屏遮罩阻断一切交互——导入是直写 localStorage，
+  // 刷新前任何 Context 状态变化都会把旧内存值重新写回、覆盖刚导入的数据
+  const [reloading, setReloading] = useState(false)
+  const [installable, setInstallable] = useState(canInstall())
+
+  useEffect(
+    () =>
+      subscribeCanInstall(() => {
+        setInstallable(canInstall())
+      }),
+    [],
+  )
 
   // 连续 flash 时先清掉前一个定时器，避免旧定时器把新消息提前清掉
   const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const reloadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const flash = (kind: 'ok' | 'err', text: string) => {
     setMessage({ kind, text })
     if (flashTimerRef.current) clearTimeout(flashTimerRef.current)
@@ -48,6 +69,7 @@ export default function SettingsPage() {
   useEffect(
     () => () => {
       if (flashTimerRef.current) clearTimeout(flashTimerRef.current)
+      if (reloadTimerRef.current) clearTimeout(reloadTimerRef.current)
     },
     [],
   )
@@ -62,17 +84,13 @@ export default function SettingsPage() {
       customQuestions,
       favorites: [...favorites],
     }
-    const d = new Date()
-    const stamp = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`
-    download(`interview-backup-${stamp}.json`, JSON.stringify(backup, null, 2))
+    download(`interview-backup-${timestamp()}.json`, JSON.stringify(backup, null, 2))
     flash('ok', '备份文件已下载')
   }
 
   const handleExportMarkdown = () => {
     const md = buildTracksMarkdown(tracks, new Date())
-    const d = new Date()
-    const stamp = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`
-    download(`interview-questions-${stamp}.md`, md, 'text/markdown')
+    download(`interview-questions-${timestamp()}.md`, md, 'text/markdown')
     flash('ok', '题库 Markdown 已下载')
   }
 
@@ -118,8 +136,12 @@ export default function SettingsPage() {
       )
       return
     }
-    flash('ok', `导入成功：${backup.mastery.length} 条掌握记录 · ${backup.sessions.length} 份考察记录，即将刷新页面`)
-    setTimeout(() => window.location.reload(), 1200)
+    flash('ok', `导入成功：${backup.mastery.length} 条掌握记录 · ${backup.sessions.length} 份考察记录，正在刷新页面`)
+    // 立即进入刷新态：遮罩阻断后续交互，防止残留的旧内存状态在刷新前把导入数据覆盖回去
+    setReloading(true)
+    const timer = setTimeout(() => window.location.reload(), 600)
+    // 组件卸载（用户手动导航走）时取消 reload，不在其他页面突然整页刷新
+    reloadTimerRef.current = timer
   }
 
   /** 双击确认式清空：category 唯一标识 */
@@ -174,6 +196,16 @@ export default function SettingsPage() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-5">
+      {reloading && (
+        <div
+          role="status"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 backdrop-blur-sm"
+        >
+          <div className="rounded-2xl border border-slate-200 bg-white px-6 py-4 text-sm font-medium shadow-xl dark:border-white/10 dark:bg-slate-900 dark:text-slate-100">
+            导入成功，正在刷新页面…
+          </div>
+        </div>
+      )}
       <header>
         <h1 className="text-xl font-bold sm:text-2xl">⚙️ 数据管理</h1>
         <p className="mt-1.5 text-sm text-slate-600 dark:text-slate-300">
@@ -239,9 +271,33 @@ export default function SettingsPage() {
       </section>
 
       <section className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-white/10 dark:bg-white/[0.03]">
+        <h2 className="font-semibold">安装应用</h2>
+        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+          安装到主屏幕 / 桌面后可全屏使用并支持离线访问，数据仍保存在浏览器本地。
+        </p>
+        {installable ? (
+          <button
+            type="button"
+            onClick={async () => {
+              const ok = await promptInstall()
+              if (ok) flash('ok', '已安装，可在主屏幕 / 桌面打开')
+            }}
+            className="mt-3 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+          >
+            📲 安装到本设备
+          </button>
+        ) : (
+          <p className="mt-3 text-xs leading-relaxed text-slate-400 dark:text-slate-500">
+            当前浏览器未提供一键安装：
+            iOS 请在 Safari 中点「分享 → 添加到主屏幕」；Android/桌面 Chrome 在地址栏或菜单里选「安装应用」。
+          </p>
+        )}
+      </section>
+
+      <section className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-white/10 dark:bg-white/[0.03]">
         <h2 className="font-semibold">清空数据</h2>
         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-          每类数据独立清空，操作需两次点击确认，清空后不可恢复。
+          每类数据独立清空，操作需两次点击确认，清空后不可恢复。考察记录最多保留最近 50 份，更早的自动淘汰。
         </p>
         <ul className="mt-3 space-y-2.5 text-sm">
           <li className="flex flex-wrap items-center gap-3">

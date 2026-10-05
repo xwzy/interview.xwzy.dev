@@ -48,9 +48,11 @@ export function buildSummaryText(
   })
 
   const titleLine = meta.candidate ? `面试考察小结 · ${meta.candidate} · ${dateStr}` : `面试考察小结 · ${dateStr}`
+  const totalDuration = items.reduce((n, item) => n + (item.duration ?? 0), 0)
+  const statsLine = `共 ${items.length} 题：👍 通过 ${counts.pass} · 👎 不通过 ${counts.fail} · ➖ 待定 ${counts.maybe} · 未评 ${counts.unrated}`
   const text = [
     titleLine,
-    `共 ${items.length} 题：👍 通过 ${counts.pass} · 👎 不通过 ${counts.fail} · ➖ 待定 ${counts.maybe} · 未评 ${counts.unrated}`,
+    totalDuration > 0 ? `${statsLine} · ⏱ 总用时 ${formatDuration(totalDuration)}` : statsLine,
     '',
     ...lines,
   ].join('\n')

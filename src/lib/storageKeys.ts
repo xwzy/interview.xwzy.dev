@@ -8,4 +8,10 @@ export const LS_KEYS = {
   theme: 'interview.theme',
   auth: 'interview.auth.v1',
   quizTopics: 'interview.quiz-topics.v1',
+  quizResume: 'interview.quiz-resume.v1',
+} as const
+
+/** sessionStorage 键（出题现场快照等会话级数据），与 LS_KEYS 分开管理 */
+export const SS_KEYS = {
+  preloadReloadAt: 'interview-preload-reload-at',
 } as const

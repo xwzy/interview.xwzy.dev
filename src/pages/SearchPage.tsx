@@ -8,6 +8,9 @@ import { difficultyMeta, type IndexedQuestion } from '../types'
 /** 输入提交到 URL 的防抖间隔：过滤 656 题全文 + 排序是重操作，不该每个按键跑一次 */
 const INPUT_DEBOUNCE_MS = 250
 
+/** 结果分页步长：模糊关键词（如「缓存」）可能命中上百条，硬截断会让第 51 条起不可达 */
+const PAGE_SIZE = 50
+
 function matchRank(item: IndexedQuestion, kw: string): number {
   if (item.question.title.toLowerCase().includes(kw)) return 0
   if ((item.question.tags ?? []).some((t) => t.toLowerCase().includes(kw))) return 1
@@ -43,6 +46,17 @@ function Highlight({ text, kw }: { text: string; kw: string }) {
 
 /** 真题改编题的统一标签（数据文件中以 tags: ['真题改编', ...] 标注） */
 const EXAM_TAG = '真题改编'
+
+/** 结果摘要：取第一条含关键词的要点，截取以命中位置为中心的窗口——
+    命中在 120 字之后时简单 slice 会展示一段没有高亮的文本，用户会以为结果不匹配 */
+function pickSnippet(points: string[], kw: string): string | undefined {
+  const raw = points.find((p) => p.toLowerCase().includes(kw))
+  if (raw === undefined) return undefined
+  const text = stripMarkdown(raw)
+  const hit = text.toLowerCase().indexOf(kw)
+  if (hit < 0 || hit <= 40) return text.slice(0, 120)
+  return `…${text.slice(hit - 40, hit - 40 + 120)}`
+}
 
 export default function SearchPage() {
   const { questionIndex } = useBank()
@@ -88,6 +102,12 @@ export default function SearchPage() {
     }
     return list
   }, [questionIndex, q, favOnly, examOnly, favorites])
+
+  // 查询条件变化时重置分页
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE)
+  }, [q, favOnly, examOnly])
 
   const toggleFav = () => {
     const next: Record<string, string> = {}
@@ -178,13 +198,14 @@ export default function SearchPage() {
         </div>
       ) : (
         <>
-          <p className="text-xs text-slate-400 dark:text-slate-500">
-            共 {results.length} 条结果{results.length > 50 ? '，仅显示前 50 条' : ''}
+          <p aria-live="polite" className="text-xs text-slate-400 dark:text-slate-500">
+            共 {results.length} 条结果
+            {results.length > visibleCount && `，已显示前 ${visibleCount} 条`}
           </p>
           <ul className="space-y-3">
-            {results.slice(0, 50).map((item) => {
+            {results.slice(0, visibleCount).map((item) => {
               const kw = keyword.toLowerCase()
-              const snippetPoint = item.question.points.find((p) => p.toLowerCase().includes(kw))
+              const snippetPoint = pickSnippet(item.question.points, kw)
               const meta = difficultyMeta[item.question.difficulty]
               return (
                 <li key={item.question.id}>
@@ -205,8 +226,7 @@ export default function SearchPage() {
                     </h3>
                     {snippetPoint && (
                       <p className="mt-1 line-clamp-2 text-sm text-slate-500 dark:text-slate-400">
-                        <Highlight text={stripMarkdown(snippetPoint).slice(0, 120)} kw={keyword} />
-                        …
+                        <Highlight text={snippetPoint} kw={keyword} />
                       </p>
                     )}
                   </Link>
@@ -214,6 +234,15 @@ export default function SearchPage() {
               )
             })}
           </ul>
+          {results.length > visibleCount && (
+            <button
+              type="button"
+              onClick={() => setVisibleCount((n) => n + PAGE_SIZE)}
+              className="w-full rounded-xl border border-slate-200 py-2.5 text-sm font-medium text-slate-500 transition-colors hover:border-blue-300 hover:text-blue-600 dark:border-white/10 dark:text-slate-400 dark:hover:border-blue-500/40 dark:hover:text-blue-400"
+            >
+              显示更多（还有 {results.length - visibleCount} 条）
+            </button>
+          )}
         </>
       )}
     </div>

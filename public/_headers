@@ -8,3 +8,9 @@
   X-Content-Type-Options: nosniff
   Referrer-Policy: no-referrer
   Permissions-Policy: camera=(), microphone=(), geolocation=()
+
+# 带内容 hash 的构建产物：一年 immutable 长缓存（内容变化即换文件名）。
+# 与 SW 的缓存优先策略互补：SW 的 Cache Storage 不受 HTTP 头影响，
+# 这里的长缓存只作用于 SW 未覆盖的场景（首次加载、SW 未注册的浏览器）
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
