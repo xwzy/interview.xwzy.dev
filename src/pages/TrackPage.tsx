@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { Link, useParams } from 'react-router'
 import { useBankMeta } from '../context/BankContext'
 import { useMasteryState } from '../context/MasteryContext'
@@ -11,6 +12,10 @@ export default function TrackPage() {
   const { tracks } = useBankMeta()
   const track = tracks.find((t) => t.id === trackId)
   const mastered = useMasteryState()
+
+  useEffect(() => {
+    if (track) document.title = `${track.name} · 面试宝典`
+  }, [track])
 
   if (!track) return <NotFoundPage />
 
@@ -46,14 +51,14 @@ export default function TrackPage() {
               {track.description}
             </p>
           </div>
-          <div className="w-full max-w-56">
+          <div className="w-full max-w-56 max-sm:max-w-full">
             <div className="mb-1 flex justify-between text-xs text-slate-500 dark:text-slate-400">
               <span>
                 总进度 {done}/{allQuestions.length}
               </span>
               <span className="font-medium">{Math.round(pct)}%</span>
             </div>
-            <ProgressBar value={pct} barClass={theme.bar} />
+            <ProgressBar value={pct} barClass={theme.bar} label={`${track.name}总进度`} />
           </div>
         </div>
       </header>

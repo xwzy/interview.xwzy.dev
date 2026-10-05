@@ -44,6 +44,12 @@ export default function TopicPage() {
   const track = tracks.find((t) => t.id === trackId)
   const topic = track?.topics.find((t) => t.id === topicId)
 
+  // 领域页路由标题：浏览器标签页/读屏窗口列表可辨认（Layout 的 RouteTitle 先设默认值，
+  // 本 effect 后执行故最终以此为准）
+  useEffect(() => {
+    if (track && topic) document.title = `${topic.name} · ${track.name} · 面试宝典`
+  }, [track, topic])
+
   const [keyword, setKeyword] = useState('')
   const [diff, setDiff] = useState<DiffFilter>('all')
   const [status, setStatus] = useState<StatusFilter>('all')
@@ -194,7 +200,7 @@ export default function TopicPage() {
               </p>
             )}
           </div>
-          <div className="w-full max-w-56">
+          <div className="w-full max-w-56 max-sm:max-w-full">
             <div className="mb-1 flex justify-between text-xs text-slate-500 dark:text-slate-400">
               <span>
                 已掌握 {done}/{topic.questions.length}
