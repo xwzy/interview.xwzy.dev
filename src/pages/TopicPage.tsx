@@ -3,7 +3,7 @@ import { Link, useLocation, useParams } from 'react-router'
 import { useBank, useCustomQuestions } from '../context/BankContext'
 import { useMasteryState } from '../context/MasteryContext'
 import { useFavoritesState } from '../context/FavoritesContext'
-import { countMastered, trackThemes } from '../lib/utils'
+import { countMastered, prefersReducedMotion, trackThemes } from '../lib/utils'
 import { generateId } from '../lib/summary'
 import { type CustomQuestion, type Difficulty } from '../types'
 import ProgressBar from '../components/ProgressBar'
@@ -84,7 +84,7 @@ export default function TopicPage() {
     const id = location.hash.slice(1)
     const timer = setTimeout(() => {
       // 尊重系统"减少动态效果"偏好（CSS 的 media query 管不到 JS 驱动的滚动）
-      const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      const reduced = prefersReducedMotion()
       document.getElementById(id)?.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' })
     }, 120)
     return () => clearTimeout(timer)
@@ -106,7 +106,7 @@ export default function TopicPage() {
       })
       window.scrollTo({
         top: 120,
-        behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+        behavior: prefersReducedMotion() ? 'auto' : 'smooth',
       })
     },
     [getCustom],

@@ -45,6 +45,16 @@ export function isLowBandwidth(): boolean {
   return Boolean(conn.saveData) || conn.effectiveType === 'slow-2g' || conn.effectiveType === '2g'
 }
 
+/** 系统"减少动态效果"偏好：JS 驱动的滚动/动画应据此降级（CSS 媒体查询覆盖不到的路径）。
+ *  matchMedia 用可选链调用——jsdom 等测试环境未实现时安全回退为 false */
+export function prefersReducedMotion(): boolean {
+  try {
+    return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
+  } catch {
+    return false
+  }
+}
+
 export interface TrackTheme {
   /** 图标底色 */
   iconBox: string
