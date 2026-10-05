@@ -231,7 +231,7 @@ export const frontendTrack: Track = {
             '**容器查询（@container）**：媒体查询问"**视口**多宽"，容器查询问"**父容器**多宽"——同一张卡片在侧边栏窄容器、主栏宽容器里**按自己的空间自适应**，组件真正封装了响应式（不用父组件告诉它上下文）；用法：父元素 `container-type: inline-size` + 子元素 `@container (min-width: 400px)`——设计系统的卡片/小部件是最大受益者。',
             '**View Transitions API（页面动效的新范式）**：`document.startViewTransition(callback)` ——浏览器自动**截取新旧状态快照**做过渡动画（默认 cross-fade），可用 `::view-transition-old/new` 伪元素自定义；**同文档版**（SPA 状态切换：列表→详情的共享元素动画）与**跨文档版**（MPA 多页面导航，CSS 声明式）——以前要 FLIP 手写测量/反转/播放的"元素从列表飞到详情页"，现在是声明式几行；**注意它是增强不是依赖**（不支持的浏览器直接跳变，功能无损）。',
             '**:has() 父选择器**：`form:has(input.invalid)` 按子状态改父样式——CSS 苦等 20 年的"父选择器"；实战场景：表单错误状态高亮整块、`label:has(:checked)` 自定义单选、卡片 hover 联动兄弟区域；配合 **CSS 嵌套**（原生 `&` 选择器，postcss-nesting 时代结束）把 BEM 的长选择器折叠——**很多 JS 状态同步样式的代码可以直接删掉**（状态本来在 DOM 里，CSS 现在够得着了）。',
-            '**怎么决策"能不能用"——Baseline 思维**：不再背"哪些浏览器支持"，用 **Baseline 标准**（web platform 特性按 Widely Available（两大引擎 30 个月+）/ Newly Available 分级）+ `@supports` 做能力检测渐进增强；工程纪律：**新特性先用在"增强层"**（动画、锦上添花的布局），核心布局与信息可用性不依赖它——降级路径先想好再用。',
+            '**怎么决策"能不能用"——Baseline 思维**：不再背"哪些浏览器支持"，用 **Baseline 标准**（web platform 特性按 Widely Available（Chrome/Edge/Firefox/Safari 四大浏览器连续 30 个月+）/ Newly Available 分级）+ `@supports` 做能力检测渐进增强；工程纪律：**新特性先用在"增强层"**（动画、锦上添花的布局），核心布局与信息可用性不依赖它——降级路径先想好再用。',
             '收束口径：这一波 CSS 能力的共同主题是"**把原来必须 JS 做的事还给 CSS**"（共享元素动画、按容器自适应、按内容状态选样式）——更少 JS、更少 hydration、浏览器层优化；面试里能各给一个真实使用场景（而不是罗列特性名）就是用过的人。',
           ],
           followUps: [
@@ -734,7 +734,7 @@ export const frontendTrack: Track = {
               question: 'WeakMap 的键为什么必须是对象？弱引用体现在哪？',
               points: [
                 '弱引用指**键到对象的引用不计入 GC 可达性**：外部引用消失后，键对象连同对应值一起被回收，WeakMap 不会阻止回收。',
-                '键必须是对象，因为回收粒度是对象——原始值没有对象身份，引擎无法感知"外部引用消失"，也无法提供遍历接口让你手动清理。',
+                '键必须是**对象（ES2023 起非注册 Symbol 也可以）**，因为弱持有依赖"对象身份"——number/string 等真原始值没有身份，引擎无法感知"外部引用消失"，也无法提供遍历接口让你手动清理。',
                 '因此 WeakMap 适合**随对象存亡的附加元数据**：DOM 节点的私有数据、组件实例级缓存。',
               ],
             },
@@ -859,7 +859,7 @@ export const frontendTrack: Track = {
           points: [
             '**interface 只能描述对象形状**（对象/函数/类），支持 **declaration merging**（同名声明自动合并，是给第三方库"打补丁"的正规方式）；**type 是类型别名**，可以是联合、交叉、原始值、元组、条件类型等任意类型。',
             'interface 用 **extends** 继承，属性类型冲突直接报错；type 用 **& 交叉**，冲突属性会被推断成 never 而不是报错，更隐蔽。',
-            '两者都能被 class implements；但 type 无法参与声明合并，也无法表达联合类型。',
+            '两者都能被 class implements；分工上 type 无法参与**声明合并**，interface 无法表达**联合/原始/元组类型**等非对象形状。',
             '社区惯例：**公共 API 与对象结构用 interface**，**工具类型、联合类型、条件类型用 type**。',
             '团队保持统一即可，关键是不要在同一概念上混用两种风格导致维护困惑。',
           ],
@@ -1473,7 +1473,7 @@ export const frontendTrack: Track = {
           points: [
             'Hook 状态存放在 **Fiber 节点的 memoizedState 链表**上，每个 Hook 按调用顺序占一个节点；**调用顺序即索引**——条件/循环/提前 return 会改变顺序，导致读到别的 Hook 的状态，这就是"只在顶层调用"的原因。',
             'useState 的更新：setter 生成 update 对象进入**更新队列**并调度重渲染；渲染时按队列依次套用到基础值上得出最终 state（函数式更新的实现基础）。',
-            'useEffect 在**提交阶段之后**比较 deps（浅比较），变化才把 effect 挂入副作用链；cleanup 与 effect 成对存放在 fiber 上，按序执行。',
+            'deps 的**浅比较发生在 render 阶段**（ReactFiberHooks 的 updateEffectImpl 中，比较结果决定是否把 effect 挂入副作用链）；effect 本身在 **commit 完成后**异步执行；cleanup 与 effect 成对存放在 fiber 上，按序执行。',
             '闭包陷阱的根源：**每次渲染都是独立快照**（新 props/state/函数），effect 闭包捕获的是当次渲染的变量——"过期闭包"的本质。',
             '自定义 Hook 只是复用"调用序列"，状态并不共享：每次调用在各自 Fiber 上独立建链，这是 Hooks 能自由组合而互不干扰的原因。',
           ],
@@ -1721,7 +1721,7 @@ export const frontendTrack: Track = {
           difficulty: 'intermediate',
           tags: ['Vue', 'nextTick', '异步更新'],
           points: [
-            'Vue 的更新是**异步批量**的：同一 tick 内多次修改状态，effect 去重后**只渲染一次**，渲染 flush 被推进**微任务队列**（Promise.then，降级 setTimeout）。',
+            'Vue 的更新是**异步批量**的：同一 tick 内多次修改状态，effect 去重后**只渲染一次**，渲染 flush 被推进**微任务队列**（Vue 3 纯用 `Promise.resolve().then`——放弃 IE11 后没有降级链）。',
             '修改数据后立即读 DOM 读到的是**旧 DOM**；`await nextTick()` 把回调排到渲染 flush **之后**，此时拿到最新 DOM。',
             '价值：批量去重避免了"一次交互 N 次状态变更 → N 次重渲染"；nextTick 是暴露给用户的"渲染后钩子"。',
             '典型场景：更新列表后滚动到底部、操作刚渲染的 DOM、测试中断言渲染结果。',
@@ -1738,7 +1738,7 @@ export const frontendTrack: Track = {
             {
               question: '为什么 Vue3 的 nextTick 基于 Promise？如果同步执行渲染会怎样？',
               points: [
-                '微任务保证"**当前同步代码全部执行完再渲染**"：同一 tick 的多次修改合并、用户代码能在渲染前完成准备；实现按 Promise.then → MutationObserver → setTimeout 降级。',
+                '微任务保证"**当前同步代码全部执行完再渲染**"：同一 tick 的多次修改合并、用户代码能在渲染前完成准备；Vue 3 的 nextTick/调度纯基于 `Promise.resolve().then`（Promise.then → MutationObserver → setTimeout 的降级链是 Vue 2 兼容 IE 的历史实现）。',
                 '若同步渲染：一次交互 N 次修改就是 N 次全量 diff + DOM 更新，且"先读后写"的中间状态会被渲染出来——性能与正确性双输。',
               ],
             },
@@ -2271,7 +2271,7 @@ export const frontendTrack: Track = {
               question: '后台标签页里 setTimeout 为什么不准？bfcache 是什么？',
               points: [
                 '省电策略：后台标签页定时器被**节流到最低 1 次/秒**，被冻结的页面 5 分钟后更低；前台链式 setTimeout（嵌套超过 5 层）也有 4ms 下限——倒计时不要依赖 setInterval 的精度。',
-                '**bfcache（往返缓存）**：前进后退直接恢复整页内存快照，秒开且保留 JS 状态；页面需监听 pageshow（persisted 判断）与 pagehide 释放资源，写在 unload 里的逻辑在 bfcache 下不执行。',
+                '**bfcache（往返缓存）**：前进后退直接恢复整页内存快照，秒开且保留 JS 状态；页面需监听 pageshow（persisted 判断）与 pagehide 做清理——**注册了 unload 处理器的页面会被浏览器排除出 bfcache**（后退直接整页重载），且 unload 在移动端触发不可靠，清理逻辑应写在 pagehide。',
               ],
             },
           ],

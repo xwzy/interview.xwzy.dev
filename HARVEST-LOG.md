@@ -30,6 +30,7 @@
 | 17 | 二期·ai-cv 第三批（NeRF/MVS/单目深度） | ai.ts ai-cv | 5 | 5 条（含新题内） | ✅ 已完成 | 见 git log |
 | 18 | 二期·qa 存量增强（软工试卷剩余语料） | qa.ts | 0 | 6 条 | ✅ 已完成 | 见 git log |
 | 19 | 二期·第二轮事实审查（批 16~18 新增内容） | ai.ts + qa.ts + backend.ts | 0 | 修复 4 处 | ✅ 已完成 | 见 git log |
+| 20 | 三期·核心方向第二轮事实审查（backend/frontend 全量） | backend.ts + frontend.ts | 0 | 修复 10 处 | ✅ 已完成 | 见 git log |
 
 题库总量：656（起点）→ **770**（当前）。真题改编题统一打 `tags: ['真题改编']`，可全局搜索筛选。
 二期方案见 `docs/quiz-expansion-plan-v2.md`（批号自 11 起续编）。
@@ -245,3 +246,23 @@ RANSAC 最小采样、K 公式、F 数算例、论文年份等均无误）；B �
 
 **通过确认**：216 等价类内部一致、NextDate 算例、ReadView 判定、直方图 1000 桶、8×ncores arena、
 sigsuspend 竞态、适配策略与边界标记等复核无误。
+
+## 批 20 · 三期·核心方向第二轮事实审查 ✅（对象：backend.ts 131 题 + frontend.ts 145 题 全量）
+
+2 个审查 agent 逐题逐条核对（机制/数字/版本/公式/命令行为），主会话逐条独立裁决后才落改——错误的"修正"比漏报危害大。
+
+**修复 10 处（backend 4 + frontend 6）**：
+- be-mysql-serializability（P1）：多粒度锁相容矩阵写错——**IS 与 IX 是相容的**（意向锁彼此不冲突正是设计目的），S 只与 IS/S 相容；原文"IS 与 IX 冲突"会教出错误矩阵；
+- be-java-string（P2）：字符串常量池位置过时——**JDK 7 起在堆中**（同文件 JVM 内存一问的追问原就写对了，两处自相矛盾），元空间放的是类元数据；
+- be-go-escape：sync.Pool"GC 时清空"过时——Go 1.13 起 **victim 缓存，两次 GC 未复用才丢弃**；
+- be-mysql-crash-recovery：ARIES Redo 跳过条件 LSN < PageLSN → **≤**（等号那条是最后一条已应用记录）；
+- fe-ts-type-vs-interface（P1）：同句自相矛盾笔误——"type 无法表达联合类型"，实际受限的是 **interface**；
+- fe-vue-nexttick（P2）：把 Vue 2 的 MutationObserver→setTimeout 降级链安到 Vue 3 头上——**Vue 3 纯 Promise.resolve().then，无降级**（已对照 runtime-core scheduler 源码）；
+- fe-react-hooks-principle（P2）：useEffect deps 浅比较发生在 **render 阶段**（决定是否挂入副作用链），非"提交阶段之后"；
+- fe-js-gc-memory（P2）：WeakMap 键"必须是对象"过时——**ES2023 起非注册 Symbol 也可**；
+- fe-browser-process-thread（P2）：unload 与 bfcache 因果写反——**注册 unload 会使页面被排除出 bfcache**（web.dev 明确口径），不存在"进了 bfcache 但 unload 不执行"的场景；
+- fe-css-modern：Baseline Widely Available"两大引擎"→ **Chrome/Edge/Firefox/Safari 四大浏览器连续 30 个月**。
+
+**通过确认**：2 个 agent 共列 40+ 条核对无误项（HashMap 树化、CHM 分段、G1 Region、Redis 集群位图、Kafka 幂等、事件循环钳制、Vue3.5 响应式重写、RSC 可序列化集合等），另 12 条存疑项经裁决未达上报标准（如 Shenandoah 用 Brooks 指针而非着色指针的并列表述、fsync always 策略区分等），保持不动——宁缺毋滥。
+
+结论：核心两方向二审后错误密度约 10/276 题 ≈ 3.6%（一轮后为 14/全库），题库事实质量持续收敛。
