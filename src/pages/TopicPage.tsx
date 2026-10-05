@@ -83,7 +83,9 @@ export default function TopicPage() {
     lastScrollSigRef.current = sig
     const id = location.hash.slice(1)
     const timer = setTimeout(() => {
-      document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      // 尊重系统"减少动态效果"偏好（CSS 的 media query 管不到 JS 驱动的滚动）
+      const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      document.getElementById(id)?.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' })
     }, 120)
     return () => clearTimeout(timer)
   }, [location.hash, track, topic, trackId, topicId])
@@ -102,7 +104,10 @@ export default function TopicPage() {
         points: cq.points.join('\n'),
         followUps: cq.followUps.map((f) => f.question).join('\n'),
       })
-      window.scrollTo({ top: 120, behavior: 'smooth' })
+      window.scrollTo({
+        top: 120,
+        behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+      })
     },
     [getCustom],
   )
