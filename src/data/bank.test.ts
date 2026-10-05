@@ -67,6 +67,28 @@ describe('buildBank', () => {
     expect(bank.totalQuestionCount).toBe(1)
   })
 
+  it('自定义题 id 与内置题冲突时确定性重命名，两题都保留（防 questionById 覆盖）', () => {
+    const raw = [makeTrack('demo', [{ id: 'demo-1', title: '题一', difficulty: 'basic', points: ['p'] }])]
+    const bank = buildBank(raw, [{ ...custom, id: 'demo-1' }])
+    expect(bank.totalQuestionCount).toBe(2)
+    // 内置题不被自定义题覆盖
+    expect(bank.questionById.get('demo-1')?.question.title).toBe('题一')
+    // 冲突的自定义题以 custom- 前缀确定性重命名后保留
+    expect(bank.questionById.get('custom-demo-1')?.question.title).toContain('自定义测试题')
+  })
+
+  it('多个自定义题 id 彼此冲突时全部保留且互不覆盖', () => {
+    const raw = [makeTrack('demo', [{ id: 'demo-1', title: '题一', difficulty: 'basic', points: ['p'] }])]
+    const bank = buildBank(raw, [
+      { ...custom, id: 'demo-1', title: '冲突甲' },
+      { ...custom, id: 'demo-1', title: '冲突乙' },
+    ])
+    expect(bank.questionById.size).toBe(3)
+    const titles = [...bank.questionById.values()].map((r) => r.question.title)
+    expect(titles).toContain('冲突甲')
+    expect(titles).toContain('冲突乙')
+  })
+
   it('领域内题目按 基础→进阶→高级 归一化排序，字符串追问被归一化', () => {
     const raw = [
       makeTrack('demo', [
