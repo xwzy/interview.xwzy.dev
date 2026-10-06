@@ -411,3 +411,16 @@ sigsuspend 竞态、适配策略与边界标记等复核无误。
 **通过确认**：av 的 10 组数值独立复算全部正确（CD 1411.2kbps、746.5Mbps/186:1、B 帧 33~66ms、YUV 全零呈绿的 RGB 换算等）；embedded 零问题（heap_3"临时挂起调度器"经 FreeRTOS 官方源码逐字核实、NVIC 12/6 周期与压栈 8 寄存器、低功耗算例复算成立、五组跨题口径一致）；security 的 9 个版本敏感点全部与权威来源一致（safe-linking 2.32/tcache key 2.29、AFL 0.21b 2013-11-12、fastjson safeMode 1.2.68、OAuth 2.1 v16 等）；game 其余 14 题通过（第一轮 nc 参数修复复核无误）。另有多条"存疑不报"按宁缺毋滥纪律保持原状（x265 单核算力口径、HLS 18~30s 简写、"量化为唯一有损入口"的教学简化等）。
 
 **结论**：第二轮错误密度 6/79 ≈ 7.6%（低于老方向二轮的量级且以精度问题为主、无机制性硬伤），两个新方向经两轮审查达零问题。四期全部 100 题至此完成两轮事实审查，与存量方向的质检标准拉齐。
+
+## 批 30 · 四期·增厚题第二轮事实审查 ✅（对象：批 26~27 的 20 道增厚题——四期增量全面达到"两轮"标准）
+
+**做法**：2 个审查 agent 并行，重点独立复算、与同文件既有题交叉一致性核对，版本敏感处对照一手来源（OkHttp 4.12.0 RealCall.kt 源码、Hadoop 3.3.6 mapred-default.xml、systemd.unit(5)、K8s NetworkPolicy/HPA 官方文档）。
+
+**修复 4 处（bd 零问题；mo 1 处机制性错误 + ops 2 处精度 + 1 处合并）**：
+- mo-android-okhttp（机制性错误，源码级确认）：网络拦截器位置写成"Connect 之前"——实际在 **Connect 之后、CallServer 之前**（RealCall.kt 的拦截器顺序为 interceptors → RetryAndFollowUp → Bridge → Cache → Connect → networkInterceptors → CallServer），正文与 followUp 各改一处。这是"网络拦截器拿得到 Connection 吗"的面试高频陷阱，原表述会直接教错；
+- ops-linux-systemd（语义精度）：`Requires=` 的"对方启动失败我也不启动"需**配合 After= 才在启动事务生效**，对方被显式停止/重启才无条件连带；运行中崩溃不连带停止（那是 BindsTo=）——对照 systemd.unit(5) 补限定；
+- ops-k8s-cni（语义精度）：NetworkPolicy 白名单为**按方向独立生效**（ingress/egress 各自声明、policyTypes 决定），原"进出流量全部拒绝"过宽——对照 kubernetes.io 官方文档修正。
+
+**通过确认**：bd 6 题零问题（首轮两处修复无残留旧口径，与既有 bd-spark-skew/bd-cdc-sync 交叉一致）；YARN/Hive/Spark/Iceberg 参数名与默认值全部对照默认配置文件核实（mapreduce.map.maxattempts=4、mapjoin.smalltable.filesize=25000000 字节）；mobile 其余 5 题与既有 memory-leak/arc/gcd/performance 交叉一致；HPA 全部数值与官方文档逐条一致、preStop/SIGTERM 链路与 ops-linux-process-signal 口径一致；qa 4 题与 platform/jmeter/bug-lifecycle 互补不重复。另有 2 条边缘观察（YARN 容器超时的两机制合写、快照失效场景的云盘语境）按宁缺毋滥纪律不列错。
+
+**结论**：第二轮错误密度 4/20 = 20%（其中 1 处机制性、3 处措辞精度——20 题的小样本 + 二轮深挖符合预期），至此**四期全部增量（批 23~27 的 100 题）均完成两轮事实审查**，全站 870 题的质检标准完全拉齐。四期工作全面收官。

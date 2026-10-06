@@ -291,7 +291,7 @@ export const opsTrack: Track = {
           tags: ['systemd', 'Linux', '服务管理'],
           points: [
             '**unit 是统一抽象**：systemd 把一切管理对象都做成 unit——**service**（服务）、**timer**（定时，替代 crontab）、**socket**（套接字激活）、mount/path 等；一个 service unit 的核心字段：`ExecStart`（启动命令）、`Restart=on-failure`（失败自动拉起）、`User`（运行身份——**服务别用 root 跑**的基本手段）。',
-            '**依赖三兄弟要分清**：`After=` 只表示**启动顺序**（等它先起，它挂了不关我事）；`Requires=` **强依赖**（对方启动失败我也不启动）；`Wants=` **弱依赖**（尽量一起起，失败了不影响我）——最常见的坑是把"只是想排个顺序"写成了 Requires，被依赖服务一挂自己也跟着下线。',
+            '**依赖三兄弟要分清**：`After=` 只表示**启动顺序**（等它先起，它挂了不关我事）；`Requires=` **强依赖**（对方启动失败我也不启动——需配合 After= 才在启动事务生效；对方被显式停止/重启时无条件连带）；`Wants=` **弱依赖**（尽量一起起，失败了不影响我）——最常见的坑是把"只是想排个顺序"写成了 Requires（注意：对方运行中崩溃并不连带停止自己，那是 BindsTo= 的语义）。',
             '**日志进 journald**：`journalctl -u nginx -f` 按单元实时看、`--since "1 hour ago"` 按时间过滤；默认可能不持久化（重启丢失），`Storage=persistent` 落盘；标准输出/错误重定向到 journald 后**不再需要自己管日志文件轮转**（与 ops 日志体系题衔接：journald 常再转发给集中式日志）。',
             '**运维实操高频**：`systemctl status` 看状态与最近日志、`daemon-reload`（改了 unit 文件必须 reload 再 restart）、`enable`（开机自启，与 start 的区别）、失败排查三板斧（status 看退出码 → journalctl 看报错 → 检查配置语法 `systemd-analyze verify`）。',
           ],
@@ -642,7 +642,7 @@ export const opsTrack: Track = {
           points: [
             '**K8s 的网络模型三条约定**：每个 **Pod 一个独立 IP**（容器组内共享网络栈，localhost 互通）；**Pod 间不经 NAT 直接互访**（同节点跨节点都是扁平网络——与 Docker 默认 bridge+NAT 模式的本质区别，这让 Pod 可以像主机一样被寻址）；Node 与 Pod 间也可直通。"谁来把网线插好"就是 **CNI（容器网络接口）插件**的职责。',
             '**CNI 的两大技术路线**：**Overlay**（跨节点流量封装在隧道里——Flannel 的 VXLAN、Calico 的 IPIP 模式：不依赖底层网络、部署简单，代价是封装开销与 MTU 损耗、排障多一层）；**路由**（Calico BGP 模式：把 Pod 路由广播到底层网络三层直达——性能好、无封装，但要求网络设备配合学习路由）。选型看底层网络的话语权：自有机房能动交换机走路由，云上受控网络多用 overlay。',
-            '**NetworkPolicy 是网络层的"防火墙规则"**：K8s 默认**全互通**，一旦某 Pod 被任意 NetworkPolicy 选中，它就进入**白名单模式**（未被允许的进出流量全部拒绝——这个"选一个即全局收紧"的语义是最常见的理解坑）；规则按 **label 选择器 + 端口/方向（ingress/egress）** 定义，天然支持"只允许 frontend 访问 backend:8080"这类微服务隔离。',
+            '**NetworkPolicy 是网络层的"防火墙规则"**：K8s 默认**全互通**，一旦某 Pod 被任意 NetworkPolicy 选中，它就进入**白名单模式**（该策略所声明方向上未被允许的流量全部拒绝，ingress/egress 按各自声明独立生效——这个"选一个即收紧"的语义是最常见的理解坑）；规则按 **label 选择器 + 端口/方向（ingress/egress）** 定义，天然支持"只允许 frontend 访问 backend:8080"这类微服务隔离。',
             '**关键坑：NetworkPolicy 需要 CNI 支持才生效**——Flannel 本体不实现策略，装了 Flannel 写了 Policy 也不起作用（要用 Calico/Cilium 等带策略实现的插件）；排障时"策略写了但不生效"先查插件能力，再看方向（ingress/egress 是双向各自定义）与命名空间边界（跨 ns 要用 namespaceSelector）。',
           ],
           followUps: [
