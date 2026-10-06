@@ -395,3 +395,19 @@ sigsuspend 竞态、适配策略与边界标记等复核无误。
 - ops-linux-systemd（笔误）：`systemctl status/status` → `systemctl status`。
 
 **通过确认**：qa/ops 8 题概念口径全部对照官方文档核实无误（Pact CDC 流程、systemd 依赖三语义、NetworkPolicy"选中即白名单"、HPA 期望副本数公式、preStop 先于 SIGTERM 的顺序、PITR/3-2-1/快照与备份的故障域差异）；bd/mo 其余 10 题无误（统一内存 0.6/0.5/300MB、AQE 三大招、Iceberg field ID、Glide 三级缓存、ViewModel 经 NonConfigurationInstances 存活、AutoreleasePoolPage 4KB 页与哨兵、Watchdog/Jetsam 抓不到信号等）。至此批 26~27 的 20 道新题完成一轮事实审查，四期全部增量（批 23~27 的 100 题）均已过审。
+
+## 批 29 · 四期·新方向第二轮事实审查 ✅（对象：四个新方向 79 题全量——对齐批 20~22 确立的"每方向至少两轮"标准）
+
+**做法**：4 个审查 agent 并行，审查重心区别于第一轮：独立复算数值算例（不采信文本自洽）、跨题口径一致性、第一轮修复的复查、面试场景误导性表述。版本敏感处全部对照一手来源（ITU-R BT.1359-1 官方 PDF、KCP ikcp.c 源码、Unity 2018.4/2019.4 官方文档、FreeRTOS-Kernel heap_3.c 源码、AFL ChangeLog、IETF OAuth 2.1 草案 v16、glibc MallocInternals、fastjson 官方 wiki）。
+
+**修复 6 处（av 1 + game 4 + security 1 排版；embedded 零问题）**：
+- av-basics-sync（第一轮修复的尾巴）：BT.1359 的"约一半观众开始不可接受"是原文不存在的统计——实际口径为 DSIS 五级损伤标度（可接受 ≈3.5 分、可察觉 ≈4.5 分），已对照官方 PDF 改正；
+- gd-server-kcp（机制性误导，源码级确认）：KCP"不阻塞后文"与可靠有序语义矛盾——ikcp_parse_data 按 sn 连续才交付，丢包后应用层队头阻塞依然存在，KCP 的优势是修复快不是消除队头阻塞（正是实时输入走不可靠通道的原因，已改写并点破）；
+- gd-ai-procedural（绝对化断言）：'纯生成的游戏内容至今没有商业成功案例'被《无人深空》等可查证反例击穿——改为"完全交给生成、没有手工骨架的头部商业成功极其罕见，反例也靠多年人工迭代补课"；
+- gd-render-perf（以讹传讹）：合批失效源"不同缩放"——Unity 官方文档仅列**镜像缩放**（transform 含负缩放），一般缩放差异不破坏合批；
+- gd-math-pathfinding（例句不严谨）：曼哈顿距离仅四向网格可采纳，八向网格会高估（dx=dy=10 时 20 > ≈14.14）——补 octile/欧氏与网格连通性限定；
+- security 排版：清理"（ Immutable Backup"多余空格。
+
+**通过确认**：av 的 10 组数值独立复算全部正确（CD 1411.2kbps、746.5Mbps/186:1、B 帧 33~66ms、YUV 全零呈绿的 RGB 换算等）；embedded 零问题（heap_3"临时挂起调度器"经 FreeRTOS 官方源码逐字核实、NVIC 12/6 周期与压栈 8 寄存器、低功耗算例复算成立、五组跨题口径一致）；security 的 9 个版本敏感点全部与权威来源一致（safe-linking 2.32/tcache key 2.29、AFL 0.21b 2013-11-12、fastjson safeMode 1.2.68、OAuth 2.1 v16 等）；game 其余 14 题通过（第一轮 nc 参数修复复核无误）。另有多条"存疑不报"按宁缺毋滥纪律保持原状（x265 单核算力口径、HLS 18~30s 简写、"量化为唯一有损入口"的教学简化等）。
+
+**结论**：第二轮错误密度 6/79 ≈ 7.6%（低于老方向二轮的量级且以精度问题为主、无机制性硬伤），两个新方向经两轮审查达零问题。四期全部 100 题至此完成两轮事实审查，与存量方向的质检标准拉齐。
