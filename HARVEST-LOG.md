@@ -45,6 +45,7 @@
 | 32 | 五期·收尾审查与文档校准 | career.ts + ai-infra.ts + README | 0 | 修复 1 处 | ✅ 已完成 | 见 git log |
 | 33 | 五期·追问覆盖补齐（frontend 最后 11 题无追问） | frontend.ts | 0 | 11 条 | ✅ 已完成 | 见 git log |
 | 34 | 五期·批 33 追问审查（frontend.ts） | frontend.ts | 0 | 修复 1 处 | ✅ 已完成 | 见 git log |
+| 35 | 五期·批 31 两题二审 + 生产端到端验收 | ai-infra.ts | 0 | 修复 3 处 | ✅ 已完成 | 见 git log |
 | 32 | 五期·收尾审查与文档校准 | career.ts + ai-infra.ts + README | 0 | 修复 1 处 | ✅ 已完成 | 见 git log |
 
 题库总量：656（起点）→ **872**（当前，追问覆盖率 100%）。真题改编题统一打 `tags: ['真题改编']`，可全局搜索筛选。
@@ -467,3 +468,14 @@ sigsuspend 竞态、适配策略与边界标记等复核无误。
 **通过确认**：其余 10 条追问零事实错误（ARIA 第一规则、EAA 2025-06-28 适用日、Vue 2/3 优先级反转、eslint-config-prettier 职责、HTTP/2 使雪碧图退役等均对照官方文档/EUR-Lex 原文核实）；3 条边缘小注（隐式 role 的嵌套限定、自动批处理不减击键渲染、生命周期内调 composable 的前提）按纪律不列错。
 
 **结论**：批 33 的增量过审，追问覆盖率 100% 的质量与既有内容拉齐。全站 872 题 + 1342 步追问全部至少两轮审查。
+
+## 批 35 · 五期·批 31 两题二审 + 生产端到端验收 ✅
+
+**审查**：infra-serve-offline-batch / infra-serve-constrained-output 补第二轮。修复 3 处低严重度打磨项：
+- offline-batch：'严格位级可复现不可得'过绝对——Thinking Machines《Defeating Nondeterminism in LLM Inference》（2025-09）的 batch-invariant kernel 已实现位级一致（约 20% matmul 开销），改为'主流引擎默认不可得，需专门实现'；
+- constrained-output：补区分两类开销的落点——语法编译是一次性成本（冷缓存首请求的 TTFT，xgrammar 论文以编译加速两个数量级为卖点），逐 token 掩码查询才影响每步吞吐；
+- offline-batch：竞价断点续跑补前提——落盘节奏须跟上 30 秒~2 分钟的回收通知窗口，在途条目靠幂等兜底。
+
+**通过确认**：批 31 两处润色复核无误；跨文件五个引用（调度题/CI for models/解码参数题/agent-runtime/scene-slo）全部真实且范围吻合。
+
+**生产端到端验收（真实站点 + 浏览器）**：首页（门禁通过、19 方向、872 题渲染）→ 新方向题目页（/tracks/av/av-basics 四题与进度条正常）→ 搜索命中新题（'约束解码'）→ 出题全流程冒烟（候选人填写、组卷、计时、要点展开、评分标记、切题、备注框、结束二次确认防误触、草稿可恢复提示）全部正常，测试产生的本地状态已清理。生产与 main 一致。
