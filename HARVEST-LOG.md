@@ -33,8 +33,14 @@
 | 20 | 三期·核心方向第二轮事实审查（backend/frontend 全量） | backend.ts + frontend.ts | 0 | 修复 10 处 | ✅ 已完成 | 见 git log |
 | 21 | 三期·核心方向第二轮事实审查（network/os/cs-fundamentals 全量） | network.ts + os.ts + cs-fundamentals.ts | 0 | 修复 11 处 | ✅ 已完成 | 见 git log |
 | 22 | 三期·剩余方向第二轮事实审查（system-design/co/ca/mobile/big-data/ops/career 全量） | 7 个数据文件 | 0 | 修复 11 处 | ✅ 已完成 | 见 git log |
+| 23 | 四期·新方向开荒（音视频开发 / 嵌入式与物联网） | audio-video.ts + embedded.ts（新建） | 42 | 78 条（含新题内） | ✅ 已完成 | 见 git log |
+| 24 | 四期·新方向开荒（游戏开发 / 信息安全） | game.ts + security.ts（新建） | 37 | 37 条（含新题内） | ✅ 已完成 | 见 git log |
+| 25 | 四期·新方向事实审查 + career 衔接题 | 四个新数据文件全量 + career.ts | 1 | 修复 8 处 | ✅ 已完成 | 见 git log |
+| 26 | 四期·存量增厚（大数据 +6 / 移动端 +6） | big-data.ts + mobile.ts | 12 | 13 条（含新题内） | ✅ 已完成 | 见 git log |
+| 27 | 四期·存量增厚（qa +4 / ops +4） | qa.ts + ops.ts | 8 | 8 条（含新题内） | ✅ 已完成 | 见 git log |
+| 28 | 四期·批 26~27 新题事实审查 | big-data/mobile/qa/ops 四文件新题 | 0 | 修复 3 处 | ✅ 已完成 | 见 git log |
 
-题库总量：656（起点）→ **770**（当前）。真题改编题统一打 `tags: ['真题改编']`，可全局搜索筛选。
+题库总量：656（起点）→ **870**（当前）。真题改编题统一打 `tags: ['真题改编']`，可全局搜索筛选。
 二期方案见 `docs/quiz-expansion-plan-v2.md`（批号自 11 起续编）。
 
 > 批 8 范围说明：原计划的"大数据/移动端/运维各 +3~4"在参考库中无对口语料（无对应课程材料），如实跳过；批 8 聚焦有真实试卷支撑的 qa 方向。
@@ -308,3 +314,84 @@ sigsuspend 竞态、适配策略与边界标记等复核无误。
 **通过确认**：3 个 agent 共列 53 条核对无误项（布隆 12GB 算例、容量估算 QPS、Amdahl/Roofline 正向算例、MESI/MESIF/MOESI、SECDED 72/64、Android ANR 阈值全表、Binder 一次拷贝、KVC 取值序、RN 新架构、HDFS/JournalNode、Spark 宽窄依赖、Flink 2PC、法条 80%/6 个月等），另 25+ 条存疑经裁决保持不动。
 
 **三期二轮审查总账（批 20~22）**：5+7=12 个数据文件、745 题全量完成第二轮事实审查，共修复 32 处（P1×5、P2/数值×22、笔误措辞×5），整体错误密度约 4.3%，无一处机制性硬伤漏网到二轮之后。至此全库 15 个方向均至少完成两轮事实审查。
+
+## 批 23 · 四期·新方向开荒 ✅（来源：无参考库语料，工程经验自建——本批为自写方向题，非 thu-cs-parse 收割）
+
+**背景**：参考库（高校课程试卷）已收割完毕（批 18 结语），且其覆盖以基础学科为主；音视频与嵌入式是两个语料库从未覆盖、但招聘市场体量大的岗位方向，故转为按既有内容约定（口试题 + 要点加粗 + 层层追问 + 跨方向分工注）自建题库。
+
+**新方向 1 · 音视频开发**（`av`，20 题 / 37 追问，6 领域）：av-basics 音视频基础 4（采样量化 PCM/奈奎斯特、YUV 与 4:2:0、分辨率帧率码率关系、音视频同步与主时钟）；av-codec 编解码原理 5（I/P/B 与 GOP、H.264 编码流水线、HEVC/AV1 演进与专利经济学、AAC 感知编码、硬编软编选型与 MediaCodec 坑）；av-streaming 封装与流媒体 4（协议选型延迟谱系、HLS 切片与 LL-HLS、ABR 算法演进、MP4/FLV/TS 封装与 moov）；av-ffmpeg 转码工程 3（流水线与 -c copy、转码成本与架构、端到端延迟预算）；av-player 播放器与 QoE 2（首帧秒开、卡顿归因）；av-audio 实时音频 2（3A 与 AEC、音频故障症状指纹）。
+
+**新方向 2 · 嵌入式与物联网**（`embedded`，22 题 / 41 追问，6 领域）：emb-c 嵌入式 C 与编译 4（volatile 三场景与两不保证、内存布局、启动文件、链接脚本与 map）；emb-mcu MCU 与外设 4（I2C/SPI/UART 选型与坑、DMA 与 UART+IDLE 不定长接收、定时器 PWM/输入捕获、NVIC 两级优先级）；emb-rtos RTOS 与并发 3（调度与裸机取舍、信号量/互斥量/任务通知选型、heap_1~5 与静态化）；emb-linux 嵌入式 Linux 4（initramfs 与根文件系统、BSP 移植流程、字符设备驱动框架、PREEMPT_RT 与双内核）；emb-iot 物联网与低功耗 4（无线选型画像、MQTT QoS、µA 级低功耗、OTA 双分区与回滚）；emb-debug 调试与可靠性 3（看门狗健康位图、HardFault 黑匣子、串口丢包分层排查）。
+
+**跨方向分工（正文注明）**：WebRTC 连接建立/弱网对抗留前端 fe-browser-webrtc（av 题只讲协议选型与音频链）；视频平台架构与成本留系统设计 sd-classic-video（av 讲编码器/播放器内部）；优先级反转与火星探路者留操作系统（embedded 讲 RTOS 原语选型）；DMA 通用机制与零拷贝留组成原理（embedded 讲 MCU 外设工程与 D-Cache 一致性）；中断硬件机制留组成原理、Linux 中断留操作系统（embedded 讲 Cortex-M NVIC 工程写法）；硬件信任根/度量链留体系结构（embedded OTA 题只讲 bootloader 验签与回滚）；Java volatile 留后端（emb-c-volatile 明确注两层语义差异）。
+
+**难度分布**：basic 16 / intermediate 20 / advanced 6（basic 38%，符合"每批 ≥30% basic"约定）；无真题改编 tag（无试卷来源，如实不标）。
+
+**注册与同步**：trackLoaders 在 mobile 后插入两项；content.test 前缀 `av-`/`emb-`、方向数 15→17；gen:meta 重新生成；README（方向列表/题量 812/追问 1270 步/分包 17）与 index.html og:description 同步。
+
+## 批 24 · 四期·新方向开荒 ✅（来源：无参考库语料，工程经验自建——延续批 23 的自建模式）
+
+**背景**：批 23 结语列出的两个候选方向落地。游戏方向与系统设计 sd-classic-game-sync（帧同步/状态同步模型与确定性）、前端 Canvas/WebGL 可视化选型做了分工；安全方向与 qa-security-app（Web 安全测试"怎么测"视角）、network/net-security（密码学算法原理与侧信道）、后端 be-general（JWT/OAuth/零信任原理与选型）、qa-sec-supply-chain（依赖治理体系）逐一分工，正文互相注明。
+
+**新方向 1 · 游戏开发**（`game`，18 题 / 18 追问，6 领域）：gd-engine 引擎与架构 3（引擎分层与固定时间步主循环、GoC vs ECS 与数据导向、热更新双线与 iOS W^X）；gd-render 图形与渲染 4（渲染管线阶段、前向 vs 延迟与移动端 TBDR、PBR 与 Shadow Map、CPU/GPU 瓶颈判定与 DrawCall）；gd-math-physics 游戏数学与物理 3（四元数 vs 欧拉角/矩阵、broad/narrow phase 碰撞检测、A* 与 NavMesh 工程化）；gd-server 游戏服务端与网络 3（KCP 选型、客户端预测与和解 + 延迟补偿、AOI 九宫格 vs 十字链表）；gd-opt 性能与资源 3（帧预算与优化流程、GC 治理与对象池、图集/LOD/剔除边界）；gd-ai 游戏AI与关卡 2（行为树 vs 状态机、程序化生成可控随机）。
+
+**新方向 2 · 信息安全**（`security`，19 题 / 19 追问，5 领域）：sec-web Web 攻击深水区 5（OWASP 风险思维、渗透基本功与授权边界、上传两道防线、SQL 注入利用面与预编译根治、反序列化与 gadget chain）；sec-binary 二进制与逆向 3（逆向方法论、堆利用与 tcache、Fuzzing 覆盖率引导）；sec-auth 认证与协议实现安全 3（JWT 实现坑、OAuth 攻击面走查、密码学工程三坑 CSPRNG/时序比较/密钥管理）；sec-cloud 内网与云安全 3（横向移动路径与防御映射、AD 与 Kerberoasting、容器逃逸与 K8s 攻击面）；sec-sdl 安全建设与响应 5（STRIDE 威胁建模、SDL 卡点、Secret 治理、应急响应先取证再处置、入侵检测规则）。
+
+**难度分布**：game basic 6 / intermediate 10 / advanced 2；security basic 5 / intermediate 10 / advanced 4（合计 basic 11/37 ≈ 30%，符合约定）。无真题改编 tag（无试卷来源，如实不标）。
+
+**注册与同步**：trackLoaders 在 embedded 后插入两项；content.test 前缀 `gd-`/`sec-`、方向数 17→19；gen:meta 重新生成；README（方向列表/题量 849/追问 1307 步/分包 19）与 index.html og:description 同步。攻防内容保持面试知识定位：攻击机制均配防御映射与授权/法律边界提示。
+
+**至此批 23 结语列出的候选方向全部落地，题库覆盖 19 个方向。**
+
+## 批 25 · 四期·新方向事实审查 + career 衔接题 ✅（对象：批 23~24 新建的四个方向全量，79 题）
+
+**做法**：沿用批 20~22 工序——4 个审查 agent 并行逐题逐条核对（机制/数字/版本/公式/协议行为），版本敏感条目（BT.1359、KCP 参数、safe-linking、PREEMPT_RT 6.12、gMSA、OSS-Fuzz）联网核实，主会话逐条独立裁决后落改。
+
+**修复 8 处（av 3 + game 3 + security 4 中的事实项 + 记号项，embedded 0）**：
+- av-codec-h264-internal（标准硬事实）：H.264 帧内预测写成"4×4 有 9 种方向模式 + DC/平面模式"——实际 **9 种模式 = 8 方向 + DC**，4×4 无 Plane 模式（Plane 属于 16×16 帧内）；
+- av-basics-sync（阈值标签错位）：BT.1359 的 90ms/185ms 是**可接受**边界（约半数观众不可接受），**可感知**阈值是超前 45ms/滞后 125ms——数字真实、归类说反；
+- av-container-mp4（机制说反）：faststart 的括号注释写成"moov 索引不依赖 mdat 位置"——**stco 的 chunk 偏移是文件内绝对偏移**，moov 前移后必须整体重写，这正是需要二次封装的原因；
+- gd-server-kcp（参数归名）：关闭拥塞退让写成"nodelay 模式"——KCP 里是 `ikcp_nodelay` 的第 4 参 **nc**（nodelay 只控 RTO 策略）；顺带把"选择性重传（SACK）"的 SACK 标注去掉（KCP 是逐包 ACK 的选择重传，非 TCP SACK 选项）；
+- gd-engine-hotupdate（笔误）："地址化寻途"→"地址化寻址"；
+- sec-binary-fuzzing（规模过时 + 拼写）：OSS-Fuzz"数百个项目"→**上千个**（2023 年即达约 1000 项目/万级漏洞）；"harnes"→harness；
+- sec-cloud-ad（单位不准）：gMSA"密码 240 字符"→**240 字节随机数据、默认 30 天自动轮换**（Microsoft Learn 口径）；
+- sec-sdl-incident（记号笔误）："TTD/TTD→TTK"→MTTD/MTTR。
+
+**补充 1 处完善**：emb-rtos-memory 的 heap_1~5 谱系补上 **heap_3**（标准 malloc/free 包装、线程安全靠临时挂起调度器）——原列丢单漏了 3。
+
+**审查通过确认**：embedded 全文件零确信错误（12/6 周期、压栈 8 寄存器、0xA5 高水位、heap 语义、9 脉冲恢复、BLE 7.5ms~4s、NB-IoT +20dB、PREEMPT_RT 6.12、initramfs cpio、misc 主设备号 10 等逐一核对无误）；av 的数值算例（CD 1411kbps、1080p30≈745Mbps、186:1、CABAC ~10%）、game 的图形学/同步机制、security 的版本类事实（safe-linking 2.32、AFL 2013、Debian 2008、PKCE RFC 7636、DirtyPipe、6443/2379、IMDSv2）均核对无误。4 个 agent 另列 9 条"存疑但按宁缺毋滥纪律保持不动"的边缘表述（如 No Man's Sky 对"纯生成无商业成功"的反例、Mali 上 blend 的粗化表述等）。
+
+**新题 1**（career.ts，career-project）：career-project-direction-switch——转新方向（音视频/游戏/嵌入式/安全）没对口项目经验的破局路径（存量映射/侧项目证据/求职梯度），2 条追问（转方向动机话术、薪资重定价谈判）。题库总量 849 → **850**，README 与 index.html 同步。
+
+至此批 23~24 新建的 79 题全部完成一轮事实审查，四个新方向的质量与存量方向拉齐。
+
+## 批 26 · 四期·存量增厚 ✅（来源：无参考库语料，工程经验自建——延续批 23 自建模式；对象：批 8 因无语料跳过的 big-data 与 mobile）
+
+**背景**：批 8 曾因参考库无对口语料跳过"大数据/移动端增厚"；两方向题量长期垫底（20/30 题），按批 23 的自建模式补齐。落点选择依据"高频考点 × 现有覆盖空白"，与既有题查重（Spark 倾斜/Flink 五题/ANR/Binder/跨端选型等既有题未动）。
+
+**big-data +6（20 → 26）**：bd-hadoop +2——bd-yarn（YARN 架构/提交流程/Capacity vs Fair 调度器，basic）、bd-hive-slow-sql（Hive 慢 SQL 清单：执行计划/MapJoin/倾斜/向量化/换引擎）；bd-warehouse +1——bd-metadata-lineage（元数据与血缘的地基作用，basic）；bd-spark +2——bd-spark-memory（统一内存划分与 OOM 排查、Storage/Execution 驱逐不对称）、bd-spark-sql-aqe（Catalyst 全流程 + AQE 三大招，advanced）；bd-pipeline +1——bd-schema-evolution（CDC 上游 DDL 的分级演进、Iceberg field ID 解耦位置耦合）。
+
+**mobile +6（30 → 36）**：mo-android +3——mo-android-glide（Bitmap 内存账 + 三级缓存 + 按 View 采样，basic）、mo-android-viewmodel（ViewModel vs SavedStateHandle：配置变更 vs 进程死亡）、mo-android-okhttp（拦截器责任链/连接池/证书锁定与 HTTPDNS）；mo-ios +3——mo-ios-autorelease（pool 页结构与 RunLoop 联动、手动加的两个场景）、mo-ios-swift-value（值/引用语义、COW、POP，basic）、mo-ios-crash（信号捕获/符号化/Watchdog 与 Jetsam 抓不到的崩溃，advanced）。
+
+**难度分布**：basic 4 / intermediate 7 / advanced 1（basic 33%，符合约定）。无真题改编 tag（无试卷来源，如实不标）。
+
+**注册与同步**：gen:meta 重新生成（19 方向 · 862 题）；README 与 index.html 统计同步（862 题/1321 步追问）。至此 19 个方向中最薄弱的两个（big-data/mobile）完成第一轮增厚；下一步可对两方向新题做一轮事实审查（工序同批 25）。
+
+## 批 27 · 四期·存量增厚 ✅（来源：工程经验自建；对象：qa 与 ops——查重后确认两方向覆盖扎实，只补真实空白）
+
+**qa +4（31 → 35）**：qa-basics +1——qa-basics-locate-bug（Bug 前后端归因：抓包分层取证/traceId 下沉/假 Bug 清单，basic）；qa-automation +3——qa-automation-contract（契约测试：Pact CDC 流程/can-i-deploy/与接口自动化和 OpenAPI diff 的分工）、qa-automation-env-data（测试环境三类病与造数/脱敏/数据隔离）、qa-automation-fullchain-perf（全链路压测：影子库/流量染色/挡板/多层防写穿设计，advanced）。
+
+**ops +4（31 → 35）**：ops-linux +2——ops-linux-systemd（unit/After vs Requires vs Wants 语义/journald/timer vs cron）、ops-linux-backup-dr（RPO/RTO、3-2-1、PITR、快照 ≠ 备份，basic）；ops-cicd +2——ops-k8s-cni（网络模型三约定/overlay vs BGP 路由/NetworkPolicy 白名单语义与 Flannel 不支持策略，advanced）、ops-k8s-hpa（伸缩公式/按 CPU 伸缩翻车四因/缩容优雅终止链）。
+
+**难度分布**：basic 3 / intermediate 4 / advanced 1。无真题改编 tag。题库总量 862 → **870**。
+
+## 批 28 · 四期·批 26~27 新题事实审查 ✅（对象：20 题全量）
+
+**做法**：2 个审查 agent 并行逐题核对，版本敏感条目对照一手来源（Spark 源码 SQLConf.scala 的 v3.0.0/v3.2.0 tag、Hadoop yarn-default.xml/mapred-default.xml、K8s 官方 Pod lifecycle 与 HPA 文档），主会话逐条裁决后落改。
+
+**修复 3 处（无机制性错误，1 版本事实 + 1 参数名虚构 + 1 命令笔误）**：
+- bd-spark-sql-aqe（版本事实）：AQE"Spark 3.0 起默认开启"——3.0 只是引入（createWithDefault(false)），**3.2.0 起才默认开启**（源码核实）；
+- bd-yarn（参数名虚构）：`max-app-attempts` 在官方默认配置中不存在——应为 **yarn.resourcemanager.am.max-attempts**（MR 侧 mapreduce.am.max-attempts，均已 grep 默认配置文件确认）；
+- ops-linux-systemd（笔误）：`systemctl status/status` → `systemctl status`。
+
+**通过确认**：qa/ops 8 题概念口径全部对照官方文档核实无误（Pact CDC 流程、systemd 依赖三语义、NetworkPolicy"选中即白名单"、HPA 期望副本数公式、preStop 先于 SIGTERM 的顺序、PITR/3-2-1/快照与备份的故障域差异）；bd/mo 其余 10 题无误（统一内存 0.6/0.5/300MB、AQE 三大招、Iceberg field ID、Glide 三级缓存、ViewModel 经 NonConfigurationInstances 存活、AutoreleasePoolPage 4KB 页与哨兵、Watchdog/Jetsam 抓不到信号等）。至此批 26~27 的 20 道新题完成一轮事实审查，四期全部增量（批 23~27 的 100 题）均已过审。

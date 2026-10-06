@@ -283,6 +283,47 @@ export const opsTrack: Track = {
             },
           ],
         },
+
+        {
+          id: 'ops-linux-systemd',
+          title: 'systemd 是怎么管理服务的？unit、依赖关系、journald 各自怎么用？',
+          difficulty: 'intermediate',
+          tags: ['systemd', 'Linux', '服务管理'],
+          points: [
+            '**unit 是统一抽象**：systemd 把一切管理对象都做成 unit——**service**（服务）、**timer**（定时，替代 crontab）、**socket**（套接字激活）、mount/path 等；一个 service unit 的核心字段：`ExecStart`（启动命令）、`Restart=on-failure`（失败自动拉起）、`User`（运行身份——**服务别用 root 跑**的基本手段）。',
+            '**依赖三兄弟要分清**：`After=` 只表示**启动顺序**（等它先起，它挂了不关我事）；`Requires=` **强依赖**（对方启动失败我也不启动）；`Wants=` **弱依赖**（尽量一起起，失败了不影响我）——最常见的坑是把"只是想排个顺序"写成了 Requires，被依赖服务一挂自己也跟着下线。',
+            '**日志进 journald**：`journalctl -u nginx -f` 按单元实时看、`--since "1 hour ago"` 按时间过滤；默认可能不持久化（重启丢失），`Storage=persistent` 落盘；标准输出/错误重定向到 journald 后**不再需要自己管日志文件轮转**（与 ops 日志体系题衔接：journald 常再转发给集中式日志）。',
+            '**运维实操高频**：`systemctl status` 看状态与最近日志、`daemon-reload`（改了 unit 文件必须 reload 再 restart）、`enable`（开机自启，与 start 的区别）、失败排查三板斧（status 看退出码 → journalctl 看报错 → 检查配置语法 `systemd-analyze verify`）。',
+          ],
+          followUps: [
+            {
+              question: 'systemd timer 相比 crontab 好在哪？什么场景仍会用 cron？',
+              points: [
+                'timer 的优势：**依赖管理**（等服务就绪再跑——cron 只认识钟点）、日志进 journald（cron 的输出只能靠邮件/自己重定向）、防重入（服务单元天然不并发跑两次）、`Persistent=true` 错过的定时任务开机补跑（cron 错过就错过）。cron 仍赢在：**跨机器通用、语法人人会、单机简单脚本不值得写 unit**——系统内置服务编排用 timer，个人脚手架用 cron，按运维成本选。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'ops-linux-backup-dr',
+          title: '备份与容灾的"基本盘"是什么？3-2-1、RTO/RPO 怎么落地？',
+          difficulty: 'basic',
+          tags: ['备份', '容灾', 'RTO/RPO'],
+          points: [
+            '**两个指标先立好**：**RPO**（Recovery Point Objective，能容忍丢多少数据——由**备份频率**决定：每天一备 RPO 最多 24 小时，数据库 binlog 实时备 RPO 趋近 0）；**RTO**（Recovery Time Objective，能容忍多久恢复——由**恢复速度**决定：有没有自动化恢复、能不能直接切备用）。**RPO/RTO 是业务给的约束，不是技术拍脑袋**——先问业务"最多丢多少、停多久"，再倒推方案与成本。',
+            '**3-2-1 原则**：**3 份副本、2 种介质、1 份异地**——防的是"备份和原数据一起死"（同一存储阵列故障、机房级灾难、勒索加密连备份一起锁）。云时代的落地：快照 + 跨区复制 + **对象存储版本化/不可变备份**（WORM，防误删与勒索篡改——与信息安全方向的勒索处置题衔接）。',
+            '**备份的技术分层**：**全量 + 增量/差异**的组合（周全量 + 日增量/小时增量）；数据库要**一致性备份**（备份时正在写入怎么办——物理快照冻结/逻辑备份加锁/基于 binlog 的 PITR 时间点恢复：全量 + binlog 重放到任意时刻，误删表就靠它救）；文件与数据库的备份策略不同，**不能一套 rsync 走天下**。',
+            '**最重要的纪律：恢复演练**——**没演练过的备份等于没有备份**：定期把备份在隔离环境真实恢复一次（验证备份完整性、恢复步骤、耗时是否满足 RTO），演练结果纳入运维指标。大量"有备份却救不回来"的事故，输在从未演练。',
+          ],
+          followUps: [
+            {
+              question: '为什么说"快照 ≠ 备份"？两者的本质差异是什么？',
+              points: [
+                '快照是**同一存储系统内的时点视图**（写时复制，秒级、适合高频恢复点），但它与原数据**共享故障域**：存储阵列坏、误删卷、区域故障、勒索加密——快照跟着一起没。备份是**独立故障域的副本**（另一介质/另一区域/不可变存储）。正确姿势是分层组合：**快照做高频恢复点（小 RPO）+ 异地备份做灾难兜底（大 RTO 边界）**，快照替代不了"1 份异地"。',
+              ],
+            },
+          ],
+        },
       ],
     },
     {
@@ -592,6 +633,47 @@ export const opsTrack: Track = {
           ],
         },
 
+
+        {
+          id: 'ops-k8s-cni',
+          title: 'Pod 之间是怎么通信的？CNI 和 NetworkPolicy 各解决什么问题？',
+          difficulty: 'advanced',
+          tags: ['K8s', 'CNI', '网络策略'],
+          points: [
+            '**K8s 的网络模型三条约定**：每个 **Pod 一个独立 IP**（容器组内共享网络栈，localhost 互通）；**Pod 间不经 NAT 直接互访**（同节点跨节点都是扁平网络——与 Docker 默认 bridge+NAT 模式的本质区别，这让 Pod 可以像主机一样被寻址）；Node 与 Pod 间也可直通。"谁来把网线插好"就是 **CNI（容器网络接口）插件**的职责。',
+            '**CNI 的两大技术路线**：**Overlay**（跨节点流量封装在隧道里——Flannel 的 VXLAN、Calico 的 IPIP 模式：不依赖底层网络、部署简单，代价是封装开销与 MTU 损耗、排障多一层）；**路由**（Calico BGP 模式：把 Pod 路由广播到底层网络三层直达——性能好、无封装，但要求网络设备配合学习路由）。选型看底层网络的话语权：自有机房能动交换机走路由，云上受控网络多用 overlay。',
+            '**NetworkPolicy 是网络层的"防火墙规则"**：K8s 默认**全互通**，一旦某 Pod 被任意 NetworkPolicy 选中，它就进入**白名单模式**（未被允许的进出流量全部拒绝——这个"选一个即全局收紧"的语义是最常见的理解坑）；规则按 **label 选择器 + 端口/方向（ingress/egress）** 定义，天然支持"只允许 frontend 访问 backend:8080"这类微服务隔离。',
+            '**关键坑：NetworkPolicy 需要 CNI 支持才生效**——Flannel 本体不实现策略，装了 Flannel 写了 Policy 也不起作用（要用 Calico/Cilium 等带策略实现的插件）；排障时"策略写了但不生效"先查插件能力，再看方向（ingress/egress 是双向各自定义）与命名空间边界（跨 ns 要用 namespaceSelector）。',
+          ],
+          followUps: [
+            {
+              question: '线上出现"Pod 之间 ping 不通"，你的排查顺序是什么？',
+              points: [
+                '分层走：① **先确认不是策略**（有没有新下发 NetworkPolicy——策略是"选中即拒绝"语义，可能误伤了；`kubectl describe networkpolicy` 对照选择器）；② **同节点通不通**（同节点都不通 → CNI 基础面坏了：看 CNI 插件 Pod 状态、节点上的 veth/网桥）；③ **跨节点不通、同节点通** → overlay 封装/路由问题（VXLAN 端口被防火墙挡、BGP 会话断）；④ **Service 域名不通但 Pod IP 通** → DNS/CoreDNS 问题（换 IP 直连验证）——"Pod IP 通不通 → 跨节点通不通 → Service 通不通"三段二分，每段都有明确的嫌疑集合。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'ops-k8s-hpa',
+          title: 'K8s 的弹性伸缩（HPA）是怎么工作的？为什么"按 CPU 阈值伸缩"经常翻车？',
+          difficulty: 'intermediate',
+          tags: ['HPA', '弹性伸缩', 'K8s'],
+          points: [
+            '**HPA 的机制**：控制循环周期性（默认 15s）取指标，按公式 **期望副本数 = ceil(当前副本数 × 当前指标值 / 目标指标值)** 调整 Deployment 副本（如当前 CPU 80%、目标 50% → 副本翻约 1.6 倍）；指标来自 **metrics-server**（CPU/内存）或 **custom metrics API**（QPS、队列长度等业务指标）；有 min/max 副本数边界，伸缩有**稳定窗口与迟滞**（防抖动）。',
+            '**按 CPU 伸缩翻车的四个经典原因**：① **CPU 是滞后指标**——流量洪峰到 CPU 飙升再到扩容生效（Pod 启动 + 镜像拉取 + 就绪探针），**流量已经过去了**（秒杀/瞬时突发场景必翻车，预案是提前扩容/预热）；② **指标选错**——CPU 高不等于容量不足（挖矿式死循环/序列化热点），QPS 或队列深度这类**贴近负载的指标**更准；③ **requests 配错**——HPA 的 CPU 利用率分母是 requests，requests 乱填会让百分比失真（与 requests/limits 题联动）；④ **伸缩震荡**——扩容把 CPU 拉低 → 缩容 → 又飙升，靠稳定窗口与"快扩慢缩"策略（behavior 配置）缓解。',
+            '**进阶玩法**：**custom metrics HPA**（按 QPS/积压消息数伸缩——业务语义直接映射容量）；**KEDA**（事件驱动伸缩：按 Kafka 积压/队列长度扩到 0~N）；**定时伸缩**（可预期洪峰用 cron 型策略提前扩容）——组合拳：**定时预热 + 业务指标伸缩 + CPU 兜底**。',
+            '**别忘了 HPA 只改副本数**：单 Pod 的 resources 不够（内存泄漏型 OOM）、下游容量不足（数据库连接池）、依赖瓶颈——扩再多副本也白搭。**容量问题先做压力建模，伸缩只是执行手段**（与容量估算题的思想衔接）。',
+          ],
+          followUps: [
+            {
+              question: '"缩容把正在处理的请求掐断了"——HPA 缩容的安全性问题怎么处理？',
+              points: [
+                '防线在 **Pod 的优雅终止链**：缩容删 Pod → 触发 preStop 钩子（先从**端点摘除**：调下线接口/等 endpoint 控制器同步，给负载均衡一点传播时间——sleep 几秒兜底）→ 收 SIGTERM 让应用**处理完存量请求**（排空）→ 超过 terminationGracePeriodSeconds 才强杀。配好这条链，缩容才不会制造 502；漏了 preStop 的摘除等待，翻车集中在"endpoint 还没更新完、流量还在打到将死 Pod"的窗口。',
+              ],
+            },
+          ],
+        },
       ],
     },
     {

@@ -14,6 +14,10 @@ const allowedPrefixes: Record<string, string[]> = {
   'system-design': ['sd-'],
   'big-data': ['bd-'],
   mobile: ['mo-'],
+  av: ['av-'],
+  embedded: ['emb-'],
+  game: ['gd-'],
+  security: ['sec-'],
   ai: ['ai-'],
   'ai-infra': ['infra-'],
   qa: ['qa-'],
@@ -25,11 +29,11 @@ const rank: Record<string, number> = { basic: 0, intermediate: 1, advanced: 2 }
 
 /** 内容完整性约束：防止未来扩充题库时引入脏数据 */
 describe('题库内容完整性', () => {
-  it('全部 15 个方向分包加载成功且结构完整', async () => {
+  it('全部 19 个方向分包加载成功且结构完整', async () => {
     const rawTracks = await loadAllTracks()
-    expect(rawTracks).toHaveLength(15)
+    expect(rawTracks).toHaveLength(19)
     const bank = buildBank(rawTracks, [])
-    expect(bank.tracks).toHaveLength(15)
+    expect(bank.tracks).toHaveLength(19)
     expect(bank.totalQuestionCount).toBeGreaterThan(300)
     expect(bank.questionById.size).toBe(bank.totalQuestionCount)
   })

@@ -365,6 +365,67 @@ export const mobileTrack: Track = {
             },
           ],
         },
+
+        {
+          id: 'mo-android-glide',
+          title: 'Glide 的缓存体系是怎样的？一张 Bitmap 到底占多少内存？',
+          difficulty: 'basic',
+          tags: ['Glide', 'Bitmap', '图片加载'],
+          points: [
+            '**先把内存账算明白**：Bitmap 像素内存 = **宽 × 高 × 每像素字节**——ARGB_8888 每像素 4 字节（一张 1080×1920 图约 7.9MB），RGB_565 每像素 2 字节（无透明通道）；**Android 8.0 起像素数据存 native 内存**（Java 对象只是代理，3.0~7.x 曾放 Java 堆，是当年的 OOM 重灾区）。',
+            '**Glide 的第一板斧：按 View 尺寸采样**——不改代码就按 ImageView 实际大小解码（inSampleSize），天然避免"解码 4000×3000 显示在 100dp 小方块"的浪费；不需要透明时降 RGB_565 直接减半。',
+            '**三级缓存**（读路径自上而下）：**活动缓存**（正在使用的图片，关联生命周期）→ **内存 LRU 缓存** → **磁盘缓存**（原始图/解码后资源两种策略可配）——命中率依次递减、重取成本依次递增。Glide 还自动**绑定生命周期**（RequestManager 感知页面销毁取消请求，防泄漏与无效加载）。',
+            '**进阶点**：Android 8.0+ 的 **HARDWARE 位图**（像素驻留 GPU、渲染高效——但不可读像素，getPixel 会抛异常）；圆角/裁剪等**变换会改变缓存 key**（缓存的是变换结果）；列表复用错乱先查请求取消与 key 一致性。',
+          ],
+          followUps: [
+            {
+              question: '一个列表页滑着滑着内存涨上去了，图片加载这边你会查什么？',
+              points: [
+                '① **尺寸**：有没有走按 View 采样（ItemView 尺寸异常、漏了 override）；② **格式**：不需要透明的图用了 ARGB_8888（换 RGB_565 直接减半）；③ **缓存 key**：同一张图因 URL 参数/变换不同被缓存成多份；④ **生命周期**：页面销毁请求是否取消；⑤ 大图是否该用 HARDWARE 位图或分块解码。方法论一句话：**先按宽×高×像素字节算账，再查缓存与生命周期策略**。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'mo-android-viewmodel',
+          title: 'ViewModel 和 SavedStateHandle 分别解决什么问题？旋转屏幕数据为什么没丢？',
+          difficulty: 'intermediate',
+          tags: ['ViewModel', 'Jetpack', '生命周期'],
+          points: [
+            '**旋转屏幕的默认行为**：配置变更（旋转/深色/语言）会**销毁重建** Activity——普通成员变量全丢，onSaveInstanceState 只能塞小体积序列化数据。**ViewModel 的答案：把数据放进重建时"不销毁"的对象**——Activity 销毁重建，但 **ViewModelStore 被系统经 NonConfigurationInstances 保留**，新 Activity 拿到同一个 ViewModel 实例。真相是：**存活的不是 Activity，而是 ViewModelStore**。',
+            '**两者分工别混**：**ViewModel** 管**大块内存态**（列表数据、缓存、跨 Fragment 共享——activityViewModels 共享同一实例）；**SavedStateHandle** 管**进程死亡恢复**（后台进程被系统杀，ViewModel 也没了，系统只保留了 Bundle——SavedStateHandle 就是"能进 Bundle 的键值状态"，重建自动还原）。**一个扛配置变更、一个扛进程死亡**。',
+            '**生命周期纪律**：ViewModel **绝不持有 Activity/View 的 Context**（活得比 Activity 久——持了就是经典内存泄漏；要 Context 用 AndroidViewModel 拿 Application）；UI 订阅配 Lifecycle 感知（LiveData / repeatOnLifecycle），只在活跃态收事件。',
+            '**终局清理**：用户真正退出（finish）时 ViewModelStore 清空、触发 **onCleared**——在这取消协程、释放资源。"旋转存活、退出销毁"的两条命边界，是 ViewModel 的全部心智模型。',
+          ],
+          followUps: [
+            {
+              question: '为什么旧的"保留 Fragment"（setRetainInstance）方案被 ViewModel 取代了？',
+              points: [
+                '旧方案的问题：保留 Fragment 与 View 层耦合恢复链路复杂、容易顺手持 View 引用造成泄漏、嵌套场景行为怪。ViewModel 内部其实同样借助 Activity 级的 NonConfigurationInstances 机制，但它**把"保留什么"收敛成标准组件**：生命周期清晰（onCleared）、作用域可共享（Activity/Fragment/导航图）、与 SavedStateHandle 和协程生态组合——框架处理保留与恢复的脏活，开发者只声明数据。这是 Jetpack 一贯的设计立场：把易错的生命周期操作组件化。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'mo-android-okhttp',
+          title: 'OkHttp 的拦截器责任链是怎么设计的？连接复用和 HTTPS 校验发生在哪一层？',
+          difficulty: 'intermediate',
+          tags: ['OkHttp', '网络库', 'HTTPS'],
+          points: [
+            '**责任链是 OkHttp 的骨架**：请求依次穿过内置拦截器——**RetryAndFollowUp**（失败重试与重定向跟随）→ **Bridge**（补应用层语义：Content-Length、Cookie、Accept-Encoding 并透明 gzip 解压）→ **Cache**（按 HTTP 缓存语义读写，命中即不发网络）→ **Connect**（从**连接池**取连接或新建）→ **CallServer**（真正编码发送与读取响应）。',
+            '**两层自定义拦截器**：**应用拦截器**（链最前，一次调用只走一次——适合加解密、统一埋点、改请求语义）；**网络拦截器**（Connect 之前，重定向每次都走——适合观测真实网络行为）。区别一句话：**面向"调用语义"还是面向"网络语义"**。',
+            '**连接复用在 Connect/连接池层**：ConnectionPool 复用 TCP（HTTP/1.1 keep-alive 默认保 5 个空闲连接 5 分钟；HTTP/2 单连接多路复用）；移动网络下 TCP + TLS 握手的 RTT 成本远高于桌面（弱网一次握手几百 ms），复用是网络库的第一性能来源。',
+            '**HTTPS 校验在 Connect 层的 TLS 握手**：证书链校验 + 域名匹配由平台 TLS 栈完成；工程加强是**证书锁定 CertificatePinner**（内置公钥白名单防中间人——但要留备份 pin 与轮换方案，锁死自己等于拒绝换证书）；国内实践常配 **HTTPDNS**（自定义 Dns 接口绕运营商 LocalDNS 劫持与调度不准）。',
+          ],
+          followUps: [
+            {
+              question: '为什么"应用拦截器改的请求，网络拦截器能看到"，反过来却不行？',
+              points: [
+                '因为链在应用拦截器之后才构建：应用拦截器最先拿到用户原始请求，它返回的请求是后续整条链（含每次重定向）的输入；网络拦截器插在 Connect 之前，看到的是**经过 Bridge 补全、可能已被重定向改写**的请求，且每个重定向循环都会重新穿过它。这个顺序让两层各司其职：**应用层看"这次调用的语义"，网络层看"每一次真实通信"**——责任链的插桩位置决定了可观测的粒度。',
+              ],
+            },
+          ],
+        },
       ],
     },
     {
@@ -640,6 +701,67 @@ export const mobileTrack: Track = {
               points: [
                 '**所有权决定选型**：@State——视图私有的值类型状态（SwiftUI 自己管理存储，重算 body 不丢）；@Binding——把父视图状态的"写权限"传给子视图（双向绑定）；@StateObject——视图**创建并拥有**引用类型模型（ObservableObject，随视图生命周期初始化一次）；@EnvironmentObject——沿环境注入的共享依赖（不关心谁创建，只订阅）。',
                 '选错的典型事故：把 @StateObject 写成 @ObservedObject——模型随视图重建**反复重新初始化**（列表页返回后状态丢失的经典 bug）；把 @State 存引用类型——SwiftUI 只感知值变化，对象内部属性变了不会触发刷新。这道题实际考"SwiftUI 的数据流是否真的用过"，比背概念狠得多。',
+              ],
+            },
+          ],
+        },
+
+        {
+          id: 'mo-ios-autorelease',
+          title: 'Autorelease Pool 的原理是什么？@autoreleasepool 该加在哪里？',
+          difficulty: 'intermediate',
+          tags: ['Autorelease Pool', '内存管理', 'RunLoop'],
+          points: [
+            '**机制一句话**：autorelease 把对象的释放时机**延迟到当前 pool 排空**——对象登记进当前 pool 页，pool **drain/pop 时统一发 release**。它是"引用计数立即释放"之外的缓冲带，解决"方法返回对象、调用方尚未接管"的所有权交接（ARC 下编译器自动插入，日常无感）。',
+            '**数据结构**：以 **4KB 虚拟内存页为单位**的栈式页链表（AutoreleasePoolPage），页内放对象指针与哨兵边界——push 插哨兵、pop 释放到哨兵为止，页满自动开新页。**大量临时对象会撑出多页**——这就是"循环里堆 autorelease 对象"内存飙高的结构原因。',
+            '**与 RunLoop 的联动**：主线程 RunLoop 每圈自动管理 pool——**Entry 时 push、BeforeWaiting 时释放旧对象并开新 pool、Exit 时再释放**——"RunLoop 一圈 = 一批 autorelease 对象被释放"由此而来；**没有 RunLoop 或未启动 RunLoop 的子线程**没有这层自动管理，依赖临时对象的子线程要自己包 @autoreleasepool，否则对象要等线程退出才释放。',
+            '**该手动加的两个场景**：**循环内批量产生临时对象**（遍历大数组解析 JSON/批量生成缩略图——包住每轮迭代让内存即产即消，峰值骤降）；**后台线程入口**包一层兜底。反例：只产生一两个对象的地方加 pool 纯属噪音。',
+          ],
+          followUps: [
+            {
+              question: '怎么验证"一段代码的内存尖峰就是 autorelease 对象堆积"？除了加 pool 还有什么招？',
+              points: [
+                '验证：Instruments 的 Allocations 看 autorelease 相关类目与"pool 排空锯齿"曲线，或用运行时调试手段打印当前 pool 内容；对照实验最直接——包 @autoreleasepool 前后峰值对比立现。其他招：**减少产生 autorelease 对象**（改用可立即持有返回值的新 API、注意 toll-free bridge 与 __bridge 细节）、大循环拆批、用流式处理替代"先攒一个大数组再处理"——纪律仍是**先测量确认，再动结构**。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'mo-ios-swift-value',
+          title: 'Swift 的值类型和引用类型怎么选？协议导向编程解决了什么？',
+          difficulty: 'basic',
+          tags: ['Swift', '值类型', '协议导向'],
+          points: [
+            '**语义差异是选择的第一依据**：**struct/enum 是值类型**（赋值传参即拷贝、独立生命周期——天然没有循环引用问题）；**class 是引用类型**（共享同一实例，改一处处处可见）。Swift 标准库大量用 struct（String/Array/Dictionary/CGPoint），官方意图明确：**默认值语义，需要"共享身份"时才用 class**。',
+            '**性能直觉**：值类型栈分配/内联、无引用计数开销，复制成本靠 **Copy-on-Write（COW）**摊薄——标准库集合只在**真正写入时**才拷贝底层存储；class 有堆分配 + retain/release + 缓存不友好。注意例外：struct 被 class 持有、被逃逸闭包捕获时仍会进堆——"值类型 ≠ 永远在栈上"。',
+            '**协议导向（POP）的真正价值**：**协议扩展提供默认实现**——能力以"协议 + 扩展"组合分发，一个类型可同时符合多个协议（对比 class 单继承的僵化）；标准库把 Sequence/Collection 拆成协议族，符合协议就免费获得整套算法（map/filter……）——**能力组合取代继承层级**。',
+            '**选型口诀**：建模"数据"用 struct（Model/配置/几何值——独立、可比较）；建模"实体"用 class（需要身份、生命周期回调、跨层共享可变状态——如 ViewModel/服务单例）；**共享可变状态是 bug 之源**，能值语义就值语义——连线程安全都跟着白送。',
+          ],
+          followUps: [
+            {
+              question: 'struct 的 mutating 关键字在干什么？为什么 let 的 struct 不能调 mutating 方法？',
+              points: [
+                '值类型的方法默认不能改自身属性（self 不可变），mutating 标记的方法在编译期把 self 以 **inout 语义**传入（方法内改的是 self 本身而非副本）——所以 mutating 方法只能被 **var** 声明的变量调用：let 的 struct 整体不可变，mutating 意味着改 self，直接编译报错。背后是值语义的纪律：**可变性必须显式声明**，与 class"随手就能改共享状态"形成对照——能讲到 inout 与 self 传递，说明是真理解而不是背关键词。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'mo-ios-crash',
+          title: '线上 Crash 是怎么被捕获和符号化的？哪些"崩溃"抓不到信号？',
+          difficulty: 'advanced',
+          tags: ['Crash 收集', '符号化', '稳定性'],
+          points: [
+            '**捕获的两条通路**：① **BSD 信号 + Mach 异常**——注册处理器捕获 SIGABRT/SIGSEGV/SIGBUS/SIGILL/SIGFPE/SIGTRAP（成熟 SDK 如 KSCrash/PLCrashReporter 通常两条通路结合）；② **NSException 未捕获**（数组越界这类"可捕获的异常"）——NSSetUncaughtExceptionHandler 兜底。捕获后要在崩溃现场**序列化寄存器、逐帧回溯的调用栈（PC/LR）、线程列表、设备与系统信息**并落盘（crash-safe 写法），下次启动上报。',
+            '**符号化是把地址翻译回代码行**：采集到的是二进制偏移地址，要靠**对应版本构建的 dSYM**（含调试符号与 UUID）+ atos/symbolicatecrash 还原——**UUID 必须与发布包完全匹配**，所以每个版本的 dSYM 必须归档（丢了就永远是一串地址）；第三方平台（Bugly/Crashlytics）上传 dSYM 后自动符号化。',
+            '**抓不到信号的才是治理重点**：① **Watchdog 杀**（主线程卡死超时被系统直接杀，**不会给你执行捕获代码的机会**）——靠卡顿监控（RunLoop 耗时打点）兜底；② **Jetsam OOM**（内存超限被杀，没有 crash 信号，只有 jetsam 报告）——靠内存水位监控兜底；③ 后台任务超时被杀同理。**"抓不到的崩溃"决定了线上稳定性体系必须有监控层，不能只有崩溃收集层**。',
+            '**工程闭环**：崩溃率按版本/机型/系统分维度监控、**聚类**（相同调用栈归并成 issue）、新增崩溃卡发布、代表性崩溃还原修复并回归——"捕获是手段，聚类与闭环才是治理"。',
+          ],
+          followUps: [
+            {
+              question: '为什么崩溃处理代码本身要极度小心？"handler 里再 crash"怎么办？',
+              points: [
+                '崩溃现场环境是残破的：栈可能已损坏、堆不一致、锁可能被崩溃线程持有——handler 里若分配内存（malloc 的锁可能被持着）、调用不安全函数、碰 Objective-C 运行时，都可能**二次崩溃毁掉真凶现场**。所以成熟 SDK 的 handler 用**启动时预分配的内存、只用 async-signal-safe 函数、独立的栈回溯器**，并做**递归崩溃检测**（handler 再崩就恢复默认处理器让系统接管，至少保住已写入的部分）——"在地震现场盖房子"是对这段代码的贴切形容。',
               ],
             },
           ],
