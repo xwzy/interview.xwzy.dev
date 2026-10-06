@@ -31,6 +31,15 @@ export const frontendTrack: Track = {
             '**可维护性**：结构自带含义，代码可读性更高，团队协作与样式覆盖成本更低。',
             '无障碍还有硬性收益：部分企业与海外合规要求（如 WCAG）对可访问性等级有明确验收标准。',
           ],
+          followUps: [
+            {
+              question: '语义化的价值除了 SEO，还有哪些硬场景？读屏软件是怎么"读"HTML 的？',
+              points: [
+                '**可访问性是最硬的场景**：读屏软件按 **landmark 地标**导航（header/main/nav/footer 各有隐式 role，用户可跳转区域而非逐标签听）——满屏 div 的页面在读屏下是"没有地图的城市"；**ARIA 第一规则**：能用原生语义就不加 ARIA（div 加 role=button 不如直接用 button——原生自带键盘焦点与角色播报）。',
+                '**机器阅读同样受益**：爬虫与摘要器靠标题层级（h1~h6）理解结构；阅读模式/稍后读类工具按 article/p 提取正文——语义错乱时提取就错乱。合规视角：无障碍在越来越多市场是**法定要求**（WCAG/欧盟 EAA），不是"公益加分"。',
+              ],
+            },
+          ],
         },
         {
           id: 'fe-css-box-model',
@@ -599,6 +608,15 @@ export const frontendTrack: Track = {
             '**数据结构**：Map/Set（键任意类型、数组去重）、**WeakMap/WeakSet**（弱引用不阻止 GC，适合附加元数据与私有数据）、Symbol（唯一键与元编程协议）。',
             '**模块**：ESM 静态结构支撑 Tree Shaking 与依赖静态分析；可选链 `?.`、空值合并 `??`、class 字段等持续减少样板代码。',
           ],
+          followUps: [
+            {
+              question: '这些 ES6+ 特性里，哪些只是语法糖、哪些真正改变了语言语义？',
+              points: [
+                '**改变语义的**：**箭头函数**（没有自己的 this/arguments——词法 this 是运行时行为的变化，不是糖）；**let/const 的暂时性死区**（声明前访问直接抛错，var 是 undefined——错误更早暴露）；**Promise/async-await 与生成器**（引擎级新能力，改变了异步的编写模型）；**模块（import/export）**（静态结构可分析——tree shaking 的前提，与 CommonJS 运行时求值本质不同）。',
+                '**基本是语法糖的**：**class**（本质仍是原型 + 构造函数，但隐含严格模式等细节差异）、模板字符串、解构、默认参数、展开运算符。面试层次感：**罗列特性 < 说清哪些改变了心智模型**——能按"糖/非糖"分类，说明理解语言演化而不是背清单。',
+              ],
+            },
+          ],
         },
         {
           id: 'fe-js-new-operator',
@@ -944,6 +962,15 @@ export const frontendTrack: Track = {
             '需要"值对象带方法"的真枚举场景仍可用 enum；纯类型场景一律 as const。',
             '```ts\nconst STATUS = { todo: "todo", doing: "doing", done: "done" } as const\ntype Status = typeof STATUS[keyof typeof STATUS] // "todo" | "doing" | "done"\n```',
           ],
+          followUps: [
+            {
+              question: '用 const 对象 + as const 替代 enum 后，怎么取"枚举值列表"？两者的类型收窄差异是什么？',
+              points: [
+                '**取值列表的两种写法**：enum 是真实运行时对象，`Object.values(Enum)` 直接用；const 对象方案用 **`(typeof FLAGS)[keyof typeof FLAGS]`** 从值的类型反推联合类型（as const 把字面量类型钉死才成立），要"运行时列表"再配 `Object.values(FLAGS)`。',
+                '**收窄差异**：联合字面量类型在 if/switch 里**天然收窄**（TS 控制流分析直接认识它）；enum 成员的类型是"enum 成员"而非字面量。**const enum 的坑**：值被内联、无运行时对象，isolatedModules（Babel/esbuild 单文件转译）下直接报错——这也是很多团队转向 const 对象的推手之一。',
+              ],
+            },
+          ],
         },
         {
           id: 'fe-ts-narrowing',
@@ -1144,6 +1171,15 @@ export const frontendTrack: Track = {
             'JSX 不是虚拟 DOM：JSX 只是语法糖，编译产物是 jsx() 调用，返回 Element 对象。',
             '现代 React 的优化重心已从"更快的 diff"转向**跳过不必要的渲染**（memo、React Compiler 自动记忆化）。',
           ],
+          followUps: [
+            {
+              question: '既然有虚拟 DOM diff，为什么 Svelte/Solid 这类框架还能更快？虚拟 DOM 是必需品吗？',
+              points: [
+                '**vdom 的成本**在 diff 与按不可变心智带来的**大范围重渲染**：状态一变，组件函数重跑、生成新树、diff 找差异——变化越全局，浪费越多。**编译期框架的答案**：Svelte 把组件编译成**定向 DOM 操作**（更新哪个文本节点在构建期就定了，没有 diff）、Solid 用**细粒度信号**把订阅建到表达式级（状态变 → 只动绑定的那个节点）。',
+                '**React 为什么留着 vdom**：它是**编程模型的抽象层**——diff 让"整组件重渲染"成为安全默认，并发特性（可中断渲染、时间切片）也依赖这层虚拟表示才能暂停与恢复。结论口径：**vdom 不是性能必需品，是工程折衷**——用一层抽象换可预测性，代价由 diff 算法与开发者 memo 纪律共同支付。',
+              ],
+            },
+          ],
         },
         {
           id: 'fe-react-key',
@@ -1156,6 +1192,15 @@ export const frontendTrack: Track = {
             'key 需在兄弟间**稳定且唯一**，通常用数据 id；`Math.random()`/时间戳每次渲染都变，等于强制全部重建，性能更差。',
             'key 变化也是**强制重置组件**的惯用手段：改 key 让 React 重新初始化表单或页面组件（如路由参数变化时）。',
             'key 只在**同层比较**中有意义，React 的 diff 不做跨层移动。',
+          ],
+          followUps: [
+            {
+              question: 'idx 作 key 在什么场景真的会出问题？为什么纯静态列表里又"无害"？',
+              points: [
+                '**机制先说清**：React 按 **key 匹配复用 fiber 与 DOM**——同 key 的组件实例被保留（内部 state、input 值、焦点都跟着留）。**idx 作 key + 头部插入/排序/删除**：所有元素的 idx 整体错位，React 以为"每个位置的内容变了"，于是**状态串位**（第 1 项的复选框勾选"跑"到第 2 项）、动画错乱、受控值残留——删的明明是 A，改的却是 B 的显示。',
+                '**纯静态只读列表 idx 无害**：顺序与内容永不变化，key 错位不会发生——所以这条规则的本质是"**列表会增删排序吗**"。正确 key 的标准是"**列表兄弟间稳定且唯一**"（业务 id），不需要全局唯一；随机数做 key 更糟（每次渲染全量重建）。',
+              ],
+            },
           ],
         },
         {
@@ -1170,6 +1215,15 @@ export const frontendTrack: Track = {
             '经典坑：给 input 传了 value 却没有 onChange（或 value 在 null/undefined 间切换）会报错且**无法输入**；要允许清空需用 `value ?? ""`。',
             '"外部状态变化时重置非受控表单"的惯用法：给元素加 key，key 变则 DOM 重建、defaultValue 重新生效。',
           ],
+          followUps: [
+            {
+              question: '受控组件每敲一个字符都 setState 重渲染，输入卡顿怎么优化？非受控的正确姿势是什么？',
+              points: [
+                '**先定位再优化**：卡顿通常不是输入本身，而是**每次输入触发整页级重渲染**（父组件 state 挂着输入值）。手段：① **隔离**——把输入及其依赖拆成小组件并 memo，重渲染范围缩到输入行；② **降级为非受控**——表单场景用 `defaultValue` + 提交时 ref 取值，输入过程零重渲染；③ 重活（搜索联想）用 **useDeferredValue** 让输入即时、重计算让路。React 18 起输入更新本身已自动批处理。',
+                '**非受控的正确姿势**：文件输入天然只能非受控；**key 重置表单**技巧（换 key = 整组非受控控件回默认值，比逐字段 setState 干净）；库的选型本质也在这条线上——**react-hook-form 走非受控 + ref**（性能好）、传统受控方案胜在实时校验联动。"受控保联动、非受控保性能，混合用是常态"。',
+              ],
+            },
+          ],
         },
         {
           id: 'fe-react-communication',
@@ -1182,6 +1236,15 @@ export const frontendTrack: Track = {
             '**全局状态**：Redux/Zustand/Jotai 等外部 store；**服务端状态**交给 TanStack Query/SWR（缓存、重试、失效重取）。',
             '**ref 暴露实例**：React 19 中 ref 可直接作为 prop（18 及以前用 forwardRef），配合 `useImperativeHandle` 精确控制暴露面（如 focus、scrollTo 方法）。',
             '事件总线/window 全局事件是逃生舱，破坏数据流可追溯性，仅在跨框架或遗留代码中酌情使用。',
+          ],
+          followUps: [
+            {
+              question: '这些通信方式的本质是什么？为什么说除了 props 与 context，其他都是"绕开单向数据流"的口子？',
+              points: [
+                '**按数据流本质分三类**：① **父→子 props / 子→父回调**——唯一正统，数据流向可沿组件树追溯；② **跨层共享**——context（树内依赖注入）与全局 store（树外快照），解决"逐层透传"但不改变"状态在上、视图在下"的模型；③ **命令式与旁路**——**ref 调用子组件实例方法**（逃生舱：聚焦/播放这类命令式需求）、事件总线/模块级变量（彻底绕开 React，谁改了数据无人知晓）。',
+                '**为什么强调正统**：单向数据流的收益是**可追溯**——渲染结果异常时沿 props 一路向上必能找到源头；每开一条旁路，调试时就多一个不可见的数据来源。选型纪律：层级浅用 props、真正跨树共享再上 context/store、ref 只留给浏览器命令式 API 的薄封装，事件总线在 React 应用里基本是反面教材。',
+              ],
+            },
           ],
         },
         {
@@ -1570,6 +1633,15 @@ export const frontendTrack: Track = {
             'Vue3 中 v-if 与 v-for 同元素连用时 **v-if 优先级更高**（无法访问 v-for 的变量），官方与 lint 都禁止同元素并用。',
             'v-if 销毁组件会**丢失状态**；需要保留状态可用 v-show 或 `<KeepAlive>` 缓存组件实例。',
           ],
+          followUps: [
+            {
+              question: 'v-if 切换组件时意味着"真正销毁重建"，这会带来什么？和 v-for 同用时有什么历史坑？',
+              points: [
+                '**v-if 的重建语义**：切换 = 组件**销毁并重新创建**——setup 重新执行、内部状态归零、onUnmounted/onMounted 触发；初始值为 false 时**完全不渲染**（惰性）。v-show 是 display 切换：**无论真假都渲染**（初始成本更高），只省显示成本——高频切换选 v-show、低频且初始可省选 v-if。',
+                '**同用的历史坑**：v-if 依赖 v-for 的结果时，**Vue 2 里 v-for 优先级更高、Vue 3 里 v-if 更高**——同一写法跨大版本语义反转，这是 Vue 3 风格指南**禁止同元素混用**的原因；正确写法是外层 template v-if 包内层 v-for（或用 computed 过滤）。另外 v-show 无法用在 template 上（它靠真实元素的 style 生效）。',
+              ],
+            },
+          ],
         },
         {
           id: 'fe-vue-computed-watch',
@@ -1633,6 +1705,15 @@ export const frontendTrack: Track = {
             '**TypeScript 支持更好**：不再依赖 this 上下文推导类型，纯函数签名天然可标注。',
             '两种 API 在 Vue3 中共存且底层一致（都是响应式系统 + 渲染函数）；Options API 未废弃，简单小组件依然直观。',
             '`<script setup>` 是 Composition API 的编译糖：更少样板、顶层 await、常量提升，是官方推荐写法。',
+          ],
+          followUps: [
+            {
+              question: 'Composition API 的 composable 和 React hooks 的异同？为什么 Vue 的组合函数没有"只能在顶层调用"的限制？',
+              points: [
+                '**共同解决的问题**：逻辑**按功能聚合**而非按选项类型撕裂（data/methods/watch 各自为政），跨组件复用靠函数而非 mixin（命名冲突与来源不明的老病）。',
+                '**根本差异在执行模型**：React hooks **每次渲染重新执行**——所以必须有稳定的调用顺序（rules of hooks）、靠依赖数组控制、闭包是当次渲染的快照；**composable 只在 setup 时执行一次**——响应式靠 ref/reactive 的**持久引用**（Proxy 运行时跟踪，不依赖重渲染），因此可以安全地写在条件分支或生命周期钩子里。一句话：**React 是"重新跑 + 快照"，Vue 是"跑一次 + 追踪"**——这解释了两边几乎所有的使用规则差异。',
+              ],
+            },
           ],
         },
         {
@@ -2405,6 +2486,15 @@ export const frontendTrack: Track = {
             '编辑器保存即格式化 + `.editorconfig` 统一基础风格，减少提交 diff 噪音。',
             'monorepo 实践：lint 配置抽成共享包分层引用，开启 `eslint --cache` 提速。',
           ],
+          followUps: [
+            {
+              question: 'ESLint 和 Prettier 的职责边界为什么曾经过不清？现在推荐的集成方式是什么？',
+              points: [
+                '**历史冲突**：早期 ESLint 里混着大量**格式规则**（缩进/引号/换行），与 Prettier 的排版输出互相打架——同一行代码两边都要改，谁后跑听谁的。**现行走两条路**：① 用 **eslint-config-prettier** 关掉 ESLint 里所有格式类规则（只留质量规则：no-unused-vars 这类 bug 模式）；② 或在新扁平配置里干脆不引格式规则，格式完全交给 Prettier。',
+                '**执行三层**：**编辑器**实时保存格式化（问题在写的时候暴露）；**husky + lint-staged** 提交前只查暂存文件（快、体验好）；**CI 全量兜底**（防本地 --no-verify 绕过——门禁的意义就在有人会绕）。分工一句话：**Prettier 管"长什么样"，ESLint 管"写得对不对"，Git 钩子管"什么时候查"，CI 管"别想绕过"**。',
+              ],
+            },
+          ],
         },
         {
           id: 'fe-eng-lowcode',
@@ -2874,6 +2964,15 @@ export const frontendTrack: Track = {
             '**字体**：woff2、**子集化**（中文字体收益巨大）、font-display: swap 防白屏、关键字重 preload。',
             '**传输**：Brotli/gzip、HTTP/2 或 3、immutable 长缓存 + 文件名 hash、sourcemap 不上 CDN。',
             '**第三方脚本**：审计统计/客服/AB 脚本，延迟或 facades 方式加载（点击后再加载 embed），它们常是 INP 与带宽的隐形杀手。',
+          ],
+          followUps: [
+            {
+              question: '这些手段里，哪些已被 HTTP/2 和现代构建链"天然解决"，哪些今天仍然关键？',
+              points: [
+                '**已经基本退役的**：**雪碧图与域名分片**（HTTP/1.1 时代为绕过并发连接限制而生——HTTP/2 多路复用后，合并反而破坏缓存粒度）；**运行时 gzip**（构建期预压缩 **Brotli** 静态文件，压缩率与 CPU 占用双优）。',
+                '**今天仍然关键**：**图片**（AVIF/WebP 格式选择 + srcset 响应式——图片常年占页面字节大头）；**代码分割与按需加载**（与浏览器缓存策略配合：content-hash 文件名 + immutable 长缓存）；**加载提示语义**（preload 当前必需、prefetch 未来可能、preconnect 提前建连——用错方向反而抢带宽）。方法论收束：**清单会过时，三条原理不过时——减少字节、减少串行等待、提高并行度**。',
+              ],
+            },
           ],
         },
         {

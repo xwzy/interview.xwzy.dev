@@ -43,8 +43,10 @@
 | 30 | 四期·增厚题第二轮事实审查 | big-data/mobile/qa/ops 新题 | 0 | 修复 4 处 | ✅ 已完成 | 见 git log |
 | 31 | 五期·ai-infra 增厚（离线批量推理 / 约束解码） | ai-infra.ts | 2 | 2 条（含新题内） | ✅ 已完成 | 见 git log |
 | 32 | 五期·收尾审查与文档校准 | career.ts + ai-infra.ts + README | 0 | 修复 1 处 | ✅ 已完成 | 见 git log |
+| 33 | 五期·追问覆盖补齐（frontend 最后 11 题无追问） | frontend.ts | 0 | 11 条 | ✅ 已完成 | 见 git log |
+| 32 | 五期·收尾审查与文档校准 | career.ts + ai-infra.ts + README | 0 | 修复 1 处 | ✅ 已完成 | 见 git log |
 
-题库总量：656（起点）→ **872**（当前）。真题改编题统一打 `tags: ['真题改编']`，可全局搜索筛选。
+题库总量：656（起点）→ **872**（当前，追问覆盖率 100%）。真题改编题统一打 `tags: ['真题改编']`，可全局搜索筛选。
 二期方案见 `docs/quiz-expansion-plan-v2.md`（批号自 11 起续编）。
 
 > 批 8 范围说明：原计划的"大数据/移动端/运维各 +3~4"在参考库中无对口语料（无对应课程材料），如实跳过；批 8 聚焦有真实试卷支撑的 qa 方向。
@@ -448,3 +450,11 @@ sigsuspend 竞态、适配策略与边界标记等复核无误。
 **文档校准（实测替换）**：README 性能节的元数据体积"约 17KB gzip"→**约 20KB gzip**（trackMeta 实测 74.7KB raw / 20.4KB gzip，题量 656→872 后的合理涨幅）；主包"约 110KB gzip"实测 109.8KB 仍准确，不动。
 
 **结论**：至此**全站 872 题无一例外完成至少两轮事实审查**。另记录一项待办给站点所有者：docs/screenshots/ 的两张 README 截图摄于 9 月 27 日（15 方向时代），重拍需登录态，留待手动更新。
+
+## 批 33 · 五期·追问覆盖补齐 ✅（对象：frontend 全站最后 11 道无追问题——批 14/18 存量优化惯例的收官）
+
+**背景**：全站追问覆盖率长期停在 99%（861/872），最后 11 道无追问题全部集中在 frontend 基础题（该方向题量最大、早期批量写入时漏配）。按批 14/18 的"存量优化 pass"惯例补齐。
+
+**追问 11 条**（每题 1 条，方向为"面试官往下追一步"）：fe-html-semantic（读屏/landmark/ARIA 第一规则/WCAG 合规）、fe-js-es6（语法糖 vs 语义改变分类：箭头函数词法 this/TDZ/模块静态结构）、fe-ts-enum-const（值列表取法与收窄差异、const enum 的 isolatedModules 坑）、fe-react-vdom（编译期框架为何更快、vdom 是工程折衷不是性能必需品）、fe-react-key（idx 错位的状态串位机制、纯静态列表无害的边界）、fe-react-controlled（输入卡顿优化与非受控正确姿势、RHF vs 受控路线）、fe-react-communication（三类本质与单向数据流的可追溯性代价）、fe-vue-vif-vshow（销毁重建语义、Vue2/Vue3 的 v-if/v-for 优先级反转）、fe-vue-composition-api（composable 一次执行 + Proxy 追踪 vs hooks 重渲染 + 快照）、fe-eng-lint（ESLint/Prettier 职责之争与三层执行）、fe-perf-resource（HTTP/2 后退役的手段 vs 仍关键的手段）。
+
+**覆盖结果**：追问覆盖率 99% → **100%**（872/872），总步数 1331 → **1342**；README 同步。五期至此全部收官。
