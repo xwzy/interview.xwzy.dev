@@ -42,6 +42,7 @@
 | 29 | 四期·新方向第二轮事实审查 | 四个新数据文件全量 | 0 | 修复 6 处 | ✅ 已完成 | 见 git log |
 | 30 | 四期·增厚题第二轮事实审查 | big-data/mobile/qa/ops 新题 | 0 | 修复 4 处 | ✅ 已完成 | 见 git log |
 | 31 | 五期·ai-infra 增厚（离线批量推理 / 约束解码） | ai-infra.ts | 2 | 2 条（含新题内） | ✅ 已完成 | 见 git log |
+| 32 | 五期·收尾审查与文档校准 | career.ts + ai-infra.ts + README | 0 | 修复 1 处 | ✅ 已完成 | 见 git log |
 
 题库总量：656（起点）→ **872**（当前）。真题改编题统一打 `tags: ['真题改编']`，可全局搜索筛选。
 二期方案见 `docs/quiz-expansion-plan-v2.md`（批号自 11 起续编）。
@@ -437,3 +438,13 @@ sigsuspend 竞态、适配策略与边界标记等复核无误。
 **审查**：1 个 agent 当轮审查，零必须修改项（xgrammar/outlines 经原始来源核实：MLC/dottxt、near-zero overhead、Willard & Louf 2023）；采纳 2 条可选润色（deep batching 与 continuous batching 的关系澄清、EOS 强制收尾的精确表述）。跨题一致性确认：与 vllm-kernel/scheduling/eval-pipeline/cost-anatomy 互引准确、无有害重复。
 
 **难度**：均 advanced（与该方向全 advanced 的基调一致）。题库总量 870 → **872**，README 与 index.html 同步。
+
+## 批 32 · 五期·收尾审查与文档校准 ✅（对象：最后 3 道单轮题 + 文档数字实测校准）
+
+**审查**：1 个 agent 对全站仅剩的 3 道单轮题（career-project-direction-switch、infra-serve-offline-batch、infra-serve-constrained-output）做第二轮，重点跨文件交叉一致性。
+
+**修复 1 处（跨文件口径矛盾）**：offline-batch 追问承诺评测跑批"同输入同输出（temperature 0/固定 seed/版本锁死）"——与 ai.ts 解码题的正确提醒冲突（**连续批处理与并行归约下严格位级可复现不可得**），且与本题主文的 continuous batching 主张自相矛盾；改为"尽力逼近可复现 + 残余差异按噪声带对待"并与解码题互引。career 题的薪资重定价/三档梯度按软内容标准衡量无误导，通过。
+
+**文档校准（实测替换）**：README 性能节的元数据体积"约 17KB gzip"→**约 20KB gzip**（trackMeta 实测 74.7KB raw / 20.4KB gzip，题量 656→872 后的合理涨幅）；主包"约 110KB gzip"实测 109.8KB 仍准确，不动。
+
+**结论**：至此**全站 872 题无一例外完成至少两轮事实审查**。另记录一项待办给站点所有者：docs/screenshots/ 的两张 README 截图摄于 9 月 27 日（15 方向时代），重拍需登录态，留待手动更新。
