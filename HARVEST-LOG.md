@@ -39,8 +39,11 @@
 | 26 | 四期·存量增厚（大数据 +6 / 移动端 +6） | big-data.ts + mobile.ts | 12 | 13 条（含新题内） | ✅ 已完成 | 见 git log |
 | 27 | 四期·存量增厚（qa +4 / ops +4） | qa.ts + ops.ts | 8 | 8 条（含新题内） | ✅ 已完成 | 见 git log |
 | 28 | 四期·批 26~27 新题事实审查 | big-data/mobile/qa/ops 四文件新题 | 0 | 修复 3 处 | ✅ 已完成 | 见 git log |
+| 29 | 四期·新方向第二轮事实审查 | 四个新数据文件全量 | 0 | 修复 6 处 | ✅ 已完成 | 见 git log |
+| 30 | 四期·增厚题第二轮事实审查 | big-data/mobile/qa/ops 新题 | 0 | 修复 4 处 | ✅ 已完成 | 见 git log |
+| 31 | 五期·ai-infra 增厚（离线批量推理 / 约束解码） | ai-infra.ts | 2 | 2 条（含新题内） | ✅ 已完成 | 见 git log |
 
-题库总量：656（起点）→ **870**（当前）。真题改编题统一打 `tags: ['真题改编']`，可全局搜索筛选。
+题库总量：656（起点）→ **872**（当前）。真题改编题统一打 `tags: ['真题改编']`，可全局搜索筛选。
 二期方案见 `docs/quiz-expansion-plan-v2.md`（批号自 11 起续编）。
 
 > 批 8 范围说明：原计划的"大数据/移动端/运维各 +3~4"在参考库中无对口语料（无对应课程材料），如实跳过；批 8 聚焦有真实试卷支撑的 qa 方向。
@@ -424,3 +427,13 @@ sigsuspend 竞态、适配策略与边界标记等复核无误。
 **通过确认**：bd 6 题零问题（首轮两处修复无残留旧口径，与既有 bd-spark-skew/bd-cdc-sync 交叉一致）；YARN/Hive/Spark/Iceberg 参数名与默认值全部对照默认配置文件核实（mapreduce.map.maxattempts=4、mapjoin.smalltable.filesize=25000000 字节）；mobile 其余 5 题与既有 memory-leak/arc/gcd/performance 交叉一致；HPA 全部数值与官方文档逐条一致、preStop/SIGTERM 链路与 ops-linux-process-signal 口径一致；qa 4 题与 platform/jmeter/bug-lifecycle 互补不重复。另有 2 条边缘观察（YARN 容器超时的两机制合写、快照失效场景的云盘语境）按宁缺毋滥纪律不列错。
 
 **结论**：第二轮错误密度 4/20 = 20%（其中 1 处机制性、3 处措辞精度——20 题的小样本 + 二轮深挖符合预期），至此**四期全部增量（批 23~27 的 100 题）均完成两轮事实审查**，全站 870 题的质检标准完全拉齐。四期工作全面收官。
+
+## 批 31 · 五期·ai-infra 增厚 ✅（来源：工程经验自建）
+
+**背景**：四期收官后 ai-infra（33 题）成为最薄方向。查重后发现该方向覆盖密度极高（prefix caching/量化谱系/训推混部/供应链安全均已有专文或专追问），诚实增量仅两处真空白：
+
+**新题 2**（ai-infra.ts，infra-serve 领域）：infra-serve-offline-batch（离线批量推理——优化目标倒置、deep batching、shard 断点续跑、$ /M tokens 成本口径、三陷阱；追问评测跑批 vs 内容生产跑批的差异）；infra-serve-constrained-output（约束解码——logits 掩码/JSON 需 CFG 级状态机/掩码在采样前、xgrammar/outlines、语法正确≠语义正确、L0~L3 工程分级；追问"强制 JSON 会不会让模型变笨"）。
+
+**审查**：1 个 agent 当轮审查，零必须修改项（xgrammar/outlines 经原始来源核实：MLC/dottxt、near-zero overhead、Willard & Louf 2023）；采纳 2 条可选润色（deep batching 与 continuous batching 的关系澄清、EOS 强制收尾的精确表述）。跨题一致性确认：与 vllm-kernel/scheduling/eval-pipeline/cost-anatomy 互引准确、无有害重复。
+
+**难度**：均 advanced（与该方向全 advanced 的基调一致）。题库总量 870 → **872**，README 与 index.html 同步。
