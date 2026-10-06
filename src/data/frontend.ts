@@ -967,7 +967,7 @@ export const frontendTrack: Track = {
               question: '用 const 对象 + as const 替代 enum 后，怎么取"枚举值列表"？两者的类型收窄差异是什么？',
               points: [
                 '**取值列表的两种写法**：enum 是真实运行时对象，`Object.values(Enum)` 直接用；const 对象方案用 **`(typeof FLAGS)[keyof typeof FLAGS]`** 从值的类型反推联合类型（as const 把字面量类型钉死才成立），要"运行时列表"再配 `Object.values(FLAGS)`。',
-                '**收窄差异**：联合字面量类型在 if/switch 里**天然收窄**（TS 控制流分析直接认识它）；enum 成员的类型是"enum 成员"而非字面量。**const enum 的坑**：值被内联、无运行时对象，isolatedModules（Babel/esbuild 单文件转译）下直接报错——这也是很多团队转向 const 对象的推手之一。',
+                '**收窄差异**：联合字面量类型在 if/switch 里**天然收窄**（TS 控制流分析直接认识它）；enum 成员的类型是"enum 成员"而非字面量。**const enum 的坑**：值被内联、无运行时对象；isolatedModules 下引用 **ambient（declare）** const enum 直接报错，Babel/esbuild 单文件转译则把 const enum **静默降级**为普通 enum（跨文件不再内联，产物语义与 tsc 不一致）——这也是很多团队转向 const 对象的推手之一。',
               ],
             },
           ],

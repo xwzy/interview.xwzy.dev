@@ -44,6 +44,7 @@
 | 31 | 五期·ai-infra 增厚（离线批量推理 / 约束解码） | ai-infra.ts | 2 | 2 条（含新题内） | ✅ 已完成 | 见 git log |
 | 32 | 五期·收尾审查与文档校准 | career.ts + ai-infra.ts + README | 0 | 修复 1 处 | ✅ 已完成 | 见 git log |
 | 33 | 五期·追问覆盖补齐（frontend 最后 11 题无追问） | frontend.ts | 0 | 11 条 | ✅ 已完成 | 见 git log |
+| 34 | 五期·批 33 追问审查（frontend.ts） | frontend.ts | 0 | 修复 1 处 | ✅ 已完成 | 见 git log |
 | 32 | 五期·收尾审查与文档校准 | career.ts + ai-infra.ts + README | 0 | 修复 1 处 | ✅ 已完成 | 见 git log |
 
 题库总量：656（起点）→ **872**（当前，追问覆盖率 100%）。真题改编题统一打 `tags: ['真题改编']`，可全局搜索筛选。
@@ -458,3 +459,11 @@ sigsuspend 竞态、适配策略与边界标记等复核无误。
 **追问 11 条**（每题 1 条，方向为"面试官往下追一步"）：fe-html-semantic（读屏/landmark/ARIA 第一规则/WCAG 合规）、fe-js-es6（语法糖 vs 语义改变分类：箭头函数词法 this/TDZ/模块静态结构）、fe-ts-enum-const（值列表取法与收窄差异、const enum 的 isolatedModules 坑）、fe-react-vdom（编译期框架为何更快、vdom 是工程折衷不是性能必需品）、fe-react-key（idx 错位的状态串位机制、纯静态列表无害的边界）、fe-react-controlled（输入卡顿优化与非受控正确姿势、RHF vs 受控路线）、fe-react-communication（三类本质与单向数据流的可追溯性代价）、fe-vue-vif-vshow（销毁重建语义、Vue2/Vue3 的 v-if/v-for 优先级反转）、fe-vue-composition-api（composable 一次执行 + Proxy 追踪 vs hooks 重渲染 + 快照）、fe-eng-lint（ESLint/Prettier 职责之争与三层执行）、fe-perf-resource（HTTP/2 后退役的手段 vs 仍关键的手段）。
 
 **覆盖结果**：追问覆盖率 99% → **100%**（872/872），总步数 1331 → **1342**；README 同步。五期至此全部收官。
+
+## 批 34 · 五期·批 33 追问审查 ✅（对象：11 条新追问）
+
+**修复 1 处（实测级错误）**：fe-ts-enum-const 的"const enum 在 isolatedModules（Babel/esbuild 单文件转译）下直接报错"——审查 agent 用仓库自带 tsc 5.8.3 + esbuild 实测推翻：仅 **ambient（declare）const enum** 报 TS2748；Babel/esbuild 对普通 const enum 是**静默降级**为普通 enum（跨文件不再内联），Babel 官方文档确认。已按实测行为改写。
+
+**通过确认**：其余 10 条追问零事实错误（ARIA 第一规则、EAA 2025-06-28 适用日、Vue 2/3 优先级反转、eslint-config-prettier 职责、HTTP/2 使雪碧图退役等均对照官方文档/EUR-Lex 原文核实）；3 条边缘小注（隐式 role 的嵌套限定、自动批处理不减击键渲染、生命周期内调 composable 的前提）按纪律不列错。
+
+**结论**：批 33 的增量过审，追问覆盖率 100% 的质量与既有内容拉齐。全站 872 题 + 1342 步追问全部至少两轮审查。
