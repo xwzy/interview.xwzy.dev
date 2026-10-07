@@ -2688,6 +2688,20 @@ export const backendTrack: Track = {
                 '架构收益的一种表述：不用 MQ 时新增「送积分/优惠券」要改主流程代码再发版；引入 MQ 后**对新增消费方开放、对主流程修改关闭**——把开闭原则落到架构层。（来源：中间件核心技术与实战 13）',
               ],
             },
+            {
+              question: 'Kafka 和 RabbitMQ 这类传统 MQ 还有一个本质差异：消息被「消费」之后去哪了？',
+              points: [
+                'Kafka 是**可重演（replayable）**的：基于日志结构、消费是只读操作、位移由消费者自己控制，可以反复重放历史——传统 MQ（RabbitMQ/ActiveMQ）消费即删除（destructive），逻辑写错了只能从上游重新导数。（来源：极客时间·Kafka 核心技术与实战 30）',
+                '配套选型口诀（30 讲）：处理逻辑复杂/单条处理代价高/不在乎顺序 → 传统 MQ；高吞吐/单条处理短/在乎顺序 → Kafka——回放能力正是「逻辑会改、要重算」场景（数仓、风控回溯、新下游冷启动）的底气。',
+              ],
+            },
+            {
+              question: '高频追问：Kafka 为什么不像 MySQL/Redis 那样做读写分离，让 Follower 分担读流量？',
+              points: [
+                '场景不对：Kafka 读写比 ≈ 1:1，不是读多写少，Follower 抗读没有收益；且 Follower 的复制是异步拉取、有滞后，开放读会破坏 Read-your-writes 与单调读——所以 Follower 只做数据冗余与高可用，不对外服务。（来源：极客时间·Kafka 核心技术与实战 23）',
+                '一鱼两吃的收尾：这也解释了 Kafka 的读扩展为什么靠「分区 + 消费者组」水平扩展而不是加副本——读扩展单元是分区，不是副本；把 23 讲这两个设计理由背下来，副本机制题和选型题都能用。',
+              ],
+            },
           ],
         },
         {
@@ -2707,6 +2721,9 @@ export const backendTrack: Track = {
               points: [
                 'acks=all 只保证"ISR 里的副本"写入，如果 ISR 收缩到只剩 leader（min.insync.replicas 没配或=1），等于异步；**正确组合是 acks=all + min.insync.replicas=2 + replication.factor=3**。',
                 '其他角落：页缓存未刷盘时机器断电（Kafka 依赖副本而非 fsync，多副本同机柜可能一起丢——机架感知）；消费端先提交后处理；DLQ 无人消费；重试队列 TTL 过期丢弃。链路审计要从头到尾过一遍。',
+                '配置公式的为什么：replication.factor = min.insync.replicas + 1——两者**相等**时挂一台 ISR 即小于 min.insync.replicas，整个分区直接不可写（可用性归零）；Producer 侧完整最佳实践还有 send(msg, callback) 杜绝 fire-and-forget + retries 调大。（来源：极客时间·Kafka 核心技术与实战 11）',
+                '消费端隐蔽角落：Consumer 把消息交给**多线程异步处理**后，自动提交位移照常前移，某个线程处理失败 → 该消息已被「书签跳过」——多线程场景必须关自动提交、等全部处理完再手动提交位移。',
+                '设计缺陷级角落：扩分区后 Producer 先于 Consumer 感知新分区，配 auto.offset.reset=latest 时，感知窗口内发到新分区的消息对消费者不可见——扩分区要评估消费端感知时序，不能只看 Broker 侧。（来源：极客时间·Kafka 核心技术与实战 期末测试）',
               ],
             },
             {
@@ -2723,6 +2740,15 @@ export const backendTrack: Track = {
               points: [
                 'leader 只把"**全部 ISR 都已复制**"的前缀暴露给消费者——所以 acks=all + min.insync.replicas≥2 的本质是**控制 HWM 的推进条件**：HWM 没推进，消息对消费者不可见，宕机切换也不会丢。（来源：Grokking Advanced System Design · Kafka）',
                 '三档 ack 的标准话术：**Async fire-and-forget / Committed to Leader / Committed to Leader and Quorum**——持久性与吞吐的旋钮就三档，能按业务把档位和丢失窗口对应起来，这题就答透了。',
+                '但这套保证有一个机制级缺口：Follower 的 HW 更新**天然滞后一轮 FETCH**，min.insync.replicas=1 时，Follower 带着旧 HW 重启会截掉未及标记的消息，连锁切主后**已 ack 的消息**可能被全部副本抹掉——0.11 的 Leader Epoch（重启先查 Leader LEO 再决定是否截断）堵住该窗口。把「配置组合」升级成「机制答案」是这题的分水岭，完整推导见 be-mq-kafka-hw-epoch。（来源：极客时间·Kafka 核心技术与实战 27）',
+              ],
+            },
+            {
+              question: '先消费后提交会不会影响 TPS？位移提交 API 的工程细节怎么把握？',
+              points: [
+                '两个 API 的分工：commitSync 阻塞且**失败自动重试**（适配瞬时错误，但阻塞拉长单轮耗时）；commitAsync 不阻塞但**失败不自动重试**——重试提交的可能早已被后续提交覆盖的过期位移，重试无意义。（来源：极客时间·Kafka 核心技术与实战 18）',
+                '标准范式：消费循环内用 commitAsync 攒吞吐，finally 里最后补一次 commitSync 保兜底；大批量场景用带 Map〈分区, 位移〉参数的细粒度提交（如每处理 100 条提交一次），把「重放窗口」缩小到可控。',
+                '两个细节：提交的位移是「**下一条要消费的消息的位移**」（record.offset()+1）；「先消费后提交」的重放窗口 = 上次提交到崩溃点之间的消息，靠消费幂等兜底重放，而不是幻想消灭重放——与 be-mq-idempotent 互为表里。（来源：极客时间·Kafka 核心技术与实战 18）',
               ],
             },
           ],
@@ -2755,6 +2781,14 @@ export const backendTrack: Track = {
                 'ABA 边界：前置条件用「余额判等」有 ABA 问题——余额 100→200→100 后，旧消息仍能通过校验重复扣款；**版本号单调递增**才是安全的前置条件。（来源：极客时间·消息队列高手课 06）',
               ],
             },
+            {
+              question: 'Kafka 默认为什么是 at-least-once？能不能退到 at-most-once？',
+              points: [
+                '机制级回答：消息已写入但 Broker 的 ack 在网络抖动中丢失 → Producer 无法区分「没写到」还是「写到没收到 ack」，唯一安全动作是重试 → 重复必然存在——这是 at-least-once 成为默认的根因，不是配置失误。（来源：极客时间·Kafka 核心技术与实战 14）',
+                '反向选项成立：允许偶发丢失但绝不重复的场景（如 PV 统计）可关闭重试退化成 at-most-once——语义档位是可以用重试开关换的，先想清楚业务怕丢还是怕重。',
+                '范围边界：Kafka 传输层幂等（enable.idempotence）只保单分区单会话，Producer 重启或跨分区都不保——Broker 端幂等替代不了消费端幂等，跨系统最终一致永远要靠消费端兜底（对照 be-mq-kafka-idempotent-tx 的会话边界分析）。（来源：极客时间·Kafka 核心技术与实战 14）',
+              ],
+            },
           ],
         },
         {
@@ -2782,6 +2816,14 @@ export const backendTrack: Track = {
                 '选队列算法：要同时满足「相同 Key 落同一队列」和「支持分区水平扩容」，答案是**一致性哈希**——简单取模能满足前者，但扩容时 Key→队列映射大面积漂移，顺序被成批破坏。（来源：极客时间·消息队列高手课 08）',
                 '全局严格顺序的定量代价：队列数 = 1、生产者/消费者都单实例——完全放弃并行度，只有审计流水类极端场景可用。（来源：极客时间·消息队列高手课 08）',
                 '顺序与高可用的互斥：顺序消息的队列固定在特定主从组上，主挂后其他主无法接管（接管即乱序）——传统主从架构下是二选一；Dledger 类方案选举时选**数据最新的从节点**为主，才能兼得。（来源：极客时间·消息队列高手课 08）',
+              ],
+            },
+            {
+              question: '真实改造案例：把全局顺序改成分区有序，能换来多大收益？怎么做？',
+              points: [
+                '案例：因果序业务原本用单分区保全局序、牺牲全部吞吐；改造为**按消息体业务标志位提取成 Key + 自定义 Partitioner（同 Key 同分区）**，吞吐提升 **40 多倍**——「分区有序 + 业务键提取」是顺序消息的标准落地话术。（来源：极客时间·Kafka 核心技术与实战 09）',
+                '默认分区策略的准确表述：指定 Key 按 Key 哈希取模进同分区（保序），未指定 Key 轮询（均匀）；需要自定义时实现 partitioner.class 的 partition() 方法——别说成「随机」。',
+                '消费端并行约束：顺序的最后防线是「同一分区同一时刻只被组内一个消费者消费」，所以实例内**不能**再开处理线程池并发消费（会破坏分区内顺序）——顺序业务的并行只能靠加分区/加实例，这与本题主答案「该分区单线程消费」互为实现级解释。（来源：极客时间·Kafka 核心技术与实战 20）',
               ],
             },
           ],
@@ -2812,6 +2854,15 @@ export const backendTrack: Track = {
                 '判因口诀：粗因只有两种——**发送变快 or 消费变慢**；收发速率都没变却还在积压，去查「一条消息反复消费失败」；jstack 连打 5 份对比同一 ConsumeMessageThread 状态，**RUNNABLE 也要看**——HTTP 调用没设超时、线程等 DB 时就是 RUNNABLE 而不是 BLOCKED。（来源：极客时间·消息队列高手课 07）',
                 '反模式警示：OnMessage 收到消息丢进内存队列就 ack、另起线程池慢慢处理——宕机即丢消息；正确方向是扩队列 + 扩实例，且 **Consumer 实例数 ≤ 分区数**（超过即空转）。（来源：极客时间·消息队列高手课 07）',
                 '位点回溯兜底：RocketMQ `resetOffsetByTime` 可以**不停消费组**重放历史（位点在 Broker 侧，客户端定期拉取位点自然生效）；Kafka 必须先停组再 reset。（来源：中间件核心技术与实战 17）',
+                'Kafka 侧口径：分区级 Lag = LOG-END-OFFSET − CURRENT-OFFSET，主题级要手动汇总；kafka-consumer-groups --describe 输出里 CONSUMER-ID/HOST 为空 ≠ 命令失败，只是组内无 active 成员、LAG 仍有效——告警脚本要按此写。紧急度上 **Lead（最新可用位移 − 消费位移）逼近 0 比 Lag 增大更危险**：消息即将被 retention（默认 7 天）删除，随后位移重置导致全量重放或直接跳丢；且 Lag 大有马太效应（超出页缓存后落盘读更慢）。另盯 Broker 端 UnderReplicatedPartitions > 0——副本未同步是可能丢数据的前兆，别和消费堆积混为一谈。（来源：极客时间·Kafka 核心技术与实战 22/36）',
+              ],
+            },
+            {
+              question: '止损之后要回放历史，Kafka 的位移重设有哪几种姿势？',
+              points: [
+                '七种重设策略按「想从哪重新开始」选：Earliest（重放全部，注意最早位移未必是 0，可能已被 retention 删掉）/ Latest（跳过全部历史）/ Current（回到已提交处）/ Specified-Offset（精确跳过毒消息）/ ShiftBy-N（相对跳 N 条）/ DateTime（回到某时间点）/ Duration（PnDTnHnMnS ISO-8601 时长）。（来源：极客时间·Kafka 核心技术与实战 30）',
+                '落地方式：API 用 seek 系列逐分区设置；命令行 kafka-consumer-groups --reset-offsets——Kafka 必须先停组再重设（对照 RocketMQ 可不停组，见上一问的位点回溯兜底）。',
+                '扩分区的连带提醒：分区数变更会触发订阅该主题的**所有消费者组重平衡**，扩容窗口内消费暂停——扩分区动作要与重平衡治理一起排期，别在大促前夜做。（来源：极客时间·Kafka 核心技术与实战 17）',
               ],
             },
           ],
@@ -2841,6 +2892,14 @@ export const backendTrack: Track = {
                 '回查细节：`TransactionalMessageCheckService` 定时扫描半消息、逐条发反查 RPC；生产者实现 `checkLocalTransaction` 按 orderId 查库——**存在即 COMMIT，不存在返回 UNKNOW**（可能失败也可能还在执行），UNKNOW 下次继续查。（来源：中间件核心技术与实战 18）',
                 '容错设计：反查查的是 DB、不依赖发送节点的本地内存——节点宕机其他实例可代答；producer 的 commit/rollback 本身是 oneway RPC、丢了就靠回查兜底——「每个环节都可能失败，靠状态可查 + 重试收敛」。（来源：中间件核心技术与实战 18）',
                 '对照 Kafka 事务：Kafka 引入**事务协调器**（状态持久化在 `__transaction_state` 主题），消息**直接写业务分区**不做暂存，由消费者按控制消息过滤未提交批次，且没有反查——它解决的是流计算 read-process-write 链路内的恰好一次，与 RocketMQ「本地事务与发消息的原子性」不是同一个问题。（来源：极客时间·消息队列高手课 04）',
+                'Kafka 侧使用面补全（详见 be-mq-kafka-idempotent-tx 题）：transactional.id + initTransactions/beginTransaction/send/commitTransaction 四步 API；abort 的消息**仍写入了底层日志**，只是靠控制消息与 LSO 对 read_committed 消费者隐藏——「RocketMQ 半消息的原子性在投递生命周期，Kafka 事务的原子性在消费可见性」，一句话把两者分层讲清。（来源：极客时间·Kafka 核心技术与实战 14）',
+              ],
+            },
+            {
+              question: 'Kafka 这边为什么没有延迟消息？缺了怎么补？',
+              points: [
+                'Kafka 原生没有延迟/定时消息能力：延迟类需求在 Kafka 生态要靠上游调度（按延迟分级 topic + 定时转发）或外层时间轮组件补——这也是「Kafka 不适合业务交易类消息、交易类选 RocketMQ」论据的机制根源。（来源：极客时间·Kafka 核心技术与实战 14）',
+                '对比记忆：RocketMQ 用 Broker 内部延迟主题 + 定时任务扫描二次投递实现延迟（本题主答案），Kafka 把这类功能留给生态而不是 Broker——「Broker 精简、功能外置」与「Broker 富功能」两条路线的典型分歧。',
               ],
             },
           ],
@@ -2887,6 +2946,14 @@ export const backendTrack: Track = {
                 '定性框架：PageCache 是**读写缓存、天然不可靠**——写入缓存即对应用返回成功、掉电即丢，`sync` 强刷会失去缓存意义；Kafka 敢用的三个前提：MQ 读写比 ≈ 1:1（只读缓存无加速价值）、可靠性靠**多副本而非 fsync**、页缓存由内核实现无需自研缓存代码。（来源：极客时间·消息队列高手课 16）',
                 '挖坟问题：某个客户端从很旧的位置批量拉历史数据，**缓存被历史页填满**，其他客户端命中率骤降；JMQ 的解法是给 LRU 加「距尾部距离」权重、旧页优先淘汰（改进型 LRU/2Q 思想）。（来源：极客时间·消息队列高手课 16）',
                 '理论对应：内核用 LRU 变种（2Q）管理页缓存，**冷数据扫描类负载会把热页挤出**——与"挖坟"同构；所以页缓存型 MQ 要避免大量随机回溯历史数据。（来源：极客时间·消息队列高手课 16）',
+              ],
+            },
+            {
+              question: 'acks=all 开满之后吞吐上不去，先看什么？Broker 什么时候会偷偷重压缩？',
+              points: [
+                '首要瓶颈常在复制层而不是网络层：acks=all 的吞吐受**副本同步速度**制约（HW 要等 ISR 全拉齐才推进），把 Follower 拉取线程数 num.replica.fetchers（默认 1）调大，Producer 吞吐常常直接上去——可靠性开到最高档后，优化对象从网络层转到复制层。（来源：极客时间·Kafka 核心技术与实战 38）',
+                'Broker 意外重压缩的两个触发点（Broker CPU 飙升排查项）：① Broker 配置了与 Producer 不同的 compression.type（保持默认 producer 即尊重发送端）；② 新旧消息格式转换（兼容老客户端 V1↔V2）——后者还会丢零拷贝，客户端与 Broker 版本一致本身就是性能优化。（来源：极客时间·Kafka 核心技术与实战 38）',
+                '论据弹药：京东曾提议「消息校验挪到解压之前即可免解压」可把 Broker CPU 降 50%+，被社区以正确性为由拒绝——「正确性优先于性能」的现成案例，答辩时可以直接引用。（来源：极客时间·Kafka 核心技术与实战 10）',
               ],
             },
           ],
@@ -3151,6 +3218,332 @@ export const backendTrack: Track = {
               question: '属性过滤 vs 主题隔离：读放大和管理成本怎么权衡？',
               points: [
                 '属性方案零主题管理成本，但读放大近 3 倍、依赖每个消费端的过滤纪律（漏一个就丢消息）；主题方案读零放大，但主题翻倍、拦截器链路要防嵌套改写。主题数少且链路核心选主题隔离，轻量灰度/压测影子流量选属性方案。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'be-mq-kafka-hw-epoch',
+          title: 'Kafka 的高水位（HW）机制是怎么推进的？它有什么缺陷，Leader Epoch 又是怎么补救的？',
+          difficulty: 'advanced',
+          tags: ['Kafka', '高水位', '副本机制', 'Leader Epoch'],
+          points: [
+            '两个位移先分清：**LEO（Log End Offset）是副本「下一条待写入消息」的位移；高水位 HW 是分区层面界定消息可见性的位移——位移小于 HW 的才是已提交消息，等于 HW 的那条也不可见**。分区 HW = Leader 副本的 HW，任何副本 HW ≤ LEO；事务消息是例外，消费可见性由 LSO（Log Stable Offset）判定，不只看 HW。（来源：极客时间·Kafka 核心技术与实战 27）',
+            '推进规则：Leader 每次写入或收到 Follower 的 FETCH，取「**ISR 全体副本 LEO 的最小值**」与当前 HW 取 max 更新；Follower 端把自己的 HW 更新为 min(Leader 发来的 HW, 自己刚更新的 LEO)。Leader 所在 Broker 保存全部远程副本的 LEO，但不保存它们的 HW。',
+            '反直觉的关键：**Follower 的 HW 更新天然滞后一轮 FETCH**——本轮拉取写入消息，下一轮 FETCH 才把上一轮的 HW 带回来，Leader 与 Follower 的 HW 更新在时间上错配，这是一系列「数据丢失/数据不一致」问题的根源。',
+            '丢失场景（min.insync.replicas=1）：B 已写入消息但 HW 未及更新时宕机 → 重启后按旧 HW **截断日志**删掉该条 → 紧接着 A 宕机、B 被选为新 Leader → A 重启同样截断——这条**已 ack 的消息**在所有副本中被永久抹掉。',
+            'Leader Epoch（0.11 引入）补救：缓存〈epoch 单调递增版本号, start offset 该版本首条消息位移〉条目（内存 + checkpoint 持久化）；副本重启后先向 Leader 发特殊请求取其当前 LEO，再结合 Epoch 条目判断**是否需要截断**，不再盲目按 HW 截断——上述场景中 B 发现无更大 Epoch 条目且 Leader LEO 不小于自己，跳过截断，消息保住；0.11 后副本数据不一致类 Bug 明显减少。',
+          ],
+          followUps: [
+            {
+              question: '手推一遍「1 Leader + 2 Follower」下一条消息的 HW 推进时序，为什么 HW 更新要多轮 FETCH？',
+              points: [
+                'Leader 写入后自己的 LEO +1，但 HW 要等 FETCH 请求带回两个 Follower 的 LEO 才能推进到最小值；Follower 拉到消息写入、LEO +1 后，要等**下一轮** FETCH 才能拿到 Leader 更新后的 HW——HW 永远慢一轮。',
+                '所以一条消息要在 ISR 全部落地并对消费者可见，至少经历两轮 FETCH 往返——「HW 是最慢同步副本的水位线，且水位线的传递有固有延迟」，这就是它要用 Leader Epoch 兜底的机制原因。',
+              ],
+            },
+            {
+              question: 'min.insync.replicas=2 时，上面那个截断连锁丢消息的场景还成立吗？',
+              points: [
+                '不成立（或退化）：写入需要 ISR ≥ 2 确认，消息要成为已提交必须至少两个副本持有；任一副本带着旧 HW 截断、再怎么切主，已提交消息都不会只剩「唯一载体」被截掉。',
+                '把这题答透的方式是把参数组合与机制串起来：min.insync.replicas 抬高的是「已提交的水位线由几个副本共同托底」，Leader Epoch 修的是「截断依据错误」——两层防线缺一不可。（来源：极客时间·Kafka 核心技术与实战 27/11）',
+              ],
+            },
+            {
+              question: '为什么社区不干脆改成同步复制或多数派（Quorum），一劳永逸？',
+              points: [
+                '同步刷盘/多数派确认都会把吞吐打下来——Kafka 用「ISR + HW」在吞吐与一致性之间取折中：正常情况异步复制、近乎攒批吞吐，出问题再靠 Epoch 修截断依据。',
+                '对比 Raft 类系统的 commit index：Raft 由 Leader 单点推进提交位、语义清晰；Kafka 的 HW 是多轮 FETCH 收敛出来的「分布式协商水位」，天生有时间错配窗口——这也解释了为什么后来 KRaft 干脆采用 Raft 的方式管理元数据。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'be-mq-kafka-isr',
+          title: 'Kafka 的 ISR 是怎么动态伸缩的？Unclean Leader 选举的开关该怎么定？',
+          difficulty: 'intermediate',
+          tags: ['Kafka', 'ISR', '高可用', 'CAP'],
+          points: [
+            'ISR（In-sync Replicas）是与 Leader 保持同步的副本集合，**必然包含 Leader 自己**，极端情况下 ISR 只剩 Leader 一个——它是动态集合，不是配置出来的静态列表。（来源：极客时间·Kafka 核心技术与实战 23）',
+            '判定标准是时间不是条数：Broker 端 `replica.lag.time.max.ms`（默认 10 秒）——Follower 落后 Leader 的**时间间隔**不连续超过该值即算同步，哪怕它保存的消息条数明显少；持续慢于 Leader 写入速度、超时即被踢出（收缩），之后追上进度自动加回（扩张）。JMX 指标 `ISRShrink/ISRExpand` 频繁抖动 = 副本反复进出 ISR，要查网络与 Follower 所在 Broker 的负载。（来源：极客时间·Kafka 核心技术与实战 36）',
+            '与高水位联动：分区 HW 计算要求副本「在 ISR 中」且 LEO 落后不超过 replica.lag.time.max.ms **两个条件同时成立**——刚追上进度但尚未回到 ISR 的副本不算，防止出现 HW > LEO 的矛盾状态。',
+            'Unclean Leader Election：ISR 全挂（含 Leader）时，把「不在 ISR 中的存活副本」选为新 Leader，由 Broker 端 `unclean.leader.election.enable` 控制——开启换可用性、必然可能丢数据；关闭保一致性、分区不可用。课程强烈建议保持 false（新版本默认即 false）。（来源：极客时间·Kafka 核心技术与实战 11）',
+          ],
+          followUps: [
+            {
+              question: '为什么 0.9 之后用「落后时间」而不是「落后条数」判定同步？',
+              points: [
+                '条数阈值在瞬时高峰下会**误杀健康 Follower**：突发流量下正常副本也会短暂落后一大截，按条数判定就把它们踢出 ISR，引发无意义的收缩/扩张抖动。',
+                '时间窗口天然容忍突发：「持续落后超过 10 秒」才判定真的跟不上——用时间衡量抗抖动性远好于条数，这也是绝大多数流式系统用 lag time 而不是 lag count 做存活判定的共性。（来源：极客时间·Kafka 核心技术与实战 23）',
+              ],
+            },
+            {
+              question: 'ISR 收缩到只剩 Leader 时，acks=all 意味着什么？',
+              points: [
+                '退化为只等 Leader 自己确认，等价于 acks=1——「all」是「当前 ISR 里的 all」，ISR 缩水保证跟着缩水。',
+                '所以 acks=all 必须配合 min.insync.replicas ≥ 2：ISR 副本数小于该值时 Producer 直接抛异常拒绝写入——用「暂时不可写」换「可靠性不缩水」，这正是下一问 unclean 开关的同款取舍。（来源：极客时间·Kafka 核心技术与实战 11）',
+              ],
+            },
+            {
+              question: 'unclean.leader.election.enable 开还是关？什么业务敢开？',
+              points: [
+                '这是 CAP 在 Kafka 参数上的用户自选开关：开启 = 可用性优先（分区尽快恢复服务，但非同步副本当 Leader 会覆盖/丢失数据）；关闭 = 一致性优先（宁可分区不可用）。',
+                '判据说出来才算答完：日志/埋点类数据可从上游重推，敢开换可用性；交易/账务类必须关（保持默认 false）——「这条数据丢了能不能补回来」是定开关的唯一标准。（来源：极客时间·Kafka 核心技术与实战 11）',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'be-mq-kafka-controller',
+          title: 'Kafka 的 Controller 是怎么选出来的？它宕机了怎么办、怎么防脑裂？',
+          difficulty: 'advanced',
+          tags: ['Kafka', 'Controller', 'ZooKeeper', '架构'],
+          points: [
+            '选举是抢占式而非投票式：集群中任意 Broker 启动时尝试在 ZooKeeper 创建 `/controller` **临时节点**，第一个创建成功的 Broker 成为 Controller——任何时刻有且只有一个。（来源：极客时间·Kafka 核心技术与实战 26）',
+            '五类职责：① 主题管理（创建/删除/扩分区，kafka-topics 脚本的后台执行者）；② 分区重分配（kafka-reassign-partitions 的执行者）；③ Preferred 领导者选举（均衡 Leader 分布）；④ 集群成员管理（Watch /brokers/ids 子节点变化感知上下线，临时节点随会话消失感知宕机）；⑤ 数据服务（Controller 持有最全的集群元数据，推送给其他 Broker 更新缓存）。',
+            '故障转移全自动：Controller 宕机 → ZK 会话结束、/controller 临时节点被删 → 所有存活 Broker 重新抢占 → 新 Controller **从 ZK 重读全量元数据**初始化缓存后恢复工作，无需人工介入。',
+            '0.11 重构：旧版多线程（每 Broker 一条专属发送线程 + Watch 回调线程 + 主题删除 IO 线程）并发访问共享元数据缓存、靠大量 ReentrantLock、Bug 丛生；重构为**单事件处理线程 + 事件队列**，缓存只被单线程触碰、不再需要重量级同步；ZK 写入从同步 API 改异步，写入性能提升约 10 倍。',
+            '2.2 请求分级：控制类请求（LeaderAndIsr/StopReplica）会令数据类请求（PRODUCE/FETCH）失效，却和普通请求一起排队——Kafka 为两类请求建**两套独立的网络线程池 + IO 线程池 + 不同 listeners 端口**，让控制请求可被立即处理（社区否决了「优先级队列」方案）。',
+            '运维信号：JMX `ActiveControllerCount` 正常只能在某一台 Broker 上为 1，发现多台同时为 1 即脑裂，先查网络连通性；主题删不掉、重分区卡住时不必重启 Broker——删掉 /controller 节点触发重选举即可。（来源：极客时间·Kafka 核心技术与实战 26）',
+          ],
+          followUps: [
+            {
+              question: '为什么「ZK 临时节点抢占」就够，不需要 Raft 式多数派投票？',
+              points: [
+                '元数据的真相源始终是 ZooKeeper，抢占只解决「谁来当 Controller」这一件事；新 Controller 从 ZK 重读全量元数据即可无损接管，不需要靠复制日志补齐状态。',
+                '对比 Raft/Dledger 用多数派投票 + 日志复制选主：它们的数据和元数据都在自己的日志里，必须靠共识选出「数据最新的那个」；Kafka 把状态外置给了 ZK，选举自然可以退化成抢占。（来源：极客时间·Kafka 核心技术与实战 26）',
+              ],
+            },
+            {
+              question: '新 Controller 接管期间，正在进行的分区重分配会怎样？',
+              points: [
+                '重分配任务作为运维指令持久化在 ZK 中，新 Controller 初始化时重读任务列表继续执行——不会因为 Controller 换人半途而废。',
+                '「状态外置 + 重读恢复」是依托 ZK 架构的通用恢复模式：进程可以随便死，只要真相源里的任务队列还在，接管者读一遍就能续上。',
+              ],
+            },
+            {
+              question: 'KRaft（KIP-500）去 ZooKeeper 化的方向与代价是什么？',
+              points: [
+                '方向：Controller 元数据改为自持的 Quorum（Raft 协议）——省掉 ZK 的运维与双重写放大，Controller 切换不再依赖 ZK 会话超时，元数据以日志形式在 Controller 之间复制。',
+                '代价：Controller 自身要补齐共识、元数据快照与恢复这一整套原来免费白嫖 ZK 的能力——「外部协调」换成「内置共识」的典型架构演进，面试里能用「ZK 抢占 → KRaft 内置 Raft」讲清这条演进线即可。（来源：极客时间·Kafka 核心技术与实战 26）',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'be-mq-kafka-request-purgatory',
+          title: '一个 PRODUCE 请求到达 Kafka Broker 后是怎么被处理的？Purgatory 是干什么的？',
+          difficulty: 'intermediate',
+          tags: ['Kafka', '请求处理', 'Reactor', 'Purgatory'],
+          points: [
+            'Kafka 自定义二进制请求协议（2.3 版本已定义 45 种：PRODUCE/FETCH/METADATA/LeaderAndIsr/StopReplica……），全部走 TCP——Broker 端是一套 Reactor 架构的多线程模型。（来源：极客时间·Kafka 核心技术与实战 24）',
+            '线程模型四层：每 Broker 1 个 **Acceptor 线程**（只做分发，轮询公平派发）→ **网络线程池**（num.network.threads，默认 3，收发与解析）→ **共享请求队列** → **IO 线程池**（num.io.threads，默认 8，真正执行 PRODUCE 写日志 / FETCH 读页缓存）；请求队列共享，但每个网络线程有**专属响应队列**——分发线程不管回包。',
+            'Purgatory（炼狱）缓存**延时请求**：一时不能满足条件、不能立刻完成的请求。典型两类：acks=all 的 PRODUCE 要等 ISR 副本全部拉取后才能回；FETCH 暂无新数据时被 hold 住等消息到达（类似长轮询）。条件满足后 IO 线程继续处理，把响应放回对应网络线程的响应队列。',
+            '控制类/数据类请求分离：LeaderAndIsr 到达时，积压的 acks=all PRODUCE 只能在 Purgatory 里耗到超时；若控制请求优先处理，Broker 立刻抛 NOT_LEADER_FOR_PARTITION 让客户端快速失败——实现是**复制一套完整组件**（两套线程池 + 独立端口/listeners），而不是做优先级队列。',
+            '调优落点：监控 NetworkProcessorAvgIdlePercent 与 RequestHandlerAvgIdlePercent，长期低于 30% 就要加线程或分流。（来源：极客时间·Kafka 核心技术与实战 24/36）',
+          ],
+          followUps: [
+            {
+              question: '对照 Reactor 模型，Kafka 各组件怎么对应？为什么 IO 线程不直接做网络读写？',
+              points: [
+                'Acceptor = 主 Reactor/分发器；网络线程池 = 从 Reactor/工作线程池（对应 Doug Lea 模型的 multiple Reactors）；IO 线程池 = 业务处理器——与 Redis 的单 Reactor 单线程、Netty 的主从 Reactor 多线程放在一起定位更清晰。',
+                '网络与磁盘的慢是两种慢：网络线程等 socket 时，IO 线程可以继续处理别的请求——「收发解析」与「磁盘读写」分池，让慢网络不拖累慢磁盘、互不阻塞。',
+              ],
+            },
+            {
+              question: 'acks=all 的请求在 Purgatory 里等待期间 Leader 换人了，会怎样？',
+              points: [
+                '没有请求分级时：控制请求排在积压数据请求后面，等 acks=all 请求在 Purgatory 里耗到超时才被处理，客户端超时重试——一场切主要拖一个超时周期。',
+                '2.2 分级后：控制请求走独立线程池立即处理，Broker 主动返回 NOT_LEADER_FOR_PARTITION，客户端**快速失败、立刻重试到新 Leader**——同样的故障，端到端延迟差一个数量级。（来源：极客时间·Kafka 核心技术与实战 24）',
+              ],
+            },
+            {
+              question: '为什么社区拒绝「优先级队列」方案，宁可复制一整套组件？',
+              points: [
+                '队列满时高优先级请求照样进不来——优先级形同虚设，饿死问题在共享队列模型里无解。',
+                '整组件复制的代价是资源（多一套线程池与端口）与复杂度，但换来硬隔离：控制面和数据面的延迟互不影响——基础设施里「复制隔离」比「共享 + 优先级」更可控，这与「控制面/数据面分离」的通用架构直觉一致。（来源：极客时间·Kafka 核心技术与实战 24）',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'be-mq-kafka-rebalance',
+          title: 'Kafka 消费者组重平衡的完整流程是怎样的？为什么说它是一次 STW、还这么慢？',
+          difficulty: 'advanced',
+          tags: ['Kafka', '消费者组', '重平衡', 'Coordinator'],
+          points: [
+            '三个触发条件：组成员数变化（占绝大多数）、订阅主题数变化（正则订阅匹配到新主题）、订阅主题分区数增加；组每次启动必然触发一轮。（来源：极客时间·Kafka 核心技术与实战 25）',
+            'Coordinator 是 Broker 端组件（每个 Broker 都有），定位算法两步：`partitionId = abs(groupId.hashCode() % 50)`（位移主题默认 50 分区）→ 该分区 Leader 副本所在的 Broker 即 Coordinator。知道算法的实际意义：排查时能直接定位承载该消费组的 Broker 日志。',
+            '两阶段：**JoinGroup**——全员上报订阅信息，Coordinator 选一个成员当 Leader Consumer（通常是第一个发请求的；注意与「Leader 副本」无关），由它**制定分区分配方案**；**SyncGroup**——Leader 把方案上交，Coordinator 统一下发全体成员。分配逻辑在消费者端而非服务端执行。',
+            '通知机制：Coordinator 决定重平衡后，把 REBALANCE_IN_PROGRESS 封装进**心跳响应**下发；心跳线程是 0.10.1.0 从主线程剥离的独立线程，heartbeat.interval.ms 的真实用途是控制重平衡通知的及时性。组状态机五态：Empty/Dead/PreparingRebalance/CompletingRebalance/Stable；组回到 Empty 且停超 7 天，其过期位移会被定期删除（日志常见 "Removed … expired offsets"）。',
+            '为什么是 STW：重平衡期间**所有成员停止消费**等待新方案，如同 GC 的 stop-the-world；为什么慢：全量参与且默认不保留旧分配方案（无局部性），几百成员的组重平衡一次要几小时的案例都存在——0.11 的 StickyAssignor 只是缓解（尽量保留旧分配），早期 Bug 多。',
+            'Broker 端四个场景：新成员入组（心跳响应强制触发全员重平衡）、主动离组（LeaveGroup 请求）、崩溃离组（等 session.timeout.ms 才感知）、重平衡前要求成员先快速上报位移再走 JoinGroup。（来源：极客时间·Kafka 核心技术与实战 25）',
+          ],
+          followUps: [
+            {
+              question: '分配方案为什么放在消费者端（Leader Consumer）算，而不是 Coordinator 算？',
+              points: [
+                '把分配策略的演进与 Broker 版本解耦：Range/RoundRobin/Sticky 全是客户端逻辑，升级客户端就能换策略，Broker 不用动——策略的数据面与协调的控制面分离。',
+                'Coordinator 只做「收集订阅 + 收发方案」的信使，不理解分配语义——这样新分配策略可以随客户端独立灰度，老 Broker 集群照样服务。',
+              ],
+            },
+            {
+              question: '组内成员数超过分区数会怎样？Coordinator 所在的 Broker 挂了呢？',
+              points: [
+                '多出的实例分不到任何分区、空转——消费端并行度上限 = 分区数，扩实例前先看分区数是否够（对照堆积题「Consumer 实例数 ≤ 分区数」）。',
+                'Coordinator 所在 Broker 挂了：位移主题对应分区的 Leader 迁移到别的 Broker，消费组重新 FindCoordinator 定位到新 Broker 即可，位移不丢——协调者本身也是无状态可迁移的。（来源：极客时间·Kafka 核心技术与实战 15）',
+              ],
+            },
+            {
+              question: '增量协作式重平衡（CooperativeStickyAssignor，2.4+）为什么是演进方向、又难在哪？',
+              points: [
+                '它允许「未受影响的分区在重平衡期间继续消费」，把全量 STW 变成局部调整——治理重平衡风暴的根治方向（对照 be-mq-kafka-rebalance-storm 的参数止血）。',
+                '难在语义复杂：一轮重平衡变成两轮（先撤销受影响的分区、再分配新方案），消费者代码要正确处理 REVOKED/CURRENT 状态，新旧assignor混部时行为容易出错——性能收益对得上复杂度，才值得上。（来源：极客时间·Kafka 核心技术与实战 17）',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'be-mq-kafka-rebalance-storm',
+          title: '线上 Kafka 消费者组频繁重平衡（重平衡风暴），你会怎么排查和治理？',
+          difficulty: 'intermediate',
+          tags: ['Kafka', '重平衡', '故障排查', '参数调优'],
+          points: [
+            '先定治理目标：计划内的增减成员无法避免，要消灭的是「不必要重平衡」——绝大多数是被 Coordinator **误判死亡**或**消费超时**引发的；消费者组 join rate/sync rate 指标持续偏高就是重平衡频繁的监控印证。（来源：极客时间·Kafka 核心技术与实战 17/19/25）',
+            '第一类·心跳不及时被踢：配方 `session.timeout.ms=6s`（课程推荐，默认 10s，越小越快揪出僵尸成员）+ `heartbeat.interval.ms=2s`，并保证 **session.timeout.ms ≥ 3 × heartbeat.interval.ms**——被判死前至少发出 3 轮心跳。',
+            '第二类·消费太慢主动离组：max.poll.interval.ms（默认 5 分钟）内没处理完 poll 返回的一批，消费者主动离组。定量配方：单条处理最长 2s × max.poll.records 500 = 一批要 1000s，要么把 max.poll.interval.ms 调到 1000s 以上，要么把 max.poll.records 降到 150。四板斧按优先级：**缩短单条处理耗时 > 调大 max.poll.interval.ms > 调小 max.poll.records > 多线程加速消费**（最难，位移提交易错）。（来源：极客时间·Kafka 核心技术与实战 19）',
+            '参数设计演进要能讲：0.10.1.0 之前「消费超时」与「存活判活」共用 session.timeout.ms，两者诉求天然冲突（判活要短、消费要长）；引入 max.poll.interval.ms 把「消费能力」从「存活性」中剥离——一个参数拆成两个各管各的。',
+            '参数都对还在重平衡就去查 GC：频繁 Full GC 的长停顿会让心跳线程/主线程停摆，翻 kafkaServer-gc.log。另有冷门坑：Standalone Consumer 与消费者组撞了相同 group.id，提交位移必抛 CommitFailedException 且四板斧全部无效——多团队共用集群时按规范规划 group.id。（来源：极客时间·Kafka 核心技术与实战 19）',
+          ],
+          followUps: [
+            {
+              question: '为什么说「调大 session.timeout.ms」是双刃剑？',
+              points: [
+                '调大确实减少误判，但真宕机后接管时间等比例变长，消费中断窗口扩大——用「误杀率」换「恢复时间」。',
+                '正解是让两个超时各管一件事：session.timeout.ms 保持小、只管「存活性」；消费慢交给 max.poll.interval.ms 承接，不要放大 session 来兜消费的底。（来源：极客时间·Kafka 核心技术与实战 17）',
+              ],
+            },
+            {
+              question: '把 max.poll.records 调小有什么副作用？',
+              points: [
+                '单次 poll 的批变小：消费吞吐下降、网络往返变多——这是「重平衡风险」与「消费吞吐」的折中，不是免费的。',
+                '正确方向仍是缩短单条处理耗时或提高消费并行度，调参只是止血——治理重平衡的优先级永远是「改代码 > 改参数」。（来源：极客时间·Kafka 核心技术与实战 19）',
+              ],
+            },
+            {
+              question: 'Static Membership（group.instance.id）为什么能从根上减少重平衡？代价是什么？',
+              points: [
+                '重启后 Broker 认识老实例 ID（group.instance.id），不触发重分配——滚动发布、优雅重启不再引发全员 STW，这是参数止血做不到的根治。',
+                '代价是故障接管变慢：Broker 要等 session.timeout.ms 才确认「真死了」并转移分区——用「恢复时间」换「发布期稳定」，适合实例数多、拓扑稳定的消费组。（来源：极客时间·Kafka 核心技术与实战 17）',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'be-mq-kafka-offsets-topic',
+          title: 'Kafka 的位移主题 __consumer_offsets 是怎么工作的？位移为什么要放在 Kafka 自己身上？',
+          difficulty: 'intermediate',
+          tags: ['Kafka', '位移主题', '消费者组', 'Compact'],
+          points: [
+            '演进动机：老版本 Consumer 把位移存 ZooKeeper——ZK 是协调框架、**不适合高频写**，位移提交恰恰是高频写操作，会拖垮 ZK；0.8.2.x 起改为存 Kafka 内部主题，Kafka 天然满足高持久 + 高频写——「用自己存储自己，自己吃自己的狗粮」。（来源：极客时间·Kafka 核心技术与实战 16）',
+            '本质：位移主题就是普通 Kafka 主题（可创建/修改/删除），但消息格式由 Kafka 定义、**用户不可写入**——自己写 Producer 乱写会导致 Broker 解析失败崩溃。Key 是三元组〈Group ID, 主题名, 分区号〉，Value 为位移值 + 元数据；另有注册组用的消息与 **tombstone 墓碑消息**（Value 为 null，组全员停止且位移删除后写入以彻底清除组）。',
+            '自动创建与规格：集群第一个 Consumer 启动时自动创建；分区数 offsets.topic.num.partitions 默认 50、副本数 offsets.topic.replication.factor 默认 3——不建议手动建（有源码硬编码 50 的历史坑）。（来源：极客时间·Kafka 核心技术与实战 16）',
+            '清理策略必须用 **Compact（压实）**：自动提交下即使没有新消息也会不停写入相同位移（如永远 100），按时间 retention 删除毫无意义，只能「同 Key 只留最新一条」，由后台 Log Cleaner 线程巡检执行。位移主题无限膨胀的常见根因就是 **Log Cleaner 线程静默挂掉**——排查手段：jstack 找 kafka-log-cleaner-thread。（来源：极客时间·Kafka 核心技术与实战 16/36）',
+            '位移提交的两条路径——自动（enable.auto.commit=true，默认 5s 一次）与手动（commitSync/commitAsync）——最终都是**向位移主题写消息**；提交语义的正确性（先消费后提交）由用户负责，完整链路见 be-mq-no-loss。（来源：极客时间·Kafka 核心技术与实战 18）',
+          ],
+          followUps: [
+            {
+              question: 'Compact 和 Compression 是一回事吗？为什么位移主题适合 Compact？',
+              points: [
+                '术语辨析本身就是考点：压实（compact）= 按 Key 只保留每个 Key 的最新值，是**日志清理策略**；压缩（compress）= 编码层减小体积，两者正交可叠加。',
+                '位移主题同 Key 反复覆盖写（组 × 主题 × 分区三元组固定），且要随时能读到每个组的最新位移——天然匹配「保留最新值」语义；按时间 retention 反而可能把最新位移连同历史一起删掉。（来源：极客时间·Kafka 核心技术与实战 16）',
+              ],
+            },
+            {
+              question: '位移主题分区数为什么默认 50、为什么不能随便改？',
+              points: [
+                '它要承载「组数量 × 每组写入频率」的并行度，50 是社区权衡后的默认；组定位算法按 groupId 对这个分区数**取模**——改了它，存量组与 Coordinator 的映射全部重新洗牌。',
+                '内部主题的参数同样是生产约定：改 offsets.topic.num.partitions 只影响新建分区，存量分区不动，结果是不对称布局——要动就趁集群初始化时定好。（来源：极客时间·Kafka 核心技术与实战 16）',
+              ],
+            },
+            {
+              question: '内部元数据放「Kafka 自家主题」vs 放外部 ZK，各牺牲了什么？',
+              points: [
+                '内部主题的代价：自举依赖（恢复消费进度本身要先能消费位移主题）+ Compact/Log Cleaner 的运维心智；ZK 的代价：高频写瓶颈 + 双系统运维 + 客户端不得直连的约定。',
+                'Kafka 选前者——把存储问题留给自己最擅长的日志结构，代价是「吃自己的狗粮」；这条路线后来走到 KRaft：连集群元数据也全部搬进 Kafka 式日志——两条演进线在面试里可以串成一句话。（来源：极客时间·Kafka 核心技术与实战 16/26）',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'be-mq-kafka-idempotent-tx',
+          title: 'Kafka 的幂等生产者和事务生产者是一回事吗？各自解决什么问题？',
+          difficulty: 'advanced',
+          tags: ['Kafka', '幂等', '事务', '消息语义'],
+          points: [
+            '先摆交付语义三档：at most once（禁重试即可实现，宁丢不重）/ at least once（默认——消息已写入但 ack 在网络抖动中丢失时，Producer 无法区分「没写到」还是「写到没收到」，唯一安全动作是重试，必然可能重复）/ exactly once。（来源：极客时间·Kafka 核心技术与实战 14）',
+            '幂等生产者（0.11+）：enable.idempotence=true 一键开启，Broker 端多存字段（业界共识为 PID + 分区内序列号）识别重复并静默丢弃，重试从此安全。**范围限制是考点：只保证单分区、单会话**——跨分区无能为力，Producer 进程重启（新会话）保证即失效。（来源：极客时间·Kafka 核心技术与实战 14）',
+            '事务生产者：补齐跨分区、跨会话。配置 enable.idempotence=true + `transactional.id`（有意义的名字）；API 四步 initTransactions / beginTransaction / send / commitTransaction，异常走 abortTransaction——保证多条消息**原子地**写入多个分区，且进程重启后依然保证。（来源：极客时间·Kafka 核心技术与实战 14）',
+            '消费端配合：isolation.level = read_uncommitted（默认，什么都可见）/ read_committed（只见事务成功提交的消息 + 非事务消息）。注意：事务 abort 后消息**仍写入了底层日志**，只是靠控制消息与 LSO 对 read_committed 消费者隐藏——「精确一次」是消费可见性层面的。（来源：极客时间·Kafka 核心技术与实战 14）',
+            '定位：Kafka 事务 ≈ 数据库 read committed（保证无脏读脏写），主要服务 read-process-write 的流处理链路（Kafka Streams）；性能开销大于幂等生产者，普通业务消息不要无脑开启。（来源：极客时间·Kafka 核心技术与实战 14）',
+          ],
+          followUps: [
+            {
+              question: '为什么幂等只能在单分区单会话内防重，事务加一个 transactional.id 就能跨会话？',
+              points: [
+                '幂等的 PID 在每次会话重启后都会变，Broker 无法把新旧会话关联起来——跨会话重复在幂等机制里是「两个陌生人」各写各的。',
+                'transactional.id 是用户显式指定的稳定标识：新会话 initTransactions 时，Broker 用它找回旧 PID 并 **fencing 掉旧会话**——「稳定身份 + 隔离旧身份」是跨会话精确一次的机制基础。（来源：极客时间·Kafka 核心技术与实战 14）',
+              ],
+            },
+            {
+              question: 'Kafka 事务保证的「原子写 Kafka」，和「本地事务与发消息的原子性」是同一个问题吗？',
+              points: [
+                '不是：Kafka 事务管不了「DB 写入 + 发消息」跨系统的原子性——那是 RocketMQ 事务消息/本地消息表要解决的问题（见 be-mq-delay-tx），两者的「原子」一个在流处理链路内、一个在上游业务与投递之间。',
+                '把「流处理链路内的 EOS」与「跨系统最终一致」分清，才不会在面试里把 Kafka 事务答成事务消息——这是两套为不同问题设计的机制。（来源：极客时间·Kafka 核心技术与实战 14）',
+              ],
+            },
+            {
+              question: '什么场景值得上事务生产者？普通业务该怎么选？',
+              points: [
+                '真需求：Kafka Streams 的「状态变更与输出同事务」（read-process-write 链路内 EOS）——事务为此而生。',
+                '普通业务消息用幂等生产者 + 消费端幂等通常已够：跨系统本来就做不到传输层精确一次（见 be-mq-idempotent），事务的吞吐代价要先压测再决定开不开——「为用不上的保证付费」是反模式。（来源：极客时间·Kafka 核心技术与实战 14）',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'be-mq-kafka-tuning',
+          title: '给你一个 Kafka 集群做性能调优，从哪几层下手？吞吐和延时的参数方向为什么常常相反？',
+          difficulty: 'advanced',
+          tags: ['Kafka', '性能调优', 'JVM', '容量规划'],
+          points: [
+            '优化漏斗（效果自上而下衰减）：**应用层代码 > 框架层参数 > JVM 层 > 操作系统层**——先改使用姿势，再动内核与虚拟机参数。（来源：极客时间·Kafka 核心技术与实战 38）',
+            'OS 层：文件系统 XFS（优于 ext4）+ 挂载 noatime；**swappiness 设 1 而不是 0**——留一丝 swap 避免内存耗尽时 OOM Killer 无预警杀进程，且性能劣化可观测；ulimit -n 调大（Too many open files）；vm.max_map_count=655360（主题多时防 OutOfMemoryError: Map failed）；**页缓存 ≥ 一个日志段大小（log.segment.bytes 默认 1GB）**，保证消费命中页缓存。（来源：极客时间·Kafka 核心技术与实战 38/06）',
+            'JVM 层：Broker 堆 **6-8GB 就够**（堆只放 ByteBuffer 等瞬时对象，大内存诉求在页缓存，16GB 堆的 GC 反而是灾难）、G1（0.9 起默认；Full GC 单线程极慢必须避免，-XX:+PrintAdaptiveSizePolicy 查元凶；消息体大时防 humongous allocation 调 G1HeapRegionSize）。（来源：极客时间·Kafka 核心技术与实战 38/36）',
+            '应用层三法则：Producer/Consumer 实例复用（构造开销大）、用完关闭防资源泄漏、**Producer 线程安全可多线程共享而 Consumer 不行**——客户端侧最常见的三类低级错误。（来源：极客时间·Kafka 核心技术与实战 20/38）',
+            '吞吐与延时方向相反的参数表：吞吐——batch.size 调大（默认 16KB 太小）+ linger.ms 攒批 + LZ4/zstd 压缩 + **num.replica.fetchers 加大**（acks=all 的首要瓶颈是副本同步速度）+ 不设 acks=all 不开重试；延时——linger.ms=0、不压缩、fetch.min.bytes=1，同样加大 num.replica.fetchers。（来源：极客时间·Kafka 核心技术与实战 38/08）',
+            '版本一致性也是调优：客户端与 Broker 版本不一致会触发消息格式转换——既重压缩又丢零拷贝；1.1+ 参数分 read-only/per-broker/cluster-wide 三档，突发流量时 num.io.threads/num.network.threads 可在线调大，无需重启 Broker。（来源：极客时间·Kafka 核心技术与实战 29/38）',
+          ],
+          followUps: [
+            {
+              question: '为什么「页缓存大」比「堆大」对 Kafka 更重要？',
+              points: [
+                'Broker 的主要内存诉求是页缓存不是堆：堆里只放 ByteBuffer 等瞬时对象，消费读热数据全靠页缓存命中——页缓存 ≥ 活跃日志段（1GB）消费者几乎不读盘。',
+                '堆调大反而有害：G1 要维护更大的堆、Full GC 更疼；「内存先喂页缓存，堆 6-8GB 够用」是 Kafka 与多数 Java 服务相反的容量观——呼应 be-mq-kafka-throughput 的页缓存设计但落点在容量分配。',
+              ],
+            },
+            {
+              question: 'swappiness=0 和 =1 的真实差别是什么？',
+              points: [
+                '0 在很多内核版本意味着「完全禁 swap」：内存耗尽时 OOM Killer 直接无预警杀掉 Broker——进程消失比变慢可怕得多。',
+                '设 1 留一丝交换空间：极端时有可观测的性能劣化作为预警，运维有介入窗口——「要劣化、不要消失」的基础设施运维哲学。（来源：极客时间·Kafka 核心技术与实战 38）',
+              ],
+            },
+            {
+              question: '「攒批」这笔延迟换吞吐的账，定量怎么算？',
+              points: [
+                '典型数字：等 8ms 攒 1000 条——单条延时 2ms→10ms（×5），TPS 500→10 万（×200）。消息在客户端内存缓冲攒批是纳秒级、网络发送是毫秒级，「等一小会儿」就能攒出数量级吞吐。',
+                '反过来延时敏感链路要把账倒着算：linger.ms=0 + 不压缩 + fetch.min.bytes=1，用吞吐换响应——先问业务要哪一个，再选参数方向，这组参数天然互斥不是调优失误。（来源：极客时间·Kafka 核心技术与实战 38/08）',
               ],
             },
           ],
