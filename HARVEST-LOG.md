@@ -48,8 +48,10 @@
 | 35 | 五期·批 31 两题二审 + 生产端到端验收 | ai-infra.ts | 0 | 修复 3 处 | ✅ 已完成 | 见 git log |
 | 41 | 六期·私有笔记·Kubernetes 双课程 | ops.ts | 12 | 10 条（含新题内另计） | ✅ 已完成 | 见 git log |
 | 48 | 六期·私有笔记·parallel-hashmap（Swiss Table） | computer-architecture.ts | 1 | 3 条（含新题内） | ✅ 已完成 | 见 git log |
+| 39 | 六期·私有笔记·消息队列双课程（高手课+RocketMQ） | backend.ts be-mq 7→15 | 8 | 8 条 | ✅ 已完成 | 见 git log |
+| 42 | 六期·私有笔记·educative Grokking Advanced SD（上：Chubby/设计模式/DoorDash） | system-design.ts 新领域 sd-paper | 8 | 3 条 + 转投清单 6 条 | 🟨 上已入库（storage 部分待补跑） | 见 git log |
 
-题库总量：656（起点）→ **885**（当前，追问覆盖率 100%，追问 1385 步）。真题改编题统一打 `tags: ['真题改编']`，可全局搜索筛选。
+题库总量：656（起点）→ **901**（当前，追问覆盖率 100%，追问 1443 步）。真题改编题统一打 `tags: ['真题改编']`，可全局搜索筛选。
 二期方案见 `docs/quiz-expansion-plan-v2.md`（批号自 11 起续编）；**六期方案见根目录 `MIGRATION-PLAN.md`**
 （来源：个人学习笔记库 `~/Downloads/private-notes/工作学习`，批号自 36 起续编，按批回填）。
 
@@ -499,3 +501,21 @@ sigsuspend 竞态、适配策略与边界标记等复核无误。
 **追问 3 条**（含新题内）：高负载因子断崖劣化的数学账（等效探测步数 ÷16，"一次 cache line 换一批判断"的通用模式）、墓碑堆积与"删多的负载要主动 rehash"（与 Redis dict/LSM compaction 同构）、btree vs 红黑树（多值节点缓存友好 vs 指针/迭代器稳定性承诺）。
 
 **分工**：哈希冲突处理/扩容的算法层留在 cs-algo-hashmap；本题专讲微架构层（缓存局部性/SIMD/内存账）。**丢弃**：安装使用、CMake/natvis、语言绑定等工程内容。本批由主会话直接收割（语料仅 2 篇），未单列种子文件。
+
+## 批 39 · 六期·私有笔记·消息队列双课程 ✅（来源：【03】消息队列/消息队列高手课 43 篇 + 中间件核心技术与实战-丁威 33 篇）
+
+**新题 8**（backend.ts，be-mq 7→15）：be-mq-message-model（队列 vs 发布订阅、消费组、消费位移与消费者解耦）、be-mq-nameserver（NameServer 无共识镜像复制 vs ZooKeeper 临时节点）、be-mq-push-pull（伪 Push 长轮询、ProcessQueue、客户端限流三条件）、be-mq-request-reply（MQ 上的请求-应答、秒杀网关 requestId+Future）、be-mq-send-timeout（发送超时万分之一排查案例：PAGECACHERT→Recv-Q/Send-Q→线程数调参→快速失败）、be-mq-order-throughput（顺序消费三把锁 + 关联顺序性并发度优化）、be-mq-pulsar（存算分离、Ledger 单写者免锁、代价边界）、be-mq-blue-green（消息链路蓝绿：属性过滤读放大 3 倍 vs 主题物理隔离）。
+
+**追问增强 8 条**：be-mq-why-and-choose（不适合 MQ 的场景+选型判据+RabbitMQ 短板）、be-mq-no-loss（序号连续性检测证明不丢+异步回调检查）、be-mq-idempotent（并发原子性陷阱+ABA+At least once 框架）、be-mq-order（一致性哈希选队列+全局顺序定量代价+Dledger 顺序与高可用兼得）、be-mq-backlog（Delay/LastConsumeTime 指标+jstack RUNNABLE 口诀+resetOffsetByTime）、be-mq-delay-tx（半消息存储级实现+回查 UNKNOW+Kafka 事务对照）、be-mq-kafka-throughput ×2（批消息全链路不拆包+压缩即批+多主题退化；页缓存可靠性三前提+挖坟问题+2Q 权重）。
+
+**主动丢弃**：Kafka 存储引擎对比/副本选举（S2/S3，与批 38 撞车留待）、MQTT 接入层（中低频+转介 be-network）、RPC 框架实战四讲（批 40 负责）、流计算（bd-flink 已覆盖）、全链路压测（be-stability 已覆盖）。种子存档 `docs/quiz-harvest/seeds-v3-batch39-mq.md`。
+
+## 批 42 · 六期·私有笔记·educative Grokking Advanced SD（上：Chubby/设计模式/DoorDash）🟨（storage 部分待补跑）
+
+**新题 8**（system-design.ts 新领域 `sd-paper`「经典系统设计案例」）：sd-paper-chubby-lock-service（为什么需要独立锁服务、Paxos 底座）、sd-paper-chubby-sequencer（Sequencer+lock-delay 防旧持有者——fencing token 的工业鼻祖）、sd-paper-chubby-session-lease（会话租约 12s→60s 与 Grace Period 45s）、sd-paper-chubby-cache-consistency（缓存失效协议）、sd-paper-phi-accrual（Phi Accrual 故障检测）、sd-paper-gossip（反熵 vs 谣言传播）、sd-paper-wal-segmented-log（WAL/分段日志/快照的通论）、sd-paper-doordash-delivery（DoorDash 案例 walkthrough：按数据域切分一致性+事件编排履约）。references 落 Chubby OSDI 2006 / Dynamo SOSP 2007 / Kafka 官方文档。
+
+**system-design 内增强 3 条**：sd-rate-limiter（Kafka Quota"减速不拒绝"与 429 哲学）、sd-bloom-dedup（SSTable 读路径的 bloom 寻道）、sd-classic-object-storage（bit rot 与端到端 checksum 链）。
+
+**转投清单（backend.ts 6 条，主会话在批 36/37 之间落地）**：be-redis-lock（Chubby sequencer 作 fencing token 案例）、be-distributed-brain-split（controller epoch 僵尸+世代号持久化+resource/node fencing 两分法）、be-mq-no-loss（HWM 视角重述存储端不丢）、be-distributed-quorum（奇数节点论证+1<R<W<N+概率读修复）、be-redis-cluster（gossip 携带内容+phi 叠加感知链路）、be-distributed-config-registry（ephemeral 节点/拉长租约/proxy 聚合/负缓存教训）。
+
+**主动丢弃**：S8 HWM 消费者可见性（与 be-mq-no-loss 撞车）、CAP/PACELC/一致性哈希/Quorum 主体/向量时钟/Merkle/Hinted Handoff（现有题覆盖）、Kafka 交付语义与高吞吐（be-mq 全覆盖）。种子存档 `docs/quiz-harvest/seeds-v3-batch42-patterns.md`。**下（Dynamo/Cassandra/BigTable/GFS/HDFS）收割两次被限流，待补跑后补记本批。**
