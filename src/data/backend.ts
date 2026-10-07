@@ -2014,6 +2014,13 @@ export const backendTrack: Track = {
                 '本质：**把"互斥"的裁决权从锁服务移到真正受影响的资源**——锁服务无法感知客户端的暂停（GC、时钟漂移），只有资源的版本比较才能做到。ZK 的 zxid、etcd 的 mod_rev 都是天然的 fencing 来源，Redis 需自己构造（如 INCR 一个序号）。',
               ],
             },
+            {
+              question: 'fencing 思想的工业鼻祖长什么样？——Chubby 的 sequencer 和 lock-delay 各解决什么？',
+              points: [
+                '**Sequencer**：锁持有者拿到"锁名 + 模式 + 锁世代号"的凭证，**由下游 worker 主动向锁服务校验**有效性——裁决权在被保护的资源侧，而不是锁侧（与 fencing token 同方向）。（来源：Grokking Advanced System Design · Chubby）',
+                '**Lock-delay 是给"无法改造的下游"的兜底**：锁异常释放（会话过期）后，锁服务冻结该锁 1 分钟（有上限）不发给新持有者——用时间窗消化旧持有者的在途请求；**正常释放立即可抢，异常释放才延迟**。与 Redis 锁对比：Redis 靠过期时间+看门狗续期，没有"冻结窗口"语义——这正是 Redlock 争论里缺 fencing 的语境补充。',
+              ],
+            },
           ],
         },
         {
@@ -2032,6 +2039,13 @@ export const backendTrack: Track = {
               points: [
                 '作者回答：心跳包里携带 slot 位图，16384 = 2KB 恰好平衡信息量与带宽；集群设计上限 1000 节点，16384 足够分配；CRC16 取模本身对更大 slot 无收益。',
                 '考点延伸：Gossip 是**最终一致**的集群状态传播，牺牲实时性换去中心化——理解这点就能理解集群脑裂窗口与 CLUSTER RESET 等运维行为。',
+              ],
+            },
+            {
+              question: 'gossip 消息里到底传什么？故障判定为什么不用固定超时？',
+              points: [
+                'gossip 携带的是**节点可达性 + 负责的 key range（slot 归属）**——不是简单心跳，而是"谁活着、谁管哪些数据"的状态合集；最终一致地收敛到全网。（来源：Grokking Advanced System Design · Gossip/Cassandra）',
+                'Cassandra 在 gossip 之上叠加 **Phi Accrual 故障检测**：不输出"死/活"二元结论，而输出**怀疑度**（连续偏离正常到达间隔的程度）——阈值可按业务调；与 sd-paper-phi-accrual 题（原理）互链，构成"传播靠 gossip、判定靠 phi"的完整去中心化故障感知链路。',
               ],
             },
           ],
@@ -2166,6 +2180,13 @@ export const backendTrack: Track = {
                 '机制基础是「请求-确认」：服务端收到写入才回确认，超时/失败生产端重试；消费端**先业务后确认**，Broker 未收到确认会重发同一条——这同时是重复消息的来源，「不丢」与「幂等」是一体两面。（来源：极客时间·消息队列高手课 05）',
                 '异步发送的常见丢失点：RocketMQ 同步/异步/单向统一走同一底层流程，异步只是丢给 asyncSenderExecutor 线程池——**回调里必须检查 SendResult/异常**，很多丢消息就出在异步发送不检查回调。（来源：极客时间·消息队列高手课 20）',
                 '档位可以按业务放宽：允许重推的数据（如 Binlog 同步到 ES、任务支持回溯重跑）可用 acks=1 换性能，不必一律顶格配置。（来源：极客时间·消息队列高手课 22）',
+              ],
+            },
+            {
+              question: '从高水位（HWM）的视角重新表述"存储端不丢"，本质在控制什么？',
+              points: [
+                'leader 只把"**全部 ISR 都已复制**"的前缀暴露给消费者——所以 acks=all + min.insync.replicas≥2 的本质是**控制 HWM 的推进条件**：HWM 没推进，消息对消费者不可见，宕机切换也不会丢。（来源：Grokking Advanced System Design · Kafka）',
+                '三档 ack 的标准话术：**Async fire-and-forget / Committed to Leader / Committed to Leader and Quorum**——持久性与吞吐的旋钮就三档，能按业务把档位和丢失窗口对应起来，这题就答透了。',
               ],
             },
           ],
@@ -2726,6 +2747,14 @@ export const backendTrack: Track = {
                 'etcd 的 --consistency 参数正对应这套：线性一致读（ReadIndex） vs 串行读（可能旧，快）。',
               ],
             },
+            {
+              question: 'Raft 的安全性约束和 Kafka 的 ISR 约束是什么关系？Lease Read 的现实原型是什么？',
+              points: [
+                '**同一条安全性约束的两种表述**：Raft"多数派投票 + 日志不全者被拒" ≈ Kafka"只有 ISR 里的副本能当 leader"——**新 leader 必须拥有全部已提交（已复制到多数派）的日志**。（来源：Grokking Advanced System Design · Chubby/Raft）',
+                '**Lease Read 的现实原型是 Chubby 会话租约**：租约内 master 保证不被单方面替换，读可走本地——但它依赖**时钟偏移有界**假设（与 linearizable read 题②③呼应）；能跨系统指出"同一机制的不同实现"，是这道题从背诵走向理解的分界。',
+                '**Chubby 论文的立场**：锁定/选主只是把共识"翻译成人人会的接口"——工业界偏好把 Raft/Paxos 包成 KV/锁服务（etcd/ZK/Chubby），因为分布式锁的语义对应用者更直观。',
+              ],
+            },
           ],
         },
         {
@@ -2766,6 +2795,14 @@ export const backendTrack: Track = {
                 '这说明 **CP/AP 不是系统级二选一，而是操作级配置**——把一致性需求映射到具体接口，是分布式设计的日常。',
               ],
             },
+            {
+              question: '工业系统是怎么具体防"旧主复活"的？——三组世代号（epoch）实例',
+              points: [
+                '**Kafka controller 僵尸**：controller 宕机 → ZK 选新 controller，旧 controller 若只是 GC 停顿后复活即成 zombie——做法：所有 controller 请求携带 **epoch number（存在 ZK）**，broker 只信最大 epoch。（来源：Grokking Advanced System Design · Chubby）',
+                '**Chubby 新 master**：上任先取新 epoch number，拒绝一切旧 epoch 的调用——防止迟到响应发给"前任时代"的客户端；**世代号必须持久化**（可随每条 WAL 落盘），重启不回退；Cassandra 把 generation number 放进 gossip 消息，区分节点"重启前的旧状态"。',
+                '**Fencing 的两分法收束**：**resource fencing**（吊销旧主对共享存储的访问/禁用网络端口）vs **node fencing（STONITH，直接断电重置）**——HDFS 对旧 NameNode 用的就是这套；答脑裂时给出"检测（epoch）+ 执行（fencing）"两段式才是完整方案。',
+              ],
+            },
           ],
         },
         {
@@ -2786,6 +2823,14 @@ export const backendTrack: Track = {
                 '敢这么配的业务：写多读多但**单条数据可容忍回退**的场景——日志、埋点、IoT 采样、推荐特征；账务、库存一律调高 W/R 或用 LWT（轻量事务，Paxos 加持但吞吐骤降）。',
               ],
             },
+            {
+              question: '为什么副本数一定是奇数？R/W 还有哪些配置空间与反例？',
+              points: [
+                '**奇数论证**：5 节点容忍 2 故障、4 节点只容忍 1——偶数不增加容错还多一台成本（多数派大小没变）；这也是"为什么 ZK/etcd 推荐 3/5 节点"的数学根据。（来源：Grokking Advanced System Design · Quorum）',
+                '**性能最优在 1 < R < W < N**：读多于写的负载微调 R；**R=1/W=N（write-all-read-one）是反例**——写完成率被最差节点绑架，一个慢盘拖垮全部写入。',
+                '**Read Repair 的概率执行变体**：读一致性级别 < All 时（如抽样 10% 请求），先满足一致性级别即刻返回，修复异步后台做；摘要（digest/checksum）比对省带宽，不一致才拉全量——"修复"与"响应"解耦。',
+              ],
+            },
           ],
         },
         {
@@ -2801,6 +2846,14 @@ export const backendTrack: Track = {
               points: [
                 '多级缓存叠加：注册中心推送延迟 + 消费端本地缓存刷新周期 + **负载均衡器/客户端的连接池未剔除** + 调用失败的容错重试又兜了一圈。',
                 '缩短手段：**主动注销**（优雅下线：先摘流量再杀进程，kill 信号里先调 deregister）、心跳 TTL 调短、消费端失败快速剔除（熔断半开探测）；K8s 用 preStop + readinessGates 把"摘流量→等待存量→退出"编排成标准动作。',
+              ],
+            },
+            {
+              question: 'Chubby 的规模化经验对注册中心/配置中心有什么迁移价值？',
+              points: [
+                '**ephemeral 节点做活性标记**：客户端断连即自动删除——服务发现"实例离开"语义的原型；**心跳占实测流量 93% → 拉长租约（12s→60s）是第一扩容手段**，其次是 **proxy 聚合**（一个代理聚合 N 个客户端的 KeepAlive/读，流量除以 N，写与首次读仍回 master）。（来源：Grokking Advanced System Design · Chubby）',
+                '**namespace 按目录拆分到多个 cell**（/ls/cell/foo 归 cell A、/ls/cell/bar 归 cell B）可横向扩，但 ACL 集中存储与目录删除引发的跨分区调用**拆不掉**——扩展性设计的边界案例。',
+                '**负缓存**（缓存"文件不存在"）与**配额缺失**的教训（后来加 256KB 文件上限）——注册中心的"海量小 key"治理同样适用：防滥用要有硬上限，"不存在"也要缓存。',
               ],
             },
           ],
