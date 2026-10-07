@@ -892,6 +892,14 @@ export const systemDesignTrack: Track = {
                 '冲突裁决：版本向量/时间戳（Last-Write-Wins）或多版本交应用裁决——**最终一致不是"不管了"，而是一套收敛协议**；讲得出 Merkle 树的哈希比对原理，这道题就是满分姿态。',
               ],
             },
+            {
+              question: 'Dynamo 风格的去中心化有哪些隐性成本？——路由表、seed 节点与"泄漏的抽象"',
+              points: [
+                '全量路由表的负担：每个节点靠 gossip 维护**完整的成员与 hash range 视图**，对称但路由表随集群规模膨胀，被批评为可扩展性隐患；而且需要 **seed 节点**（外部可发现的稳定入口）让新节点拿到初始视图，防止集群裂成互不知情的逻辑分区——"完全对等"在 bootstrap 面前破例，去中心化不是免费的（来源：Grokking Advanced System Design · Dynamo）。',
+                '读写亲和的小技巧：写协调者选**上一个读请求里响应最快的节点**（上下文里记着）——它刚读过最新值，由它协调写最快携带完整版本上下文，顺带提升 read-your-writes 命中率。',
+                '"leaky abstraction" 的 UX 账单：让客户端处理不一致版本，购物车里"复活商品"会让用户以为网站有 bug——最终一致的成本不只在外部一致性窗口，还在**业务语义层的补救代码**（这也是后来 Riak 内建 CRDT 的动因）。',
+              ],
+            },
           ],
         },
         {
@@ -919,7 +927,15 @@ export const systemDesignTrack: Track = {
               points: [
                 '**端到端 checksum 链**：写入时用 MD5/SHA 系列算校验和，与数据一同存储；读取时客户端校验，不匹配 → **换副本重取而不是返回坏数据**（HDFS/Chubby 皆如此）——校验和的裁决权交给读取侧，链路上任何一环（磁盘、内存、网络）的静默损坏都能被发现。',
                 'Chubby 还把 checksum 用作**镜像追赶**的依据：跨洲镜像断连恢复后，逐文件比对 checksum 找出真正需要同步的文件，世界范围内的镜像延迟做到秒级——校验和从“发现损坏”扩展为“增量对齐的比对凭证”（来源：Grokking Advanced System Design · Chubby）。',
-                '闭环表达：主答案的 **scrubbing**（后台周期校验）负责“发现”，副本替换/EC 重算负责“修复”，修复后复检闭环——“不丢数据”是检测-修复闭环持续运转的状态；只答三副本/EC 不答校验与修复，等于默认硬件永远诚实。',
+                '闭环表达：主答案的 **scrubbing**（后台周期校验）负责”发现”，副本替换/EC 重算负责”修复”，修复后复检闭环——“不丢数据”是检测-修复闭环持续运转的状态；只答三副本/EC 不答校验与修复，等于默认硬件永远诚实。',
+              ],
+            },
+            {
+              question: 'GFS 的 checksum 机制是怎么做到”损坏不向外传播”的？',
+              points: [
+                '机制细化：**64KB 块 + 32bit 校验和**，校验和与用户数据分开持久化；读前校验，发现损坏时**报错给请求方 + 上报 master** → 请求方换副本读 → master 另克隆一份好副本 → 坏副本被指令删除——检测、隔离、修复三步闭环（来源：Grokking Advanced System Design · GFS）。',
+                'append 场景的优化与兜底：最后一个 partial 块**不做校验、只增量更新校验和**——若它已损坏，新校验和与数据必然不符，下次读必现形；空闲期扫描不活跃 chunk，防”坏副本冒充好副本骗过副本数检查”。',
+                '为什么开销低：多块读摊薄校验成本、校验和查找不产生磁盘 IO、校验计算可与 IO 重叠。配套的 **lazy GC** 顺手记一笔：删除 = 改隐藏名 + 时间戳，**3 天窗口内可恢复**，空间回收混入后台扫描与心跳批次摊销——对象存储生命周期管理的原型。',
               ],
             },
           ],
@@ -1011,6 +1027,10 @@ export const systemDesignTrack: Track = {
       references: [
         { label: 'The Chubby lock service for loosely-coupled distributed systems (OSDI 2006)', url: 'https://research.google/pubs/pub27897/' },
         { label: 'Dynamo: Amazon\'s Highly Available Key-value Store (SOSP 2007)', url: 'https://www.allthingsdistributed.com/files/amazon-dynamo-sosp2007.pdf' },
+        { label: 'The Google File System (SOSP 2003)', url: 'https://research.google/pubs/the-google-file-system/' },
+        { label: 'Bigtable: A Distributed Storage System for Structured Data (OSDI 2006)', url: 'https://research.google/pubs/bigtable-a-distributed-storage-system-for-structured-data/' },
+        { label: 'Apache Cassandra 官方文档', url: 'https://cassandra.apache.org/doc/latest/' },
+        { label: 'HDFS High Availability with QJM 官方文档', url: 'https://hadoop.apache.org/docs/stable/hadoop-project-dist/hadoop-hdfs/HDFSHighAvailabilityWithQJM.html' },
         { label: 'Apache Kafka 官方文档', url: 'https://kafka.apache.org/documentation/' },
       ],
       questions: [
@@ -1125,6 +1145,14 @@ export const systemDesignTrack: Track = {
                 '答题结构建议：把 gossip 与 phi accrual（本领域另一题）连成"去中心化故障感知链路"——gossip 传播状态（最终一致）+ phi 统计判故障（怀疑度）——这是 Cassandra/Dynamo 类系统感知层的完整答案。',
               ],
             },
+            {
+              question: 'gossip 的最终一致视图怎么和上层机制配合？——Cassandra 的 hint 交还与 Dynamo 的 seed 节点',
+              points: [
+                'Cassandra 的 hinted handoff 依赖 Gossiper：协调者**从 Gossiper 获知目标节点恢复后才转发 hint**，且每 **10 分钟**主动复查一次——gossip 视图是最终一致的，连"补数据"这个动作也只能做到最终及时（来源：Grokking Advanced System Design · Cassandra）。',
+                'Dynamo 用 gossip 同步成员与 hash range，但必须引入 **seed 节点**（外部可发现的稳定节点）：新节点从 seed 拿初始集群视图，防止集群裂成互不知情的逻辑分区——纯 gossip 的 bootstrap 必须有"已知入口"，完全对等在启动那一刻不成立。',
+                '收束口径：gossip 负责"最终都知道了"，hinted handoff/读修复/反熵负责"知道错的时候也别出错"——感知层（gossip + phi 判故障）与数据层（hint/repair）两层配合，才是 AP 系统的完整答案。',
+              ],
+            },
           ],
         },
         {
@@ -1162,6 +1190,173 @@ export const systemDesignTrack: Track = {
                 '传统视角：日志是数据库的**内部配角**——为持久化与恢复服务，提交后日志价值递减、可以删除；Kafka 反转了这个关系：**日志本身就是数据**（commit log），消费是按偏移量重放日志，"恢复"变成常态化的"重读"。',
                 '这个反转解锁的能力：消费者各自维护 offset 独立重放（一条日志服务 N 个订阅者）、时间旅行式重算（把 offset 拨回去重消费）、用日志做系统间复制的统一底座（CDC 的原理）——**凡是"状态可由日志推导"的地方，日志就是事实源**（event sourcing 是同一思想的架构化）。',
                 '面试收束：这题的完整答法是三段论——WAL 解决持久化的代价问题，segmented log 解决日志的管理问题，"日志即产品"（Kafka/event sourcing）解决系统的推导问题；三段分别对应"可靠、可管、可重放"。',
+              ],
+            },
+            {
+              question: 'GFS master 的操作日志与 HDFS 的 FsImage/EditLog，是怎么做"日志 + 快照"的？',
+              points: [
+                'GFS master：操作日志**复制到多台远程机**，**所有副本落盘前元数据变更对客户端不可见**（比多数派确认更保守——全副本确认）；checkpoint 用类 B-tree 紧凑格式、可直接 mmap 进内存做查找，免解析（来源：Grokking Advanced System Design · GFS）。',
+                'checkpoint 耗时长 → master **切换新日志文件**、由独立线程做快照，元数据变更不阻塞——"做快照前先滚动日志"与 Redis AOF 重写、HDFS 的 FsImage/EditLog + Secondary NameNode 周期合并完全同构（来源：Grokking Advanced System Design · HDFS）。',
+                '两例并排的记忆点：**日志是全序的事实源，快照是日志的压缩位点**，恢复 = 装载快照 + 重放尾巴；能把"切换日志 + 后台快照"讲成跨系统通用模式，这题就从背名词升级成懂机制。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'sd-paper-cassandra-write-read-path',
+          title: 'Cassandra 的一次写入和一次读取分别发生了什么？为什么"写便宜读贵"？',
+          difficulty: 'intermediate',
+          tags: ['Cassandra', 'LSM', '读写路径', 'Compaction'],
+          points: [
+            '写路径四步：① 追加（append）写入磁盘上的 **commit log**（顺序写，写不进去就算这次写失败）；② 写入内存 **MemTable**（每张表一个，按 partition key + clustering columns **排序**存放，兼作 write-back cache）；③ 回 ack 给协调者；④ MemTable 周期性 flush 成不可变 **SSTable**（名字来自 BigTable 的 Sorted String Table），commit log 对应段随之清除（来源：Grokking Advanced System Design · Cassandra）。',
+            '写便宜的本质：全程**只有顺序追加，没有任何"读出-改-写回"**——SSTable 不可变，删和改都是"再写一条"，重整交给后台 compaction 用顺序 I/O 摊销。原文的比喻："如果 Cassandra 俊乎乎地把每个值插到它最终该在的位置，客户端就得当场付 seek 的钱。"',
+            '读路径逐层走：**Row cache**（整行缓存，命中即回）→ **每个 SSTable 的 Bloom filter**（内存中挡掉"肯定没有"）→ **Key cache**（partition key → SSTable 内 offset）→ **Partition index summary**（内存，key range → 索引文件 offset）→ Partition index file（磁盘）→ Data file；最后还要**把 MemTable 与多个 SSTable 的结果做归并**——读的成本随该 key 出现过的 SSTable 个数增长，这就是"读贵"的来源。',
+            '分层定位的实例：查 key=12，先在内存 summary 命中 range 10-21 → offset 32 跳索引文件 → 索引定位到 12 → offset 3914 跳数据文件——用内存 summary 换磁盘随机读的典型分层。',
+            'compaction 策略三选：**SizeTiered**（默认，同尺寸 SSTable 凑批合并，适合插入型负载）、**Leveled**（分层每层 10 倍容量，读友好但写放大高）、**Time Window**（时序数据按时间窗合并，窗口过期后整体不可变）——读多写少的表应该换 Leveled，用写放大换稳定的低读放大。',
+          ],
+          followUps: [
+            {
+              question: '为什么读放大正比于"该 key 出现过的 SSTable 个数"？Bloom filter 挡得住什么、挡不住什么？',
+              points: [
+                'Bloom filter 只能给出**否定结论**："肯定没有"直接跳过该 SSTable（挡掉大多数无效磁盘读）；"可能有"则必须真去查盘——假阳性仍要付一次磁盘访问，且命中的那几个文件**全都要参与归并**，一个都省不掉。',
+                '所以读放大的治理手段就是**减少同 key 分布的 SSTable 个数**：compaction 把小文件合并成大文件、SizeTiered 凑批、Leveled 保证每层最多一个文件——compaction 策略的选择本质是在给读放大定价。',
+                '与 cs-db-lsm 题的衔接：那题讲 LSM 三放大的通用原理，本题是它的产品级活标本——Row cache/Key cache/partition index summary 是"读放大治理"的完整工程清单。',
+              ],
+            },
+            {
+              question: 'commit log 为什么不能在写入 MemTable 后就删掉对应段？',
+              points: [
+                'MemTable 只是内存状态，flush 成 SSTable 之前宕机，数据只存在于 commit log——**日志是持久性的锚点**，对应段只有在 flush 完成后才能清除，提前删等于裸奔。',
+                '这正是 WAL 的标准形态（先写日志再改状态，恢复靠重放），与 sd-paper-wal-segmented-log 题互为印证：Cassandra 的 commit log、ES 的 translog、MySQL 的 redo log 是同一机制在不同系统里的名字。',
+              ],
+            },
+            {
+              question: 'QUORUM 读为什么向最快的节点要全量数据、向第二快的节点只要一个哈希？',
+              points: [
+                'digest 读的分工：R=2 时协调者向**最快的副本**要全量数据、向**第二快**只要 **digest（数据哈希）**——两者一致就直接返回，省掉一份全量传输；不一致 → 从所有副本重读，按最新 write-timestamp 裁决，返回后顺手发起 read repair（来源：Grokking Advanced System Design · Cassandra）。',
+                'read repair 是**机会主义**的：一致性级别小于 ALL 时按概率做（默认约 10% 的请求），级别满足就先回客户端、修复异步后台进行——主反熵手段仍是 repair（Merkle 树比对，Cassandra 里手动触发）。',
+                '权衡账：digest 在"两副本本来就一致"时白付一次哈希，但一次哈希换掉高概率的全量网络传输，期望收益为正；读延迟取决于 R 个副本里最慢的那个——digest 读、read repair、多级读缓存全是围绕"最慢副本"的延迟账做的设计。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'sd-paper-cassandra-tombstone',
+          title: '在 Cassandra 里执行一次 DELETE，系统里到底发生了什么？——墓碑的生命周期',
+          difficulty: 'intermediate',
+          tags: ['Cassandra', 'Tombstone', '最终一致'],
+          points: [
+            '问题起点：删除发生时某个副本宕机，错过了这条 delete；它恢复后参与 repair，会把"已被删的数据"当新数据**复活（resurrect）**给其他节点——所以必须有一种可传播的"我删过"标记（来源：Grokking Advanced System Design · Cassandra）。',
+            'tombstone = **一次 update 而不是物理删除**：给数据盖一个带过期时间的墓碑，默认保留 **10 天（gc_grace）**；这段存在期是给宕机副本留的恢复窗口——超过窗口还没回来的节点按失败处理（被替换掉），而不是让它带着旧数据回归。',
+            '真正的清除发生在 compaction：墓碑过期后合并时**不再向下传播**，数据才物理消失。与 LSM"墓碑必须撑到最后一层"的说法互为表里——LSM 讲合并层级维度，Cassandra 再叠加**副本修复时间**维度。',
+            '两个工程代价：① 删除反而**增加**存储（墓碑本身是一条记录，大批删除时可用空间骤减）；② 大量墓碑让读要扫过更多无效数据，严重时读超时——"删多了的表读不动"是 Cassandra 运维的经典事故。',
+            '对照组是 hinted handoff：hint 副本只保留 **3 小时**（可配/可关），超时即丢弃、靠读修复补——hint 管"短期抖动"，墓碑管"删除语义"，两个时间窗口差两个数量级是有意的设计。',
+          ],
+          followUps: [
+            {
+              question: 'gc_grace 的 10 天和 hint 的 3 小时为什么差两个数量级？',
+              points: [
+                '丢失的代价不对称：hint 丢了丢的是"一次写入"，还有读修复/反熵兜底；墓碑丢了丢的是**删除语义本身**——旧数据复活比丢一次写更难收拾（用户看到"已删除"的内容重现，是正确性事故而不只是延迟）。',
+                '所以墓碑的窗口要覆盖"副本故障 + 修复完成"的最坏时长（天级），hint 只覆盖"节点短暂抖动"（小时级）。推论：**repair 的执行周期必须短于 gc_grace**，否则墓碑过期时仍有副本没被修复——调低 gc_grace 换空间的正确姿势是同步调高 repair 频率。',
+              ],
+            },
+            {
+              question: '批量删全表数据的正确姿势是什么？',
+              points: [
+                '直接一条 DELETE 清全表 = 一次性写入海量墓碑：存储暴涨 + 读路径被墓碑拖垮 + compaction 风暴。正确做法是**分批删除**（按 partition key 范围切批），给 compaction 和 repair 留出消化时间。',
+                '配套动作：批间留间隔、在 repair 周期有保证的前提下调低 gc_grace、删完主动触发 compaction/repair 让墓碑尽快沉降——把"删除"当成一个需要容量规划的运维操作，而不是一条 SQL 的事。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'sd-paper-bigtable-tablet-location',
+          title: 'BigTable 怎么找到一行数据所在的 tablet？——三层元数据与 master 的分工',
+          difficulty: 'intermediate',
+          tags: ['BigTable', 'tablet', '元数据', '路由'],
+          points: [
+            'tablet 是表按**行边界**切出的连续行区间（默认 100~200MB），既是分布单元也是**负载均衡的单元**；表按行有序，短范围读只碰少量 tablet——行 key 的局部性设计因此极重要（来源：Grokking Advanced System Design · BigTable）。',
+            '三层定位（类比 B+ 树）：**Chubby 文件存 Meta-0 的位置** → **Meta-0**（根元数据 tablet，**永不分裂**）→ **Meta-1 tablets**（每个数据 tablet 一行：key = 表 id + 结束行，value = tablet server 位置）→ 数据 tablet；客户端库**缓存 tablet 位置并 prefetch** 元数据，绝大多数读不碰元数据层。',
+            '架构三分：一个 master（元数据操作、tablet 分配、负载均衡、GFS 文件 GC、建表建列族）+ 多个 tablet server（每台 10~1000 个 tablet，真正服务读写）+ 客户端库；**master 完全不在数据路径上**——tablet 到 GFS 文件的映射由 tablet server 自己维护，读写从不经过 master，master 瓶颈被结构性消除。',
+            '与 Dynamo 的对照（两种路由哲学）：Dynamo 每个节点都存**全量路由表**（gossip 同步，对称但路由表随集群膨胀，还要 seed 节点防逻辑分区）；BigTable 走**分层元数据 + 集中 master**，换来 O(1) 层级定位与全集群视图，代价是引入 Chubby 依赖与 master 故障域。',
+          ],
+          followUps: [
+            {
+              question: 'Meta-0 为什么设计成永不分裂？',
+              points: [
+                'Meta-0 是寻址树的根：所有客户端的定位第一步都从它出发。若它分裂迁移，**所有客户端缓存的根位置全部失效**，等于每次寻址都退化成全量查找——根的键空间必须稳定。',
+                '代价是根层不能承载太多条目，所以才有 Meta-1 层分摊；两层元数据 + 数据层就是一棵深度固定为 3 的 B+ 树——定位任何 tablet 的层级数是常数，这是"分层路由换可预测延迟"的教科书设计。',
+              ],
+            },
+            {
+              question: '客户端缓存的 tablet 位置过期了怎么办？',
+              points: [
+                '打到错误的 tablet server 会被对方拒绝并返回正确位置，客户端更新缓存重试——**错一步的代价是一次重试**，最终自愈；所以缓存可以放心激进（还有 prefetch 加持）。',
+                '这套"缓存 + 失配自愈"与 NewSQL（如 CockroachDB）的 Range 寻址同构：元数据路由永远可以缓存，因为协议里内建了纠错路径——**敢缓存的前提是错误可被发现且可恢复**。',
+              ],
+            },
+            {
+              question: '为什么 BigTable 敢用单 master，GFS 的 master 却被批评成瓶颈？',
+              points: [
+                '关键差异在数据路径：BigTable 的 master 只做**元数据操作与调度**（建表、tablet 分配、负载均衡），读写数据直接在客户端与 tablet server 之间完成——master 挂了只影响管理操作，不影响已缓存位置的数据面。',
+                'GFS master 则同时掌管命名空间与 chunk 位置的所有查询（客户端缓存能缓解，但控制路径仍在 master），且全集群元数据都在它内存里——同样是"单点"，数据路径上的参与度决定了瓶颈程度。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'sd-paper-gfs-metadata-memory',
+          title: 'GFS 的 master 为什么敢把全部元数据放内存？挂了怎么不丢？',
+          difficulty: 'intermediate',
+          tags: ['GFS', '元数据', '内存', '持久化'],
+          points: [
+            '三类元数据分开对待：命名空间、file→chunk 映射**放内存 + 本地盘持久化**（操作日志 + checkpoint）；chunk 副本位置**不持久化**——ChunkServer 才是副本位置的真相源，master 启动时问询 + 心跳持续更新（来源：Grokking Advanced System Design · GFS）。',
+            '副本位置敢不落盘的理由：几百台机器的集群里磁盘坏、机器改名、ChunkServer 失联是**常态**，chunk 会"自发现象"——master 若额外维护一份持久副本集，它和现实**必然失配**，两份真相永远打架；不如以 ChunkServer 实测为准，从结构上消除 master 与 ChunkServer 的同步问题。',
+            '内存化的两个红利：控制路径全内存 → 快；能**周期性全量扫描自身状态** → 孤儿 chunk GC、低副本 chunk 重复制、负载迁移全部变成"后台扫一遍"的副产品，无需额外索引。代价可控：64MB chunk 只摊 <64B 元数据 + 命名空间前缀压缩。',
+            '持久化细节：操作日志**复制到多台远程机**，所有副本落盘前元数据变更对客户端不可见；checkpoint 用类 B-tree 紧凑格式、可直接 mmap 进内存做查找（免解析）；checkpoint 耗时长 → master **切换新日志文件**、独立线程做快照，不阻塞突变。',
+            '上限与演化：内存终究有限——批评章指出 master 已成瓶颈（客户端 CPU + 元数据装不下内存），后继者 Colossus 走分布式元数据，HDFS 用 **Federation**（多个 NameNode 分管命名空间段）在开源侧给出同方向答案。',
+          ],
+          followUps: [
+            {
+              question: '副本位置不持久化的代价是什么？',
+              points: [
+                'master 重启后要等**全量问询 + 首轮心跳**才知道各 chunk 的副本在哪，这个窗口内涉及副本位置的管理决策（重复制优先级等）不可信——用"重启后的冷启动窗口"换"永久的免同步"。',
+                '这是一个"谁是真相源"的设计范本：**让状态的天然持有者直接提供状态**，二手持久化只会制造一致性负担。HDFS 的 block 位置同样只存在于 NameNode 内存、靠 DataNode block report 重建——两大文件系统做了同样的选择。',
+              ],
+            },
+            {
+              question: '单 master 的元数据上限，有哪些出路？',
+              points: [
+                '三条路：**大 chunk 摊薄**（GFS 64MB 起、HDFS 默认 128MB——元数据条数随 chunk 变大而减少）；**Federation 分段**（多个 master 各管一段命名空间，客户端按命名空间路由）；**Colossus 式分布式元数据**（元数据本身分片化，彻底去掉单 master 的内存上限）。',
+                '判断信号：当"全量扫描内存元数据"的周期成本或内存容量先于磁盘容量成为瓶颈时，就该分段——容量规划里**元数据增速（文件数）与数据增速（字节数）要分开估算**。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'sd-paper-gfs-snapshot',
+          title: 'PB 级文件系统怎么做快照才不用拷贝数据？——GFS 的 copy-on-write 快照',
+          difficulty: 'intermediate',
+          tags: ['GFS', '快照', '写时复制'],
+          points: [
+            '快照 = 某时刻对命名空间子树的拷贝，GFS 用它**低成本分支两份数据**（比如同一份数据派生出训练/实验两条线）；实现是 **copy-on-write，初始零拷贝**（来源：Grokking Advanced System Design · GFS）。',
+            '快照执行三步：master **先撤销目标文件上所有 chunk 的租约**并等待撤销/过期 → 把快照操作写入操作日志 → **只复制元数据**（子树命名空间），新快照文件指向**原来的 chunk**——成本是 O(元数据) 而不是 O(数据)。',
+            'COW 的触发点在写：客户端要写某个 chunk 时，master 发现它**引用计数 > 1**（被快照共享），就让持有该副本的**每个 ChunkServer 在本地拖一份**（本机复制，不走网络），拷贝完成后 master 给新副本发新租约、写落在新 chunk 上——原 chunk 归快照所有。',
+            '两个设计要点：先撤租约保证了**快照时点的确定性**（没有写入悬在半空）；本地拷贝避免了 64MB 数据在网络上走两遍——把复制成本压到磁盘本地带宽。',
+          ],
+          followUps: [
+            {
+              question: '为什么快照前必须先收回租约？',
+              points: [
+                '不收租约，primary 可能正在按自己的序列号推进写入——快照执行到一半时数据还在变，**快照点不确定**，COW 复制和并发写入互相竞争，快照内容既不是 T0 也不是 T1 的状态。',
+                '撤租约 = 强制所有在途变更先落停，日志记录快照操作后命名空间与 chunk 状态完全静止——这是"用短暂不可写换一致性快照点"的标准代价，与数据库备份锁、存储卷快照的原理一致。',
+              ],
+            },
+            {
+              question: '快照链很长时写性能怎么退化？引用计数什么时候下降？',
+              points: [
+                '每写一个被快照共享的 chunk 都要付一次**本地拷贝**——快照链越长、共享 chunk 越多，首次写的税越重；COW 的本质是把快照的成本**推迟并分摊到每次首次写**，而不是免除。',
+                '引用计数在**快照被删除**时递减，降到 1 的 chunk 恢复原地写。工程含义：快照不能无限堆积，要有保留策略（数量/时间上限），否则写放大悄悄恶化——快照管理的成本模型要进容量规划。',
               ],
             },
           ],
@@ -1309,6 +1504,257 @@ export const systemDesignTrack: Track = {
                 '全局最优分配是**组合优化问题**（N 单 × M 骑手匹配，要考虑 ETA、顺路度、公平性），计算与数据收集都有秒级以上延迟，且强依赖精确的全局位置视图——高峰期"算出最优"时订单已经超时。区域广播把问题降维：**订单推给附近骑手、先抢先得**，毫秒级响应，牺牲匹配质量换时效。',
                 '演进口径：抢单模式的已知问题（挑肥拣瘦、高峰蜂拥、骑手看手机不看路）驱动系统向"平台指派 + 抢单兜底"演进——平台侧小窗口批量匹配（N 单 M 骑手近似最优），匹配不出的订单回落到区域广播。**先跑通（广播），再优化（批量匹配），最后兜底（抢单）**是实时匹配系统的标准成长路径。',
                 '面试表达：这问的隐藏考点是**承认 out of scope 并说清边界**——实时匹配（dispatch 算法、ETA 预估）足够独立成一道题，案例题里点到"为什么这么选、将来怎么演进"即可，钻进算法细节反而丢主线。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'sd-paper-dynamo-vector-clock',
+          title: 'Dynamo 的向量时钟怎么裁决并发写冲突？为什么把合并丢给客户端？',
+          difficulty: 'advanced',
+          tags: ['Dynamo', '向量时钟', '最终一致', 'CRDT'],
+          points: [
+            '为什么不能用墙钟：分布式下 clock skew 不可避免，NTP 也无法保证任意时刻全同步，没有 GPS/原子钟硬件时时间戳不可信——向量时钟用 **(node, counter) 对**代替物理时间，为每个对象的每个版本挂一个逻辑时钟（来源：Grokking Advanced System Design · Dynamo）。',
+            '裁决规则：若版本一的各计数器都 ≤ 版本二对应节点的计数器，则一为二的祖先，**可被直接覆盖**（如 [A:2] 覆盖 [A:1]）；否则两条分支**并发冲突**，系统不猜，把所有版本一起返回。经典序列：分区前 [A:2]；分区内 A 写出 [A:3]、B 写出 [A:2][B:1]；网络愈合后读请求看到两个互不支配的版本。',
+            '读时裁决、客户端合并（semantic reconciliation）：put = 协调者生成新版本 + 递增向量时钟分量 → 本地存 → 发给 preference list 的前 N 个健康节点 → 收 W−1 个确认即成功；get = 问 N−1 个节点 → 等 R−1 个回复 → 按向量时钟做语法归并 → **返回所有相关版本**让客户端收敛——官方类比 Git：能自动 merge 就自动，不能就人来解冲突。',
+            '购物车案例的两个副作用：add 永不丢（合并 = 并集），但**已删除的商品可能复活**——这正是催生 CRDT 的原因：把数据建模成"任意顺序合并结果相同"（删除建模为负数 add），达到 strong eventual consistency（Riak 内建 CRDT）。',
+            '工程边界：版本分支多时时钟膨胀，Dynamo **从最老的开始截断**时钟项；若截掉的恰是收敛所需的祖先，最终一致性就破——论文作者承认是隐患但称生产未出过事。服务端自动裁决的替代方案是 **LWW（按墙钟时间戳）**，两个并发写撞车相当于抛硬币丢数据。',
+          ],
+          followUps: [
+            {
+              question: '[A:3] 和 [A:2][B:1] 谁更新？系统为什么不替用户选？',
+              points: [
+                '互不支配：[A:3] 没有 B 的计数器，[A:2][B:1] 的 A 只到 2——双方都无法"覆盖"对方，判定为**并发**，没有谁更新一说。',
+                '系统不选是因为**语义只有应用知道**：向量时钟只能做语法归并（判定祖先/并发），"购物车里删掉的商品该不该消失"是业务语义——这就是"泄漏的抽象"：正确性的一部分被外包给了客户端。',
+              ],
+            },
+            {
+              question: '时钟截断为什么会破坏最终一致？怎么防御？',
+              points: [
+                '截断丢失的可能是**判祖先的依据**：被截掉的时钟项本来能证明"旧版本是新版本的祖先"，丢了之后两个本可合并的版本被误判为并发，或旧的并发分支被当成新版本直接覆盖别人——收敛所需的证据没了。',
+                '防御思路：限制单 key 的并发写者数（购物车按用户路由，天然单写者）、客户端合并后尽快回写收敛版本、监控"版本分支数"指标——**版本分支数是 AP 系统最该盯的健康指标之一**。',
+              ],
+            },
+            {
+              question: '什么数据适合 LWW、什么必须多版本 + 客户端合并？',
+              points: [
+                '适合 LWW：**可容忍回退的覆盖写**——配置缓存、画像字段、计数快照，丢一次并发更新的代价可忽略；好处是存储恒定单版本、无需客户端配合。',
+                '必须多版本：**合并语义不可省的数据**——购物车（丢一次 add 用户可感知）、协同编辑（谁的字都不能丢）。判断标准是业务损失函数：并发写冲突的概率 × 冲突的代价，决定你付向量时钟的复杂度税，还是掷 LWW 的硬币。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'sd-paper-dynamo-sloppy-quorum',
+          title: 'Dynamo 怎么做到"永远可写"？——Sloppy Quorum 与 Hinted Handoff 的机制与代价',
+          difficulty: 'advanced',
+          tags: ['Dynamo', 'Sloppy Quorum', 'Hinted Handoff', '高可用'],
+          points: [
+            'preference list：负责一个 key 的节点列表，**比 N 长**以备故障，且**跳过虚拟节点**保证列表里是不同物理机；put/get 都发给"列表前 N 个**健康**节点"——不一定是最顺时针的前 N 个，这就是 sloppy quorum（来源：Grokking Advanced System Design · Dynamo）。',
+            'hinted handoff 机制链：Server 1 宕机 → 副本写到列表顺延的 Server 4，元数据里带 **hint 标明真正归属**；4 把 hint 副本放**独立本地数据库**周期扫描，发现 1 恢复就补送，送达后从本地删除——**系统总副本数不减**；极端情况全环只剩一台机器，写请求照样受理（"always writeable"）。',
+            '写协调者的选择技巧：不强制列表第一个节点协调（负载会倾斜），而是**选上一个读请求里响应最快的节点**来协调后续写（上下文里记着）——顺带提升 read-your-writes 命中率。',
+            '代价必须讲全：sloppy 不是严格多数派，**两个并发写可能落到不相交的节点集合**，读到的就是分歧数据——所以 sloppy quorum 必须和向量时钟配对使用，收敛靠读修复/反熵兜底；W 较小时还有**持久性脆弱窗口**（写确认只落在少数节点）。',
+            '(N,R,W) 配置语义：常用 (3,2,2)；(3,3,1) 写快读慢且不耐用、(3,1,3) 读快写慢且耐用；延迟取决于 R/W 个副本里**最慢的那个**，所以 R/W 通常配得比 N 小。',
+          ],
+          followUps: [
+            {
+              question: 'strict quorum 在节点宕机时为什么会不可用？sloppy 牺牲了什么换可用性？',
+              points: [
+                'strict quorum 要求读写都落在**固定的 N 个节点**上：N 个里有 1 个宕机，凑不齐 W 或 R，这个 key 直接不可读写——可用性被绑死在指定节点集上。',
+                'sloppy 把读写放宽到 preference list 里**任意 N 个健康节点**，宕机也能凑齐份数；牺牲的是"读写集合必然相交"的保证——并发写可能各自落在不相交的节点集，靠向量时钟 + 反熵事后收敛。**用一致性换可用性，且换得明明白白。**',
+              ],
+            },
+            {
+              question: 'hint 副本送达前，接收 hint 的节点也宕了，数据会怎样？',
+              points: [
+                'hint 副本存在独立本地库里、随节点生死——目标节点和 hint 持有节点**接连宕机时，这次写可能真丢**：hinted handoff 是可用性优化，不是持久性保证。',
+                '持久性的真正底线是 W 的取值与反熵同步：W 大则写确认落点多、窗口内丢失概率小；反熵（Merkle 树比对）兜底把漏掉的写最终补齐——**hint 管"快"，反熵管"稳"**。',
+              ],
+            },
+            {
+              question: '"最快响应者协调写"为什么能提升 read-your-writes？',
+              points: [
+                '它刚为这个用户读过最新数据，版本上下文还热着，由它协调写能最快携带完整版本信息，写完它自己（所在的副本集）立即有最新值——用户的下一次读大概率命中它。',
+                '这是**读写亲和**的通用技巧：把有因果关系的读写粘到同一个节点/副本上，用局部性换会话一致性，不需要全局强一致。同类手法：会话粘滞、sticky routing 到主副本。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'sd-paper-bigtable-tablet-transfer',
+          title: 'BigTable 的 tablet server 宕机后，tablet 搬到新机器为什么要做两次 minor compaction？',
+          difficulty: 'advanced',
+          tags: ['BigTable', 'commit log', 'Compaction', '故障恢复'],
+          points: [
+            '活性判定全靠 Chubby：tablet server 启动时在 servers 目录**建文件并拿排他锁**；master 监控目录与锁状态——锁丢失且 master 能抢到 → 判定 server 故障，**删文件作为自杀信号**并重新分配它的 tablets；server 自己丢锁会停服重试，抢回锁当临时网络抖动继续服务，发现文件被删则自我了断（来源：Grokking Advanced System Design · BigTable）。',
+            '统一 commit log 的两难：**每个 tablet server 只写一个日志文件**（而非每 tablet 一个）——单 tablet 的变更是海量小追加，多日志文件会带来海量磁盘 seek；代价是一个 tablet 的变更和别人的**混在同一物理日志**里。',
+            '恢复难题与解法：100 台机器各分到一个 tablet，若各自读全量日志等于读 100 遍——BigTable 先把共享日志按 **<table, row name, log sequence number> 排序**，排序后同一 tablet 的变更全部连续，各机器只读自己那段；另配**双日志线程写两个文件**（同时只有一个活跃），网络劣化即切换，序列号保证恢复正确。',
+            'tablet 快速搬迁三步：源 server 先做一次 **minor compaction**（MemTable 落成 SSTable，commit log 相应缩短）→ **停止服务该 tablet** → 再做一次很快的 minor compaction（补上间隙期的新日志）→ 目标机器**完全不用重放日志**即可加载。',
+            'compaction 三层级：minor（MemTable→SSTable，省内存 + 缩短恢复日志）、merging（几个 SSTable + MemTable 合成一个）、major（全部合成一个，**产物不含任何删除信息**——敏感数据可被确定性抹掉，这是隐私合规视角的加分细节）。',
+          ],
+          followUps: [
+            {
+              question: '统一日志省了写侧什么、付了读侧什么？',
+              points: [
+                '省：写路径只有**每 server 一个顺序文件**，海量小 tablet 的变更都汇入一条顺序流，磁盘 seek 最少——这是写吞吐的命根子。',
+                '付：恢复期要**按 <table, row, LSN> 排序**共享日志才能拆出各 tablet 的段（排序成本 + 临时空间），且双日志线程多占一份磁盘带宽——典型的"把写侧的债留给恢复期还"，但恢复是低频操作，这笔账划算。',
+              ],
+            },
+            {
+              question: '两次 compaction 之间的窗口里，新写入去哪了？',
+              points: [
+                '写入仍落在旧 server 的 MemTable 与共享日志里——第一次 minor 只是把"搬迁前"的状态排干，**搬迁期间旧 server 继续服务该 tablet**，直到它停止服务。',
+                '第二次 minor compaction 收尾把这个窗口的增量也落成 SSTable，之后日志里关于该 tablet 的部分不再需要——整个流程是"**先排水再关阀**"：保证新机器从纯 SSTable 冷启动，日志重放成本为零。',
+              ],
+            },
+            {
+              question: 'master 怎么知道该把故障 server 的 tablet 分给谁？',
+              points: [
+                'master 周期性向各 tablet server 询问负载，持**全集群视图**做分配决策——这是集中 master 换来的能力（与 sd-paper-bigtable-tablet-location 题呼应）。',
+                'master 重启时的重建四步也值得背：**抢 master 锁**（防双主）→ 扫 Chubby 的 servers 目录得活节点集合 → 逐个询问当前 tablet 分配 → 扫 METADATA 表得全集，**差集即未分配的 tablets**——用"活节点汇报 ∪ 元数据全集"两个来源互相对账。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'sd-paper-gfs-chunk-lease',
+          title: 'GFS 的 chunk lease 怎么给并发写定序？——控制流与数据流分离',
+          difficulty: 'advanced',
+          tags: ['GFS', '租约', '一致性模型'],
+          points: [
+            'lease 机制：对 chunk 的每次变更，master 给持有该 chunk 副本的某个 ChunkServer 发 **60 秒租约**，持有者即 **primary**，负责给该 chunk 的所有并发变更**分配序列号、定全序**；一个 chunk 任一时刻只有一个租约，两个写请求到 master 看到的是同一个 primary；primary 可申请续租。master 每次发租约都**递增 chunk version number** 并通知所有副本——这是后续判 stale 的依据（来源：Grokking Advanced System Design · GFS）。',
+            '全序的构成 = **租约顺序（master 授予的时间线）× 租约内 primary 定的序**——master 只花一次授权的成本，就把并发控制外包（outsourced）给了 primary，自己不参与每次写的编排。',
+            '**数据流 ≠ 控制流**（GFS 最核心的一张图）：数据流是 client → 最近的 replica → **链式**传给其他 replica（最大化利用每台机器的出口带宽，数据先落 LRU 缓存不落盘）；控制流是 client → primary → secondaries，primary 按序列号逐个下发写命令——多个客户端的并发写也被排成同一个序。',
+            '两阶段写：**Sending**——client 把数据链式推到所有副本并收 ack；**Writing**——client 向 primary 发写请求 → primary 定序应用 → 按同序转发 secondaries → 收齐 ack 才回客户端；任何一步失败 → 客户端重试直至报错。',
+            '边界与定性：primary 宕机/分区时，master 等**租约过期**（防止旧 primary 还在服务）才发新租约；旧 primary 复活后凭 version number 被识别为 stale，其副本被替换并 GC。**租约不是共识**——它只是"一段变更窗口的授权"，正确性靠版本号事后甄别，这决定了 GFS 只能提供 relaxed 一致性。',
+          ],
+          followUps: [
+            {
+              question: '数据为什么要链式流，而不是 client 向三个副本各推一份？',
+              points: [
+                'client 的上行带宽是最窄的瓶颈：广播三份占满三倍上行；链式让数据在**机房内部的大带宽链路**上流转，client 只付一份数据的成本，扇出摊给了副本之间的链路。',
+                '选"最近的 replica"做链条第二跳还能把 client 到机房的延迟降到最低；数据传完先缓存在各副本内存（LRU），等 primary 的写命令到了再落盘——**数据先行、控制后行**，两级流水减少写延迟。',
+              ],
+            },
+            {
+              question: '租约过期但旧 primary 还在写，会发生什么？',
+              points: [
+                'master 不等旧 primary 的消息，租约一过期就发**新租约 + 新 chunk version number**；旧 primary 的后续写入携带旧版本号，被识别为 stale——它的副本最终被替换并 GC。期间两个"primary"短暂并存，各写各的。',
+                '这是**可用性与一致性的窗口换法**：不等旧 primary 死透（快，但短暂分叉）vs 等它确认死亡（一致，但故障恢复慢）——GFS 选前者，把烂账交给版本号事后清理；与脑裂题的 fencing/epoch 是同一族机制。',
+              ],
+            },
+            {
+              question: 'GFS 的 primary 与 Raft 的 leader 差在哪？',
+              points: [
+                '合法性来源不同：Raft leader 由**多数派投票**选出，写入要多数派落盘才算提交——合法性有数学背书；GFS primary 只是 master **单方面指定**的"排序员"，secondaries 的写入不构成多数派协议。',
+                '后果不同：Raft 能给出线性一致的日志；GFS 只能保证"primary 定序 + 至少一次投递"的 relaxed 语义，副本可能不一致、需要客户端/应用兜底——**写入者的合法性由什么机制背书，决定了一致性等级的上限**。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'sd-paper-gfs-record-append',
+          title: 'GFS 的 record append 为什么敢说"至少一次、原子"，却不敢说副本逐字节一致？',
+          difficulty: 'advanced',
+          tags: ['GFS', '追加写', '一致性模型'],
+          points: [
+            'write 与 append 的分野：write 指定 offset——并发写同一区域**不可串行化**，区域里可能混入多个客户端的数据碎片（consistent but undefined）；record append 由客户端**只给数据不给偏移**，GFS 选定偏移把它作为**连续字节序列原子地写入至少一次**，并返回真实偏移——类似 O_APPEND 但消除了多写者的竞争（来源：Grokking Advanced System Design · GFS）。',
+            'append 的执行细节：primary 检查追加是否会顶破 **64MB** 的 chunk 上限——超了就把当前 chunk **pad 到上限**、命令 secondaries 同样 pad，再让客户端**重试下一个 chunk**；没超就在自己定的偏移写入，命令 secondaries **写到完全相同的偏移**。',
+            'at-least-once 的来源：任一副本写失败，客户端就整体重试 → 某些副本上**同一记录可能出现多次（整条或半条）**——副本之间不保证逐字节一致，只保证"数据作为原子单元至少出现一次"；**去重的责任上移给应用**（记录里带校验和/唯一序号自行过滤）。',
+            '一致性模型的分层收尾：元数据操作原子（namespace 锁 + 操作日志全局定序）；写路径还有 stale 读窗口——客户端缓存的 chunk 位置可能指向 stale 副本，影响小是因为 append-only 场景下 stale 副本通常表现为"**chunk 提前结束**"（少看到尾部数据），而不是"读回旧值覆盖新值"。',
+          ],
+          followUps: [
+            {
+              question: '为什么 append 能做到原子，write 不能？',
+              points: [
+                '原子性来自**偏移由 primary 单点决定**：append 的偏移是 primary 顺序分配的，同一 chunk 的所有 append 天然排成一条队列；write 的偏移是各客户端"各自意志"，两个并发 write 对同一区域没有统一的序，结果只能是碎片混合。',
+                '这个差异是接口设计给出的：**把"在哪里写"的决定权从客户端收回到系统**，系统才有能力提供原子性保证——API 形状决定一致性上限的又一个例证。',
+              ],
+            },
+            {
+              question: '"至少一次"的重复记录该谁去重？GFS 为什么不做？',
+              points: [
+                '只有应用知道**记录边界与业务语义**：一条"计费事件"重复了要不要去重，取决于事件有没有唯一业务键——文件系统看不到这层语义，所以 GFS 把去重交给应用（校验和/唯一号过滤）。',
+                '与消息队列的 at-least-once + 幂等消费完全同构：基础设施提供"至少一次"的投递保证，精确一次的账由消费端记——凡是声称"精确一次"的系统，拆开看都是两层机制合作的产物。',
+              ],
+            },
+            {
+              question: 'pad 到 64MB 再换下一个 chunk，牺牲了什么？',
+              points: [
+                '牺牲 chunk 尾部的空洞与空间：被 pad 的 chunk 尾部是无效字节且永远写不满，空间利用率略降；换来的是**写入路径永不在 64MB 边界上卡住或拆分**，append 的原子语义不用为跨界做特殊处理。',
+                '这是"用空间换控制流简单"的小决策，方向和大 chunk 设计一脉相承：GFS 全程在为**顺序大批量读写**优化，空间效率是它明确愿意让路的项。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'sd-paper-gfs-hdfs-consistency',
+          title: '同出 Google 系，GFS 宽松一致、HDFS 强一致：两年之差为什么选了相反的路？',
+          difficulty: 'advanced',
+          tags: ['GFS', 'HDFS', '一致性权衡'],
+          points: [
+            'HDFS 的强一致配方三件套：**写入须所有副本成功才算成功** + **单写者**（一个文件同一时刻只允许一个 writer）+ **严格不可变语义**（已写数据不能原地改，后期支持 append 但不改旧数据）——三个约束叠加，强一致变得 relatively easy（来源：Grokking Advanced System Design · HDFS）。',
+            '为什么付得起：MapReduce 是 write-once-read-many 的受限计算模型，reducer 各写各的输出文件，天然不需要并发写与原地改——**工作负载的形状决定一致性可以有多便宜**，这是本题的核心论点。',
+            'GFS 的相反选择：为多客户端**并发 append** 优化（at-least-once + 副本可不一致），换海量小文件并发追加场景的吞吐；代价是 undefined 区域、重复记录、stale 读，全部交给应用层消化——两个系统没有谁更先进，是**对各自负载的最优解**。',
+            '两者共同的 rack-aware 放置：HDFS 3 副本 = 第 1 副本在**写客户端本机**（不在集群则随机）、第 2 副本**跨 rack**、第 3 副本与第 2 同 rack 不同节点；硬约束：单节点 ≤1 副本、单 rack ≤2 副本。跨 rack 写变慢是**明码标价的可靠性换性能**（GFS 侧同一取舍：跨 rack 读可吃聚合带宽，写则吃亏）。',
+            '共同软肋与土办法：64MB/128MB 大块下，海量小文件集中在个别 DataNode/ChunkServer → 加副本 + 应用启动加**随机延迟**错峰——热点治理在两个系统里都要应用层配合。',
+          ],
+          followUps: [
+            {
+              question: 'HDFS 为什么能"所有副本成功才返回"，GFS 不行？',
+              points: [
+                'HDFS 无并发写者：单 writer 的写入由 pipeline 串行推进，"全部成功才提交"不会与并发写互相拖死；GFS 要同时服务多客户端并发 append，全量确认意味着**最慢副本绑架每次写**，可用性代价不可接受。',
+                '推广成判断式：**写入者数量 × 副本确认强度 = 可用性风险**——单写者系统敢用强确认，多写者系统要么引入仲裁者（primary/共识），要么放松到 quorum/至少一次。',
+              ],
+            },
+            {
+              question: '不可变语义对运维和生态意味着什么？',
+              points: [
+                '免掉一整类问题：没有原地更新就没有并发写冲突、没有页级撕裂，恢复与快照简化为"文件要么完整存在要么不存在"；副本一致性检查也只需比对文件级 checksum。',
+                '代价是"改数据 = 删了重写"：更新一个 GB 级文件要全量重写，所以 HDFS 生态把"可变数据"推给上层（HBase 的 LSM、Hive 的 ACID 表）——**底座不可变、可变性在分层里解决**，是存储栈的经典分工。',
+              ],
+            },
+            {
+              question: '用"一致性与工作负载匹配"的框架，分析对象存储为什么最终一致起步、后改强一致？',
+              points: [
+                'S3 起步选最终一致：对象读写天然是**单 key 单写者**形态，但跨副本异步复制让"写后立刻读"可能读到旧值——早期判断是"读自己刚写的数据"少见、读旧值的代价可容忍。',
+                '后来改强一致：云上工作负载变了——大量客户端把对象存储当强一致 KV 用（锁文件、任务协调、写后读元数据），应用层各自打补丁的成本超过了系统层付强一致的代价；硬件与网络进步也把复制收敛窗口压到毫秒级。**一致性的价格在变，选型要跟着重估**——这句话本身就是框架的价值。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'sd-paper-hdfs-ha',
+          title: 'HDFS 的 NameNode 挂了会怎样？——从 30 分钟冷启动到 active-standby 与 fencing',
+          difficulty: 'advanced',
+          tags: ['HDFS', '高可用', 'Fencing', 'QJM'],
+          points: [
+            'SPOF 的现状账：NameNode 是元数据与 file→block 映射的唯一 repository，挂了全集群瘫痪；恢复 = 加载 FsImage → 重放 EditLog → **等 DataNode 的 block report**，大集群冷启动 **30 分钟以上**——且计划内停机（升级维护）比意外故障更常见，冷启动连日常维护都撑不住（来源：Grokking Advanced System Design · HDFS）。',
+            'HA 架构（Hadoop 2.0）：active-standby 双 NameNode，standby 是**热备**——① 通过共享存储读 EditLog（NFS 挂载，或 **QJM**：通常 3 个 journal node，每条 edit 写到**多数派**才算成功；QJM 形似 ZooKeeper 但不用 ZK 实现，**ZooKeeper 只负责选主**）；② DataNode **向所有 NameNode 发 block report**（block→DataNode 映射只在内存里，standby 只能靠上报重建）；③ 客户端用**逻辑主机名映射多个 NN 地址**，客户端库逐个尝试实现透明故障转移。',
+            'failover 分两类：graceful（管理员发起，有序交接）与 **ungraceful**（网络变慢/分区误判触发，**旧 active 可能还活着且自认为还是 active**）——防 split-brain 靠 **fencing**：resource fencing（收回共享存储访问权/远程禁用网络端口）与 node fencing（直接断电重启，STONITH "Shoot The Other Node In The Head"）。',
+            'failover 时间账：standby 理论秒级接管（EditLog 与 block 映射都热着），实际约 **1 分钟**——**故障判定故意保守**，宁可慢也不误判：误判一次的代价（双 active）远大于多等几十秒。',
+            '横向瓶颈是另一道题：内存装不下元数据就上 **Federation**——多个 NameNode 各管一段命名空间，横向分摊元数据；纵向 HA（防挂）与横向 Federation（防满）是两个正交的机制。',
+          ],
+          followUps: [
+            {
+              question: 'EditLog 为什么用 QJM 多数派写，而不直接放 ZooKeeper？',
+              points: [
+                '分工不同：EditLog 是**高吞吐顺序写日志**（每条元数据变更一条），ZK 是**小状态协调服务**（znode 小、写吞吐有限）——把数据面日志灌进协调面会把两边都拖垮。',
+                'ZK 只出"唯一 active"的判决（选主），QJM 出"日志不丢不分裂"的保证（多数派持久化）——**协调面与数据面各司其职**；旧 active 写不进 QJM 多数派这件事本身，就是防脑裂设计的一部分。',
+              ],
+            },
+            {
+              question: '不做 fencing 会发生什么？',
+              points: [
+                '旧 active 带着陈旧的内存 block 映射继续接受写：它收不到新的 block report，写入的元数据与新 active 分叉——**元数据分叉几乎不可恢复**，比 DataNode 丢块严重得多（丢块影响个别文件，元数据分叉污染整个命名空间）。',
+                'fencing 的两级就是冲着"确保旧主真的写不进来"设计的：resource fencing 收回共享存储访问（写不了 EditLog），node fencing 断电重启（连进程都别想跑）——**防脑裂不能依赖对方的自觉**。',
+              ],
+            },
+            {
+              question: '为什么 standby 必须额外收 DataNode 的 block report？',
+              points: [
+                '磁盘上只有 FsImage/EditLog 承载的**命名空间侧**（文件→block 列表）；**block→DataNode 的位置信息只存在于主节点内存**，从来不在持久化层——standby 要接管，就必须从 DataNode 的上报里把这份"问出来的真相"重建。',
+                '与 GFS 不持久化副本位置是同一个设计判断：副本位置是**易变的环境状态**，持久化它只会制造第二份必然过期的真相——让状态的天然持有者（DataNode/ChunkServer）直接上报，是唯一不会失配的方案。',
               ],
             },
           ],
