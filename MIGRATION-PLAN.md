@@ -28,6 +28,7 @@
 | 48 | MAP实现：parallel-hashmap（2 篇） | computer-architecture.ts | 稀疏哈希 1 题 | ✅ +1 题/+3 追问 | d5bb10b |
 | 49 | 产品设计：12 门产品课（422 篇，精选精读） | career.ts 42→49 | 技术人产品思维精选 | ✅ +7 题/+3 追问，转投 1 条 | c286b37 |
 | 51 | 六期·补遗·分布式数据库 19~21 讲（查询优化三讲） | backend.ts be-distributed 19→21 | 查询下推/索引分布/分布式 Join | ✅ +2 题/+4 追问 | 见 git log |
+| 52 | 六期·第二轮事实审查（四分片：backend / ops+sd / ai+career+转投 / career 补充） | 7 个数据文件 | 修复 18 处（3 P0 + 15 P1）+ 存疑项 4 条闭环 | ✅ 已完成 | 2d5496a |
 
 **终点状态（批 50 完成）**：题库 872 → **1006 题**（+134），追问 1342 → 1891 步（+549），覆盖率保持 100%；
 新增领域 `sd-paper`（system-design，20 题）与 `ai-recsys`（ai，12 题）；六期 15 批全部 verify 通过，
@@ -79,7 +80,7 @@
 
 ### C. iCloud 占位（未下载，本轮不可用）
 
-`机器学习/.ML.md`、`DRL/.DRL.md`（机器学习/DRL 两目录仅剩占位文件，深度学习主语料在人工智能基础课）；
+`机器学习/.ML.md`、`DRL/.DRL.md`（机器学习/DRL 两目录仅剩占位文件，深度学习主语料在人工智能基础课；**已实测不可恢复**：这些占位是从 iCloud Drive 拷到 Downloads 的死副本，`brctl download` 报 "Path is outside of any CloudDocs app library"——如需回收，请从原始笔记应用重新导出）；
 `网络/nginx/.未命名9.md`、`KV存储/memcache/.未命名13.md`（nginx 与 memcache 无可用正文）；
 educative.io 若干 PDF、DoorDash 3 篇、八股文梳理 1 篇为占位。已在批次规划中按「不可用」处理。
 
