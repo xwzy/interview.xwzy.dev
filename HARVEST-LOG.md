@@ -55,10 +55,14 @@
 | 45 | 六期·私有笔记·人工智能基础课 | ai.ts ai-ml 21→25 / ai-dl 11→17 | 10 | 14 条 | ✅ 已完成 | 见 git log |
 | 46 | 六期·私有笔记·推荐系统双课程 | ai.ts 新领域 ai-recsys（12 题） | 12 | 1 条 + 转投 3 条 | ✅ 已完成 | 见 git log |
 | 44 | 六期·私有笔记·高阶面经/面试现场/真题/八股（career 部分） | career.ts 34→42 + sd 增强 1 | 8 | 13 条 | ✅ 已完成（技术侧转投批 43） | 见 git log |
+| 43 | 六期·私有笔记·后端技术面试 38 讲（+44 技术侧转投） | backend.ts + system-design.ts | 11 | 15+6 条 | ✅ 已完成 | 见 git log |
+| 47 | 六期·私有笔记·分布式数据库 30 讲 + 6.824 | backend.ts be-distributed 10→19 | 8 | 12 条 + 转投 2 | ✅ 已完成 | 见 git log |
+| 49 | 六期·私有笔记·产品设计课程精选 | career.ts 42→49 | 7 | 3 条 + 转投 1 | ✅ 已完成 | 见 git log |
+| 50 | 六期·收尾审查与终版校准 | 全库 + README/大纲 | 0 | verify 全绿 | ✅ 已完成 | 见 git log |
 | 39 | 六期·私有笔记·消息队列双课程（高手课+RocketMQ） | backend.ts be-mq 7→15 | 8 | 8 条 | ✅ 已完成 | 见 git log |
 | 42 | 六期·私有笔记·educative Grokking Advanced SD（上：Chubby/设计模式/DoorDash） | system-design.ts 新领域 sd-paper | 8 | 3 条 + 转投清单 6 条 | 🟨 上已入库（storage 部分待补跑） | 见 git log |
 
-题库总量：656（起点）→ **980**（当前，追问覆盖率 100%，追问 1771 步）。真题改编题统一打 `tags: ['真题改编']`，可全局搜索筛选。
+题库总量：656（起点）→ **1006**（当前，追问覆盖率 100%，追问 1891 步）。真题改编题统一打 `tags: ['真题改编']`，可全局搜索筛选。
 二期方案见 `docs/quiz-expansion-plan-v2.md`（批号自 11 起续编）；**六期方案见根目录 `MIGRATION-PLAN.md`**
 （来源：个人学习笔记库 `~/Downloads/private-notes/工作学习`，批号自 36 起续编，按批回填）。
 
@@ -573,3 +577,27 @@ sigsuspend 竞态、适配策略与边界标记等复核无误。
 **追问增强 13 条**：career 12（self-intro/weakness/salary-expectation 两三角形/career-plan 认知差/resume 详历法/highlights 伪亮点/star 四扣分点/deep-dive 采样模型/retro 两维度八层面/conflict 说 No/quantify 浪费三形态/reverse-questions）+ sd-methodology-framework 1（「人设+引导」自评）。
 
 **技术侧转投**（S9~S14 六道真题 + E13~E18，真题打 `真题改编` 标记）→ 并入批 43 批次落地（负载均衡动态算法/服务隔离/全链路超时/第三方防腐层/设计 MQ/MongoDB 选型 + 熔断抖动/B+ 树层高/fork COW/消费速率/智能指针编码素材）。**丢弃**：与 be-mysql/be-redis/be-mq 已成体系覆盖的八股主体、C++ 概念清单、伪装成面经的 OS 八股文件等，逐条注明。种子存档 seeds-v3-batch44-interview.md。
+
+## 批 43 · 六期·私有笔记·后端技术面试 38 讲（+批 44 技术侧转投）✅（来源：46 篇 + 批 44 转投清单）
+
+**新题 11**：批 43 收 4——be-micro-arch-evolution（垂直 vs 水平+瓶颈演化主线）、be-network-lb-levels（HTTP 重定向/DNS/反代/IP/链路层 DR 五层）、be-micro-ddd（贫血 vs 充血+限界上下文）、be-distributed-bigdata-evolution（inode/RAID→HDFS/MapReduce 设计同构线）；批 44 技术转投收 6（全部打 `真题改编`）——be-micro-lb-algorithms（动态算法指标缺陷+按调用结果调权）、be-stability-isolation（隔离保核心/VIP）、be-stability-timeout-budget（全链路超时与传递）、be-stability-third-party（第三方防腐层四职责）、be-nosql-mongodb（高可用与选型，be-nosql- 前缀裁决）、sd-classic-mq-design（设计一个消息队列，system-design/sd-classic）。
+
+**增强 21 条**：批 43 E1~E15（n 个 9 换算、降级判例、异地多活 DNS 分流、预发价值、压测三阶段、故障传染、MQ 隔离、主主澄清、业务分库 vs 数据分片、连接治理、Redis 脏读两路线、设计模式腐坏五特征+DIP、单体五痛点、JVM 报错映射、ThreadLocal Web 语境）；批 44 E13~E18（熔断抖动+写入失败排队、B+ 树 2000W 层高、fork 非立即 2 倍+COW、n 分区 n+1 消费者+CAP 对照、手撕智能指针并入 be-cpp-smart-ptr）。
+
+**裁决**：S5 SQL 注入/XSS 丢弃（sec-web-sqli 与 fe-security-xss 已覆盖）；S6 组件六原则、S7 倒排索引转增强。种子存档 seeds-v3-batch43-backend38.md、seeds-v3-batch44-interview.md。
+
+## 批 47 · 六期·私有笔记·分布式数据库 30 讲 + 6.824 LEC01 ✅（来源：34 篇 + 4 篇）
+
+**新题 8**（backend.ts，be-distributed 10→19）：be-distributed-shard-metadata（PD 无状态/Gossip 二次路由/4EB 推算）、be-distributed-global-clock（TSO 窗口预申请/TrueTime/HLC）、be-distributed-commit-wait（2ɛ=8ms 账本/TPS=125 误读纠正）、be-distributed-2pc-optimize（Percolator 主锁/并行提交 (W+1)L_c→1L_c）、be-distributed-cc-pessimistic（乐观转悲观+SGT/RTC，S6 折叠为追问）、be-distributed-aurora-shared-storage（共享存储判据）、be-distributed-multi-region（两地三中心→全球化根因链/Raft 降级）、be-distributed-cdc（跨分片事务顺序/Resolved 时间戳）。
+
+**增强 12 条**：E1~E10 落 be-distributed/be-mysql-sharding（CAP 的 C 翻译事故、一致性哈希数据库语境 1.77x、分布式 ID 内核视角、newsql 三追问、应用层 2PC vs 内核 2PC、Raft 四项性能优化、4+1 部署算术、少数派服务、PD 混合体、分库分表四级演进+5.49 亿案例）；**转投 2**：cs-db-lsm +1（RUM 猜想+WAF=7/SAF=2+WiscKey）、bd-mr-shuffle +1（speculative execution/确定性前提/原子 rename/2004 网络瓶颈）。**丢弃**：S6/S7 独立成题（折叠入增强）、K8s 三件套（ops 已有）、查询优化三讲（留待数据库内核批次）。种子存档 seeds-v3-batch47-distdb.md。
+
+## 批 49 · 六期·私有笔记·产品设计课程精选 ✅（来源：【40】产品设计 12 门课 422 篇，精选约 15 篇精读）
+
+**新题 7**（career.ts 42→49）：career-project-prioritization（basic，机会成本+KANO）、career-project-prd-review（basic，5 问法+伪需求）、career-project-mvp（验证长板+人工替代系统）、career-project-north-star（北极星指标+虚荣数据+精益闭环）、career-growth-b2b-vs-c（basic，霍特林定律+SaaS 续费）、career-growth-ai-model-eval（离线在线+PSI+阈值是业务决策）、career-growth-ads-business（CPM/CPC/CPA/eCPM+合约 vs 竞价——技术人业务语言）。
+
+**增强 3 条**（quantify 价值翻译/conflict 与 PM 争执/tech-debt 业务损失挂钩）；**转投 1**：sd-methodology-ab-testing +1（不五五分+单变量多变量+精益闭环+实验文化警示）。**判定**：三门设计课与 To B 市场课近整门丢弃（非技术面试语料），逐门记录于种子。种子存档 seeds-v3-batch49-product.md。
+
+## 批 50 · 六期·收尾审查与终版校准 ✅
+
+全库终态：**19 方向 / 24 领域 / 1006 题 / 1891 步追问 / 覆盖率 100%**。`npm run gen:meta` + `npm run verify`（test + lint + build）全绿；README 与 index.html 统计同步（stats.test 锁定）；六期全程批 36~50 完成，历批撞车裁决与转投共 6 轮（批 42×2、批 44→43、批 46→sd、批 47→cs/big-data、批 49→sd）全部落地。iCloud 占位文件（机器学习/DRL/nginx/memcache 及部分 educative PDF）按不可用处理，已记录于迁移大纲。
