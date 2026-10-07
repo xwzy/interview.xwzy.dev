@@ -18,14 +18,14 @@
 | 38 | 消息队列：Kafka 核心技术与实战（47 篇） | backend.ts `be-mq` | Kafka 深挖新题 + 追问 | ⬜ | |
 | 39 | 消息队列：消息队列高手课（43 篇）+ 中间件核心技术与实战-丁威（33 篇，RocketMQ） | backend.ts `be-mq`/`be-systems` | MQ 通用深挖 + RocketMQ | ⬜ | |
 | 40 | RPC框架：RPC实战与核心原理（29 篇）+ 微服务：Dubbo 源码剖析与实战（31 篇） | backend.ts `be-micro` | RPC/Dubbo 新题 + 追问 | ⬜ | |
-| 41 | 云原生：Kubernetes 入门实战课（38 篇）+ 深入剖析 Kubernetes（57 篇） | ops.ts | k8s 新题 + 存量追问增厚 | ⬜ | |
+| 41 | 云原生：Kubernetes 入门实战课（38 篇）+ 深入剖析 Kubernetes（57 篇） | ops.ts | k8s 新题 + 存量追问增厚 | ✅ +12 题/+10 追问 | 22bd1f7 |
 | 42 | educative.io：Grokking the Advanced System Design（Dynamo/Cassandra/BigTable/GFS/HDFS/Chubby/Kafka/设计模式）+ DoorDash 案例 | system-design.ts 新领域 `sd-paper` | 经典系统新题 | ⬜ | |
 | 43 | 课程：后端技术面试 38 讲（46 篇） | backend.ts `be-general`/`be-stability` | 软技能外工程题 | ⬜ | |
 | 44 | 课程：后端工程师的高阶面经（51 篇）+ 面试现场（40 篇）+ 【9】面试题收集（10 篇）+ 【1】八股文梳理（17 篇） | career.ts + backend.ts | career 新题 + 各向查漏 | ⬜ | |
 | 45 | 人工智能：人工智能基础课（59 篇）+ 深度学习理论文章 | ai.ts `ai-ml`/`ai-dl` | ML/DL 新题 + 追问 | ⬜ | |
 | 46 | 推荐系统：推荐系统三十六式（40 篇）+ 手把手带你搭建推荐系统（36 篇） | ai.ts 新领域 `ai-recsys` | 推荐系统新领域 | ⬜ | |
 | 47 | 分布式和数据库：分布式数据库 30 讲（34 篇）+ 6.824 LEC01 | backend.ts `be-distributed` | 分布式深挖 | ⬜ | |
-| 48 | MAP实现：parallel-hashmap（2 篇） | computer-architecture.ts | 稀疏哈希 1 题 | ⬜ | |
+| 48 | MAP实现：parallel-hashmap（2 篇） | computer-architecture.ts | 稀疏哈希 1 题 | ✅ +1 题/+3 追问 | 22bd1f7 |
 | 49 | 产品设计：13 门产品课（邱岳/苏杰/硅谷产品实战等，约 500 篇） | career.ts 新领域 | 技术人产品思维精选 | ⬜ | |
 | 50 | 收尾：全批事实抽查 + README/index.html 校准 + 生产端到端验收 | 全库 | 修复 + 校准 | ⬜ | |
 

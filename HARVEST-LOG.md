@@ -46,10 +46,12 @@
 | 33 | 五期·追问覆盖补齐（frontend 最后 11 题无追问） | frontend.ts | 0 | 11 条 | ✅ 已完成 | 见 git log |
 | 34 | 五期·批 33 追问审查（frontend.ts） | frontend.ts | 0 | 修复 1 处 | ✅ 已完成 | 见 git log |
 | 35 | 五期·批 31 两题二审 + 生产端到端验收 | ai-infra.ts | 0 | 修复 3 处 | ✅ 已完成 | 见 git log |
-| 32 | 五期·收尾审查与文档校准 | career.ts + ai-infra.ts + README | 0 | 修复 1 处 | ✅ 已完成 | 见 git log |
+| 41 | 六期·私有笔记·Kubernetes 双课程 | ops.ts | 12 | 10 条（含新题内另计） | ✅ 已完成 | 见 git log |
+| 48 | 六期·私有笔记·parallel-hashmap（Swiss Table） | computer-architecture.ts | 1 | 3 条（含新题内） | ✅ 已完成 | 见 git log |
 
-题库总量：656（起点）→ **872**（当前，追问覆盖率 100%）。真题改编题统一打 `tags: ['真题改编']`，可全局搜索筛选。
-二期方案见 `docs/quiz-expansion-plan-v2.md`（批号自 11 起续编）。
+题库总量：656（起点）→ **885**（当前，追问覆盖率 100%，追问 1385 步）。真题改编题统一打 `tags: ['真题改编']`，可全局搜索筛选。
+二期方案见 `docs/quiz-expansion-plan-v2.md`（批号自 11 起续编）；**六期方案见根目录 `MIGRATION-PLAN.md`**
+（来源：个人学习笔记库 `~/Downloads/private-notes/工作学习`，批号自 36 起续编，按批回填）。
 
 > 批 8 范围说明：原计划的"大数据/移动端/运维各 +3~4"在参考库中无对口语料（无对应课程材料），如实跳过；批 8 聚焦有真实试卷支撑的 qa 方向。
 
@@ -479,3 +481,21 @@ sigsuspend 竞态、适配策略与边界标记等复核无误。
 **通过确认**：批 31 两处润色复核无误；跨文件五个引用（调度题/CI for models/解码参数题/agent-runtime/scene-slo）全部真实且范围吻合。
 
 **生产端到端验收（真实站点 + 浏览器）**：首页（门禁通过、19 方向、872 题渲染）→ 新方向题目页（/tracks/av/av-basics 四题与进度条正常）→ 搜索命中新题（'约束解码'）→ 出题全流程冒烟（候选人填写、组卷、计时、要点展开、评分标记、切题、备注框、结束二次确认防误触、草稿可恢复提示）全部正常，测试产生的本地状态已清理。生产与 main 一致。
+
+## 批 41 · 六期·私有笔记·Kubernetes 双课程 ✅（来源：【03】云原生/Kubernetes 入门实战课-罗剑锋 38 篇 + 深入剖析 Kubernetes 57 篇）
+
+**新题 12**（ops.ts，ops-cicd 领域）：ops-k8s-pod-internals（Pod 底层实现与 pause/Infra 容器：单 IP、对等关系、单进程模型、原子调度单位）、ops-k8s-sidecar-init（容器设计模式三例 + init 语义 + 1.28 原生 sidecar）、ops-k8s-deployment-rollout（Deployment/RS/Pod 分层 + pod-template-hash 版本机制 + 回滚本质）、ops-k8s-statefulset（稳定标识三板斧/Headless DNS/存储绑定/partition 金丝雀）、ops-k8s-kube-proxy（Endpoints 准入、iptables probability 递减数学、IPVS 内核态哈希）、ops-k8s-flannel-overlay（UDP 三次态切换→VXLAN 三张表→host-gw 路由，性能 10% vs 20~30%）、ops-k8s-calico-bgp（Felix/BIRD、Mesh O(N²) 与 Route Reflector、IPIP 兜底与云上取舍）、ops-k8s-scheduler（Predicates 四类+Priorities 打分+Assume 乐观绑定+kubelet Admit 二次确认）、ops-k8s-taint-toleration（三种 effect、DaemonSet 不走调度器）、ops-k8s-rbac（四对象、resourceNames、ServiceAccount 挂载、default SA 风险）、ops-k8s-declarative-api（apply=PATCH 可合并、list-watch 全量兜底、Istio sidecar 注入案例）、ops-k8s-priority-preemption（PriorityClass 10 亿分界、模拟抢占、nominatedNodeName 软占位、Predicates 跑两遍）。
+
+**追问增强 10 条**（→既有题）：ops-cicd-k8s-core（为什么需要 Pod：单进程模型+成组调度+CRI/CNI/CSI 分层）、ops-cicd-container-vs-vm（共享内核的隔离边界：内核 CVE 共担、cgroup 管不到的 conntrack、Kata/gVisor 强隔离）、ops-k8s-storage（PVC/PV 防秘密暴露 + Local PV 先算卷再选点）、ops-cicd-k8s-service-ingress（Ingress Controller 内部：Lua 动态 upstream 免 reload）、ops-k8s-resources（QoS vs PriorityClass 两套账）、ops-k8s-operator（控制循环水平触发 vs 事件驱动）、ops-cicd-release-strategies（原生渐进式发布旋钮：hash 版本/minReadySeconds/partition）、ops-cicd-pod-troubleshoot（Job backoffLimit 重试 vs kubelet 重启循环）、ops-k8s-cni（CNI 调用链：Infra 容器→Main/IPAM 插件、cni0 vs docker0）、ops-obs-monitoring（Metrics Server vs Prometheus 分工、kube-state-metrics、DaemonSet 日志采集）。
+
+**主动丢弃 12 项**：kubectl/minikube 命令类、镜像仓库使用、监控/日志专章（与 ops-obs-* 重复，仅留 E9 增强）、Operator 编写专章（ops-k8s-operator 已深覆盖）、GPU Device Plugin（并入 E7 素材）、Kata/gVisor 深挖（并入 container-vs-vm 追问）、namespace/cgroup 详挖（os.ts 已有三处覆盖，避免双重重复）、CRI/dockershim 演进、自定义控制器代码细节、ConfigMap/Secret 注入细节（与 ops-k8s-storage 重合）等。
+
+**范围说明**：本批新题难度分布 进阶 5 / 高级 7、无 basic——K8s 深挖语料不含基础层，基础面（三对象/镜像/探针）已由既有题覆盖，按"质量优先不凑数"豁免 ≥30% basic 约定。种子存档 `docs/quiz-harvest/seeds-v3-batch41-k8s.md`。
+
+## 批 48 · 六期·私有笔记·parallel-hashmap（Swiss Table）✅（来源：【03】MAP实现/parallel-hashmap，README + design.md 共 2 篇）
+
+**新题 1**（computer-architecture.ts，ca-parallel）：ca-par-swiss-table——"同样是哈希表，为什么 flat_hash_map（Swiss Table）能比 std::unordered_map 快 3 倍？"：closed hashing 值内联（顺序扫描替代指针追逐）+ 每槽 1 字节元数据（H2 指纹）SSE2 一次并行比对 16 槽 → 负载因子扛到 87.5%；parallel_flat_hash_map 的 submap 分片把扩容内存峰值降到 1/16 并白赚分片锁（8 线程插入 1 亿元素实测近 2×）；墓碑机制与治理。
+
+**追问 3 条**（含新题内）：高负载因子断崖劣化的数学账（等效探测步数 ÷16，"一次 cache line 换一批判断"的通用模式）、墓碑堆积与"删多的负载要主动 rehash"（与 Redis dict/LSM compaction 同构）、btree vs 红黑树（多值节点缓存友好 vs 指针/迭代器稳定性承诺）。
+
+**分工**：哈希冲突处理/扩容的算法层留在 cs-algo-hashmap；本题专讲微架构层（缓存局部性/SIMD/内存账）。**丢弃**：安装使用、CMake/natvis、语言绑定等工程内容。本批由主会话直接收割（语料仅 2 篇），未单列种子文件。
