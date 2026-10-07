@@ -3205,6 +3205,14 @@ export const backendTrack: Track = {
                 'Redis Cluster 干脆放弃环哈希改用 slot 表 + 每个 slot 一主多从——**路由与复制正交**，一致性哈希负责"扩缩容迁移少"，副本机制负责"高可用"，两者组合才是完整方案。',
               ],
             },
+            {
+              question: 'Dynamo 为什么在一致性哈希上再引入虚拟节点（vnode）？',
+              points: [
+                '**三个原始动机**：① 新节点加入时**从很多现有节点各收若干 vnode**（而非只压给环上邻居一段）；② 节点重建时**多节点参与供数**，而非固定副本集扛全量恢复流量；③ **异构机器按能力配 vnode 数**（大机器多配几个）。（来源：Grokking Advanced System Design · Dynamo）',
+                '**vnode 的布局约束**：环上随机分布且**相邻 vnode 不在同一物理机**——副本天然分散；对照单 token 方案的三宗罪：增删节点要重算全网 token、单段大范围易热点、重建压垮固定副本。',
+                '**边界**：Merkle 树反熵在 vnode 下有代价——节点加入/离开导致 key range 重划 → **树整体重算**（Cassandra 干脆把 repair 做成手动运维动作）——反熵不是免费的，与一致性哈希的动态性冲突。',
+              ],
+            },
           ],
         },
         {
@@ -3339,6 +3347,13 @@ export const backendTrack: Track = {
                 '**Fencing 的两分法收束**：**resource fencing**（吊销旧主对共享存储的访问/禁用网络端口）vs **node fencing（STONITH，直接断电重置）**——HDFS 对旧 NameNode 用的就是这套；答脑裂时给出"检测（epoch）+ 执行（fencing）"两段式才是完整方案。',
               ],
             },
+            {
+              question: 'HDFS 的 HA 切换是怎么具体防脑裂的？',
+              points: [
+                '**QJM（Quorum Journal Manager）用多数派写 EditLog**：active 要把编辑日志写到多数 JournalNode 才算提交——旧 active 即使活着，写不进多数派就造成不了分叉；这是"用共识防脑裂"，而不是只靠检测。（来源：Grokking Advanced System Design · HDFS）',
+                '**触发场景要具体**：网络变慢/分区触发 failover，但旧 active 还活着且自认为 active——resource fencing（收回共享存储访问、远程禁网络端口）与 node fencing（STONITH）是兜底；与本题前面 epoch/世代号的"检测"段配套：**检测靠 epoch，执行靠 fencing，共识（QJM）让写冲突根本不发生**——三层讲全才算完整。',
+              ],
+            },
           ],
         },
         {
@@ -3365,6 +3380,13 @@ export const backendTrack: Track = {
                 '**奇数论证**：5 节点容忍 2 故障、4 节点只容忍 1——偶数不增加容错还多一台成本（多数派大小没变）；这也是"为什么 ZK/etcd 推荐 3/5 节点"的数学根据。（来源：Grokking Advanced System Design · Quorum）',
                 '**性能最优在 1 < R < W < N**：读多于写的负载微调 R；**R=1/W=N（write-all-read-one）是反例**——写完成率被最差节点绑架，一个慢盘拖垮全部写入。',
                 '**Read Repair 的概率执行变体**：读一致性级别 < All 时（如抽样 10% 请求），先满足一致性级别即刻返回，修复异步后台做；摘要（digest/checksum）比对省带宽，不一致才拉全量——"修复"与"响应"解耦。',
+              ],
+            },
+            {
+              question: 'Dynamo 的 sloppy quorum 具体是怎么工作的？代价是什么？',
+              points: [
+                '**preference list > N 且跳过虚拟节点**：正常时前 N 个偏好节点承接读写；节点不可用时沿哈希环继续找健康节点凑数——"永远可写"的来源；hint 副本存**独立本地数据库**周期扫描，目标恢复后送达并删除，**送达前不减少系统总副本数**。（来源：Grokking Advanced System Design · Dynamo）',
+                '**代价**：并发写可能落在**不相交的节点集合**上——版本冲突概率大增，所以 sloppy quorum 必须配向量时钟（客户端合并）；(N,R,W)=(3,3,1) 重读、(3,1,3) 重写的语义差异要能口算；Cassandra 的 ANY 级别允许 hint-only 写成功，但**恢复前不可读**——可用性与可读性在这里分离。',
               ],
             },
           ],

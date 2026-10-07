@@ -1475,6 +1475,15 @@ export const csTrack: Track = {
                 '写放大来源就看层间搬运：上层满触发与下层的合并，一条记录从 L1 到 Ln 可能被重写多轮——** leveled 的读友好是拿写放大换的**；所以有参数把不活跃数据快速沉底（compaction picker 的策略空间），这也是各产品调优的主战场（HBase/ScyllaDB 各有变体）。',
               ],
             },
+            {
+              question: 'Cassandra 和 BigTable 是 LSM 的"活标本"——从它们身上能读出哪些工程清单？',
+              points: [
+                '**三级读加速栈（Cassandra）**：bloom per SSTable → key cache（存 offset）→ 内存 partition index summary → 磁盘 partition index → data file——把"读放大治理"拆成可背诵的工程清单，每级挡掉一部分无效查找。（来源：Grokking Advanced System Design · Cassandra）',
+                '**major compaction 的隐私视角（BigTable）**：compaction 分 minor/merging/major 三级，major 产物**不含删除信息**——敏感数据的物理痕迹要到 major 才确定性消失（合规场景常要手动触发）——把"墓碑留到最后一级"的原理讲成合规视角。',
+                '**统一 commit log（BigTable）**：每 server 一个日志文件、恢复时按 <table,row,LSN> 排序回放——是 WAL"分段与合并"议题的分布式变体，与 Kafka 分区日志、system-design 的 WAL 通论题同构。',
+                '**三策略对应**：SizeTiered/Leveled/TimeWindow = "tiered vs leveled 权衡"的产品级落地（时序负载加 TimeWindow）——把策略名和适用负载绑定记忆。',
+              ],
+            },
           ],
         },
         {
