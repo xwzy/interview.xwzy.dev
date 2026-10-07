@@ -59,10 +59,11 @@
 | 47 | 六期·私有笔记·分布式数据库 30 讲 + 6.824 | backend.ts be-distributed 10→19 | 8 | 12 条 + 转投 2 | ✅ 已完成 | 见 git log |
 | 49 | 六期·私有笔记·产品设计课程精选 | career.ts 42→49 | 7 | 3 条 + 转投 1 | ✅ 已完成 | 见 git log |
 | 50 | 六期·收尾审查与终版校准 | 全库 + README/大纲 | 0 | verify 全绿 | ✅ 已完成 | 见 git log |
+| 51 | 六期·补遗·分布式数据库 19~21 讲（查询优化三讲） | backend.ts be-distributed 19→21 | 2 | 4 条（含新题内） | ✅ 已完成 | 见 git log |
 | 39 | 六期·私有笔记·消息队列双课程（高手课+RocketMQ） | backend.ts be-mq 7→15 | 8 | 8 条 | ✅ 已完成 | 见 git log |
 | 42 | 六期·私有笔记·educative Grokking Advanced SD（上：Chubby/设计模式/DoorDash） | system-design.ts 新领域 sd-paper | 8 | 3 条 + 转投清单 6 条 | 🟨 上已入库（storage 部分待补跑） | 见 git log |
 
-题库总量：656（起点）→ **1006**（当前，追问覆盖率 100%，追问 1891 步）。真题改编题统一打 `tags: ['真题改编']`，可全局搜索筛选。
+题库总量：656（起点）→ **1008**（当前，追问覆盖率 100%，追问 1895 步）。真题改编题统一打 `tags: ['真题改编']`，可全局搜索筛选。
 二期方案见 `docs/quiz-expansion-plan-v2.md`（批号自 11 起续编）；**六期方案见根目录 `MIGRATION-PLAN.md`**
 （来源：个人学习笔记库 `~/Downloads/private-notes/工作学习`，批号自 36 起续编，按批回填）。
 
@@ -601,3 +602,9 @@ sigsuspend 竞态、适配策略与边界标记等复核无误。
 ## 批 50 · 六期·收尾审查与终版校准 ✅
 
 全库终态：**19 方向 / 24 领域 / 1006 题 / 1891 步追问 / 覆盖率 100%**。`npm run gen:meta` + `npm run verify`（test + lint + build）全绿；README 与 index.html 统计同步（stats.test 锁定）；六期全程批 36~50 完成，历批撞车裁决与转投共 6 轮（批 42×2、批 44→43、批 46→sd、批 47→cs/big-data、批 49→sd）全部落地。iCloud 占位文件（机器学习/DRL/nginx/memcache 及部分 educative PDF）按不可用处理，已记录于迁移大纲。
+
+## 批 51 · 六期·补遗·分布式数据库 19~21 讲（查询优化三讲）✅（来源：批 47 时判定"留待数据库内核批次"的 3 篇，主会话直读直录）
+
+**新题 2**（backend.ts，be-distributed 19→21）：be-distributed-pushdown-index（计算下推：Data Shipping vs Code Shipping、TiDB 缓存写提交与漏读 Merge 方案、分区索引 co-located 与分片分裂 Bucket 方案、全局索引两笔账——读两轮通讯+写多分布式事务；追问：唯一索引为何必须全局、Join 下推前提与倾斜代价）、be-distributed-join-strategies（单机算法谱系 SNLJ/BNLJ/ILJ/SMJ/GHJ/HHJ、TiDB 存储不互联与 TiSpark/OB MPP 两条解法、复制表与小表广播、大表重分布分级代价；追问：GHJ 与 Spark Shuffle 同构、Inner 表选择受保留语义约束——课程思考题口径）。
+
+第 21 讲（聚合加速）与 19/20 讲重叠度高（下推+并行框架已被两题承接），不再单列。**iCloud 占位文件确认不可恢复**：brctl 报 "Path is outside of any CloudDocs app library"（从 iCloud Drive 拷出的死副本），机器学习/DRL/nginx/memcache 笔记需用户从原始笔记应用重新导出，已在迁移大纲 C 节标注。
