@@ -1316,7 +1316,7 @@ export const systemDesignTrack: Track = {
               question: 'QUORUM 读为什么向最快的节点要全量数据、向第二快的节点只要一个哈希？',
               points: [
                 'digest 读的分工：R=2 时协调者向**最快的副本**要全量数据、向**第二快**只要 **digest（数据哈希）**——两者一致就直接返回，省掉一份全量传输；不一致 → 从所有副本重读，按最新 write-timestamp 裁决，返回后顺手发起 read repair（来源：Grokking Advanced System Design · Cassandra）。',
-                'read repair 是**机会主义**的：一致性级别小于 ALL 时按概率做（默认约 10% 的请求），级别满足就先回客户端、修复异步后台进行——主反熵手段仍是 repair（Merkle 树比对，Cassandra 里手动触发）。',
+                'read repair 是**机会主义**的：一致性级别小于 ALL 时按概率做（3.x 的 read_repair_chance 默认 0.1，即约 10% 的请求），级别满足就先回客户端、修复异步后台进行——**注意 Cassandra 4.0 已移除 background read repair**（read_repair_chance 参数废除，只剩 blocking/NULL 两种模式），概率修复是 3.x 口径，主反熵手段仍是 repair（Merkle 树比对，Cassandra 里手动触发）。',
                 '权衡账：digest 在"两副本本来就一致"时白付一次哈希，但一次哈希换掉高概率的全量网络传输，期望收益为正；读延迟取决于 R 个副本里最慢的那个——digest 读、read repair、多级读缓存全是围绕"最慢副本"的延迟账做的设计。',
               ],
             },

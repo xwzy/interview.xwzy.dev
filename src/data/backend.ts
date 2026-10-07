@@ -4467,7 +4467,7 @@ export const backendTrack: Track = {
               points: [
                 '**奇数论证**：5 节点容忍 2 故障、4 节点只容忍 1——偶数不增加容错还多一台成本（多数派大小没变）；这也是"为什么 ZK/etcd 推荐 3/5 节点"的数学根据。（来源：Grokking Advanced System Design · Quorum）',
                 '**性能最优在 1 < R < W < N**：读多于写的负载微调 R；**R=1/W=N（write-all-read-one）是反例**——写完成率被最差节点绑架，一个慢盘拖垮全部写入。',
-                '**Read Repair 的概率执行变体**：读一致性级别 < All 时（如抽样 10% 请求），先满足一致性级别即刻返回，修复异步后台做；摘要（digest/checksum）比对省带宽，不一致才拉全量——"修复"与"响应"解耦。',
+                '**Read Repair 的概率执行变体**（Cassandra 3.x 语义，4.0 已移除 background read repair）：读一致性级别 < All 时按概率抽样（默认 0.1），先满足一致性级别即刻返回，修复异步后台做；摘要（digest/checksum）比对省带宽，不一致才拉全量——"修复"与"响应"解耦。',
               ],
             },
             {

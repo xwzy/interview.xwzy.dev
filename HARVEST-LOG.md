@@ -621,3 +621,5 @@ sigsuspend 竞态、适配策略与边界标记等复核无误。
 **通过确认（抽查全绿的代表性断言）**：embstr 44 推导、LAZYFREE_THRESHOLD=64、Dubbo 16B 头全字段、retries=2 总 3 次、RocketMQ 流控三阈值、max.poll.records=500、Spanner commit-wait 2ɛ、Chubby 租约 12s→60s/Grace 45s/KeepAlive 93%、GFS 64MB chunk/lease 60s、Dynamo (3,2,2)/时钟截断、BigTable tablet 100~200MB、K8s 1.28 原生 sidecar/优先级 10 亿分界/backoffLimit 6、HN 公式/贝叶斯平均/BPR/YouTubeDNN/Simhash≤3/Netflix 稀疏度 1.18% 实算、eCPM 竞价算例。
 
 **存疑不改（记录在案）**：课程实测口径（Dubbo 直调 8ms 等）外部不可证伪且自洽；Cassandra 4.0 read repair 语义变化（来源已标 Grokking）；YouTubeDNN 层宽按广泛复现口径（一手 PDF 403）。另：Glossary md（29 行术语小抄）判定无增量；iCloud 占位确认不可恢复（brctl 报 Path outside CloudDocs library）。
+
+**批 52 补遗（存疑项全部闭环，源码/文档直核）**：① Kafka 2.3"45 种请求"——2.3.0 ApiKeys.java 枚举恰 45 项，精确确认；② Kafka 0.9 G1 默认——0.9.0.0 kafka-run-class.sh 第 137 行 `-XX:+UseG1GC -XX:MaxGCPauseMillis=20 -XX:InitiatingHeapOccupancyPercent=35`，确认（附带印证调优题的 G1 参数）；③ Cassandra 4.0 read repair——4.0 官方文档确认 background read repair（read_repair_chance）已移除，system-design 与 backend 两处概率修复表述已补版本限定（3.x 口径 + 4.0 变化说明）；④ YouTubeDNN 原文确认为 RecSys 2016（DOI 10.1145/2959100.2959190，无 arXiv 版），层宽 1024/512/256 为论文图 3 广为复现口径，题内引用方式（不涉 arXiv 号）无需修改。
