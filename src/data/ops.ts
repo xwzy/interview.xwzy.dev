@@ -376,6 +376,14 @@ export const opsTrack: Track = {
                 '宿主机排查利器 **nsenter**：`nsenter -t <容器主进程pid> -n ss -antp` 进入容器的网络命名空间看连接，`-m` 进挂载空间——容器里没装工具时，从宿主机借道 namespace 排查是容器网络排障的常用招。',
               ],
             },
+            {
+              question: '容器"共享内核"意味着什么？隔离的边界在哪，什么时候必须上轻量虚拟机？',
+              points: [
+                '共享内核 = **内核版本、驱动、sysctl 与宿主机绑定**：容器用不了宿主机内核不支持的特性；**内核漏洞（提权/逃逸类 CVE）对所有容器同时生效**——namespace/cgroup 是"进程级隔离"，不是安全边界。',
+                'cgroup 也有管不到的**内核全局资源**：连接跟踪表（conntrack）、MTU、内核锁争用——多租户高密度部署下这些是"容器间互相干扰"的隐形通道。',
+                '**强隔离场景上 Kata Containers/gVisor**：不可信代码（多租户 SaaS、沙箱执行引擎）用轻量虚拟机补齐隔离，代价是启动与性能损耗——"隔离等级 vs 性能"按威胁模型选，与零信任、TEE 的思路同源。',
+              ],
+            },
           ],
         },
         {
@@ -396,6 +404,13 @@ export const opsTrack: Track = {
               points: [
                 '靠 **Service 的稳定 VIP + DNS**：Pod 上下线时 endpoints 自动增删、kube-proxy 同步更新 iptables/IPVS 规则，客户端只认 Service 域名——这就是“永远不要直连 Pod IP”的原因。',
                 '可能出错的环节：**label 与 selector 不匹配**（Service 找不到 Pod，endpoints 为空）、**readiness 未通过**（Pod 存在但不接流量）、CoreDNS 解析异常——排查口诀是先看 `kubectl get endpoints` 有没有地址，再往前查 label 与探针。',
+              ],
+            },
+            {
+              question: '为什么 K8s 需要 Pod 这个概念，而不是直接编排一个个容器？',
+              points: [
+                '**容器的单进程模型**：容器 PID=1 就是应用本身，没有 init 进程帮它收养孤儿、转发信号——"一组进程"必须有一层抽象来承载；**成组调度难题**是第二个动因：Swarm 的 affinity 会调出"前两个成功、第三个放不下"的半成品，Mesos 靠资源囤积损效率，Omega 乐观调度太复杂——**Pod 用"原子调度单位"根治**（调度器按 Pod 整体资源算）。（来源：深入剖析 Kubernetes 13）',
+                '插件分层是这个设计红利：kubelet 经 **CRI** 对接任意容器运行时、经 **CNI/CSI** 配网挂存储——K8s 从架构上不绑定 Docker（Pod 是抽象，容器运行时只是实现）。',
               ],
             },
           ],
@@ -470,6 +485,13 @@ export const opsTrack: Track = {
                 '**Terminating 卡住**：PVC 的删除要等**所有使用者（Pod）先删掉**（finalizer `kubernetes.io/pvc-protection`）——查还有没有 Pod（含失败/未调度完的）在用它；孤儿 PVC（Pod 已删但 finalizer 没清）要处理 finalizer（生产谨慎，先确认卷数据可弃）；这个机制本质是**防误删保护**——理解 finalizer 语义（与 Operator 题的删除清理呼应），排查就不是背命令了。',
               ],
             },
+            {
+              question: 'PVC/PV 这层抽象除了"解耦"还防了什么？Local PV 为什么调度起来更麻烦？',
+              points: [
+                '**防基础设施细节暴露**：直接在 Pod 里写 Ceph RBD 的 monitors 地址、用户名、keyring 路径，等于把存储层秘密发给所有开发者——PVC/PV 把"接口"（容量/访问模式）与"实现"（哪个存储、怎么连）分离，**职责分离还让事故定责更清晰**。',
+                '**Local PV（本地盘）**：必须用 nodeAffinity 与具体节点绑定——调度器要在 Predicates 的 VolumeBinding 规则里**先算卷再选点**（PVC 未绑定时预判"可绑的 PV 在哪个节点"）；顺序反了就会出现"Pod 选中节点、卷在别的节点"的死局——这是"调度与存储耦合"的典型案例（与调度器题互链）。',
+              ],
+            },
           ],
         },
         {
@@ -499,6 +521,13 @@ export const opsTrack: Track = {
                 '原则：liveness **只反映进程自身健康**（本地无依赖检查）；依赖健康交给 readiness（摘流量不重启）；慢启动应用用 **startup 探针**兜住，而不是调大 liveness 的 initialDelay——职责分离是探针设计的核心。',
               ],
             },
+            {
+              question: 'Ingress Controller 内部是怎么工作的？endpoints 变化为什么要 reload？',
+              points: [
+                '它本身是一个**控制器**：监听 Ingress/Service/Endpoints 对象变化，把规则渲染成 Nginx 配置——但 endpooints 的**后端 IP 变化不需要 reload**：Nginx Ingress 用 **Lua 动态更新 upstream**（balancer by lua），只有 **Ingress 规则本身变化**（新增路由/TLS）才重新生成配置并 reload——"高频变化走数据面动态化，低频变化才动配置"。（来源：深入剖析 Kubernetes 37）',
+                '配套细节：未命中规则走 **default-backend**（可自定义 404 页）；裸金属环境用 NodePort Service 暴露入口、云上用 LoadBalancer——入口的"最后一公里"因环境而异。',
+              ],
+            },
           ],
         },
         {
@@ -519,6 +548,13 @@ export const opsTrack: Track = {
                 '先分清两种 OOM：**超 limits 被杀**（exit code 137，OOMKilled）与**节点内存压力驱逐**（事件是 Evicted）——前者查应用，后者查节点与 QoS 等级。',
                 '超 limits 的排查链：`kubectl describe pod` 看 last state 与重启次数 → 看**内存使用曲线 vs limits**（监控里 metrics-server/Prometheus 的 working set）是缓慢爬升（泄漏，见内存排查题的思路）还是尖刺超限（limit 设太低/突发批处理）→ 检查 JVM 类应用：**堆外内存**（元空间、DirectBuffer、glibc arena）常让"堆设对了还是被杀"——JDK 8u191+ / JDK 10+ 的容器感知（MaxRAMPercentage）要显式配置。',
                 '根治动作：按**真实水位 + 安全余量（如 P99 × 1.3）**重设 requests/limits；泄漏型加内存只是续命，回代码侧定位；反复 OOM 的应用接 **NativeMemoryTracking**（JVM）或 pprof（Go）下钻。',
+              ],
+            },
+            {
+              question: 'QoS 等级和优先级（PriorityClass）是一回事吗？',
+              points: [
+                '**不是，两套账管两个阶段**：**QoS**（Guaranteed/Burstable/BestEffort，由 requests/limits 配置推导）决定**节点资源压力下 kubelet 的驱逐顺序**（运行期，BestEffort 先被清）；**PriorityClass** 决定**调度顺序与抢占牺牲者选择**（调度期）。两者可组合出"高优先级但 BestEffort"的 Pod——能抢到节点、资源紧张时又先被驱逐。',
+                '表述价值：抢占解决"上不了车"，驱逐解决"车上谁先下"——两个阶段分开讲，才不会在面试里混为一谈（与优先级抢占题互链）。',
               ],
             },
           ],
@@ -572,6 +608,13 @@ export const opsTrack: Track = {
                 '这正是"幂等 + 水平触发"的活用：不记住"我做过什么"，只比较"现在是什么、该是什么"；进阶细节：**OwnerReference** 让 Job 随 CR 删除自动清理、**finalizer** 处理删除前的清理（先把外部资源注销再允许删除）——这两个机制答出来，就是写过 Operator 的人。',
               ],
             },
+            {
+              question: '控制循环和事件驱动有什么本质区别？为什么说 Operator 必须幂等？',
+              points: [
+                '控制循环是**水平触发（level-triggered）**：任何时刻只比较"期望状态 vs 实际状态"——**事件丢失、乱序、Operator 自身重启，都不影响最终收敛**（下一轮循环会重新发现差距）；事件驱动是边缘触发，错过事件就永久丢失。这是 K8s 选循环而弃"命令式回调"的根本原因。',
+                '对 Operator 的要求：**每轮 reconcile 都要能在任意起点重放**——不能假设"上次我已经做过 X"，只能判断"现在世界是什么样、还差什么"——幂等不是风格偏好，是水平触发语义的必然推论。',
+              ],
+            },
           ],
         },
         {
@@ -599,6 +642,14 @@ export const opsTrack: Track = {
               points: [
                 '**expand-contract 两阶段**：第一版发布只加不改（新列可空或带默认值），旧代码照常运行；灰度完成后**回填数据**；第二版发布切换读写，稳定后再删旧列——任何一步回滚都保持兼容。',
                 '红线清单：schema 变更与代码发布**不同时上线**；大表 DDL 走 online DDL（gh-ost/pt-osc）防锁表；删字段前确认所有消费方（含离线任务/报表）已迁移——记住“**代码可以回滚，删掉的数据回不来**”。',
+              ],
+            },
+            {
+              question: 'K8s 原生有哪些"渐进式发布"的旋钮？',
+              points: [
+                '**pod-template-hash 即版本号**：Pod 模板任何字段变化都生成新 RS——版本是内容寻址的，天然防"改了配置但版本没变"的歧义；`minReadySeconds` 控制新 Pod 就绪确认等待（它不属于模板、**不影响版本 hash**）。',
+                '**StatefulSet 的 partition 是原生金丝雀**：只有序号 ≥ partition 的 Pod 被更新，序号小的删除重建后仍保持旧版本——有序性换来了发布粒度控制（与 StatefulSet 题互链）。',
+                '`kubectl apply` 的声明式 PATCH 才能触发滚动更新（replace 不具备合并能力）——发布工具链都建立在声明式 API 之上。',
               ],
             },
           ],
@@ -630,6 +681,13 @@ export const opsTrack: Track = {
                 '解法：容器化 JVM 用 `-XX:MaxRAMPercentage` 而非写死 -Xmx，给堆外留额度；开 NativeMemoryTracking 分析分布——"容器内存 = 堆 + 堆外 + Metaspace + 线程栈"一起算账。',
               ],
             },
+            {
+              question: 'Job 的重试和容器的重启循环怎么区分？',
+              points: [
+                '**谁的循环在重试是定位第一问**：Job Controller 的失败重试按 **backoffLimit**（默认 6）且间隔指数增长（10s/20s/40s…），重试是**换新 Pod**、不改写 restarts 计数；kubelet 的容器重启（restartPolicy: Always）才让 RESTARTS 数字增长——CrashLoopBackOff 是 kubelet 层，Job 重建是控制器层。',
+                '`activeDeadlineSeconds` 超时后 Job 的所有 Pod 以 DeadlineExceeded 终止、不再重试——"失败重试"与"总时长兜底"是两个独立开关，混用会造成"重试永远跑不完"的假象。',
+              ],
+            },
           ],
         },
 
@@ -652,6 +710,13 @@ export const opsTrack: Track = {
                 '分层走：① **先确认不是策略**（有没有新下发 NetworkPolicy——策略是"选中即拒绝"语义，可能误伤了；`kubectl describe networkpolicy` 对照选择器）；② **同节点通不通**（同节点都不通 → CNI 基础面坏了：看 CNI 插件 Pod 状态、节点上的 veth/网桥）；③ **跨节点不通、同节点通** → overlay 封装/路由问题（VXLAN 端口被防火墙挡、BGP 会话断）；④ **Service 域名不通但 Pod IP 通** → DNS/CoreDNS 问题（换 IP 直连验证）——"Pod IP 通不通 → 跨节点通不通 → Service 通不通"三段二分，每段都有明确的嫌疑集合。',
               ],
             },
+            {
+              question: 'CNI 插件被调用的完整流程是什么？和 Docker 自己的网络模型什么关系？',
+              points: [
+                '**调用链**：kubelet 创建 Pod 时**先起 Infra（pause）容器**拿到 Network Namespace → 按网络配置依次执行 `/opt/cni/bin` 下的插件二进制：**Main 插件**（bridge/ptp/loopback，创建具体网络设备）、**IPAM 插件**（host-local/dhcp，分配 IP）、社区内置插件（portmap 端口映射、bandwidth 限流）——配置以 JSON 约定传入，插件只做"把容器 netns 接入网络"这一件事。（来源：深入剖析 Kubernetes 34）',
+                '**K8s 不采用 Docker 的 CNM 模型**：用独立的 cni0 网桥替代 docker0（`docker run` 手动起的容器仍挂 docker0，与 Pod 网络无关）——这也是"容器网络异常先分清是 Pod 还是裸容器"的依据。',
+              ],
+            },
           ],
         },
         {
@@ -670,6 +735,389 @@ export const opsTrack: Track = {
               question: '"缩容把正在处理的请求掐断了"——HPA 缩容的安全性问题怎么处理？',
               points: [
                 '防线在 **Pod 的优雅终止链**：缩容删 Pod → 触发 preStop 钩子（先从**端点摘除**：调下线接口/等 endpoint 控制器同步，给负载均衡一点传播时间——sleep 几秒兜底）→ 收 SIGTERM 让应用**处理完存量请求**（排空）→ 超过 terminationGracePeriodSeconds 才强杀。配好这条链，缩容才不会制造 502；漏了 preStop 的摘除等待，翻车集中在"endpoint 还没更新完、流量还在打到将死 Pod"的窗口。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'ops-k8s-pod-internals',
+          title: 'Pod 底层是怎么实现的？为什么一定要有个 pause（Infra）容器？',
+          difficulty: 'intermediate',
+          tags: ['K8s', 'Pod', '容器'],
+          points: [
+            '**Pod 是逻辑概念**：K8s 真正操作的仍是 Linux Namespace/Cgroups，不存在"Pod 边界"这种隔离实体；Pod = 一组**共享同一个 Network Namespace、可声明共享同一组 Volume** 的容器。',
+            '**Infra 容器（pause）是 Pod 的第一个容器**：一个"永远暂停"的极小镜像（约 100~200KB），由它 **hold 住 Network Namespace**，其他用户容器以 Join Namespace 的方式加入——所以**一个 Pod 只有一个 IP**、容器间 localhost 互通；**Pod 的生命周期与 Infra 容器一致**，与用户容器无关。（来源：深入剖析 Kubernetes 13）',
+            '**为什么不用 docker run --net=container 拼**：那会让容器 B 必须先于容器 A 启动，容器之间是**拓扑关系**而非对等关系；Infra 容器让 Pod 内所有容器**对等**。对 CNI 的意义：网络插件**只需配置 Infra 容器的 netns**，完全不关心用户容器——这是 CNI 设计的支点。',
+            '**底层动因是容器的单进程模型**：容器 = 进程，PID=1 就是应用本身，没有 init/systemd 的进程管理能力（exec 起的后台进程死了没人知道）——紧密协作的一组进程应表达为 Pod 内多容器。',
+            '**Pod 是原子调度单位**：调度器按 Pod 整体资源需求计算，从机制上根治了成组调度难题（Swarm 的 affinity 会调出"前两个成功、第三个放不下"的半成品；Mesos 资源囤积损效率；Omega 乐观调度太复杂——Pod 直接绕开）。（来源：深入剖析 Kubernetes 13）',
+          ],
+          followUps: [
+            {
+              question: 'Pod 里的容器共享的是哪些东西？还能共享什么？',
+              points: [
+                '默认共享 **Network Namespace + Volume**（网络与存储）；还可以按需共享 **IPC/PID namespace**（shareProcessNamespace：容器间可见进程、可发信号，共享内存的 IPC 场景）——但共享越多隔离越弱，默认不共享 PID 是有意的安全边界。',
+                '文件系统默认不共享：各容器有自己的 rootfs（镜像），跨容器交换文件靠 **emptyDir Volume**。',
+              ],
+            },
+            {
+              question: 'PHP 应用和 MySQL 有访问关系，该不该放进同一个 Pod？',
+              points: [
+                '不该。判断标准是**超亲密关系**：直接文件交换、localhost/Socket 通信、频繁 RPC、必须共享 namespace——普通"访问关系"（通过网络调用）只是**亲密**，放同一个 Pod 反而绑死了两者的扩缩容、故障域与发版节奏。',
+                '错误示范的连锁后果：MySQL 扩容必须拖着 PHP 一起、数据库故障把 Web 容器一起拖死、镜像升级互相牵制——**Pod 的粒度就是故障域和伸缩域**。',
+              ],
+            },
+            {
+              question: '"把虚拟机里的应用无缝搬进一个容器"为什么与容器本质相悖？',
+              points: [
+                '虚拟机里是 **systemd 管理的一组进程**，塞进一个容器违背单进程模型（多进程没人看护、信号传递断裂、日志混杂）；正解是把**虚拟机想象成 Pod**：进程分别做成容器、有顺序依赖的定义为 init 容器（Swarm 时代正是无法表达这种关系而落败）。',
+                '延伸：Pod 提供的是**编排抽象**而非具体技术——甚至可以用虚拟机实现 Pod（virtlet 类项目），抽象与实现分离。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'ops-k8s-sidecar-init',
+          title: 'sidecar 和 init 容器是什么？K8s 的「容器设计模式」怎么落地？',
+          difficulty: 'intermediate',
+          tags: ['K8s', 'sidecar', 'init 容器'],
+          points: [
+            '**sidecar = Pod 里的辅助容器**，靠 Pod 的两大共享机制（Network Namespace、Volume）与主容器协作；**init 容器**比 spec.containers 先启动、**按定义顺序逐个执行、必须全部成功退出后用户容器才开始**。（来源：深入剖析 Kubernetes 13）',
+            '经典三例：① **WAR 包 + Tomcat**——init 容器只负责把 WAR 包同步到 emptyDir 后退出，Tomcat 主容器挂同一 Volume 到 webapps：**发布物与运行时镜像彻底解耦**；② **日志收集**——应用写 /var/log，sidecar 挂同一 Volume 转发到 ES；③ **服务网格代理**——Istio 的 Envoy sidecar 借共享 netns + iptables 接管 Pod 全部进出流量，业务容器无感。',
+            '设计判断口诀：功能不相关的进程，优先"**一个 Pod 多个容器**"而不是塞进一个镜像——松耦合、独立发版、独立资源限额；与"该不该合入一个 Pod"的判断（超亲密关系）配合使用。',
+          ],
+          followUps: [
+            {
+              question: 'init 容器和"普通容器 + 启动脚本"的差别在哪？',
+              points: [
+                'init 容器**失败即阻塞整个 Pod 启动**、有天然**顺序保证**、执行完即退出不占长期资源——适合等依赖、迁数据、拷产物这类"前置任务"；启动脚本把初始化和应用生命期耦合在一起，失败处理、重试、观测都要自己写。',
+                '边界：init 容器逐个串行，数量多了拉长启动时间——前置任务之间无依赖时应合并成一个。',
+              ],
+            },
+            {
+              question: 'sidecar 与主容器生命周期强绑定有什么缺陷？后来怎么解决的？',
+              points: [
+                '缺陷：sidecar 若先崩溃/退出会拖垮整个 Pod（旧语义下 sidecar 的重启策略与主容器绑在一起）；反过来**主容器退出后 sidecar 还活着**，Job 类负载收尾时日志容器不退，Pod 一直不结束。',
+                'K8s 1.28+ 引入**原生 sidecar**：init 容器 + `restartPolicy: Always`——它随 Pod 启动、崩溃自动重启、又保留 init 容器的启动顺序语义，Job 收尾时也能随主容器终止。',
+                '什么时候宁可拆两个 Pod：扩缩容节奏不同（代理要跟 Pod 走 vs 独立伸缩）、故障域不同、资源画像差异大。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'ops-k8s-deployment-rollout',
+          title: 'Deployment、ReplicaSet、Pod 为什么要分三层？滚动更新和回滚是怎么实现的？',
+          difficulty: 'intermediate',
+          tags: ['K8s', 'Deployment', '滚动更新'],
+          points: [
+            '**层层控制**：Deployment 控制器操纵的是 **ReplicaSet** 而不是 Pod；Pod 的 ownerReference 指向 ReplicaSet——RS 保证 Pod 个数恒等 replicas，Deployment 再通过控制 RS 的个数与属性实现扩缩与滚动更新。（来源：深入剖析 Kubernetes 16/17）',
+            '**控制循环（reconcile）三步**：取实际状态 → 对照期望状态（spec）→ diff 后执行编排写操作；K8s 一切控制器皆此模式（Operator 题讲"怎么写"，本题讲"原生怎么分层"）。',
+            '**版本机制**：Pod 模板任何字段变化即新版本，RS 名字里带 **pod-template-hash** 区分；**滚动更新 = 新版 RS 逐步扩、旧版 RS 逐步缩**；`kubectl rollout undo` 回滚的本质是**把旧 RS 的副本数扩回来**（历史 RS 按 revisionHistoryLimit 保留）——所以回滚是秒级的。',
+            'Deployment 的 AVAILABLE 要求 Pod 同时"**最新版本 + Ready**"；restartPolicy=Always 是隐含前提（容器自己保活，RS 调整个数才有意义）。',
+          ],
+          followUps: [
+            {
+              question: '控制循环和事件驱动有什么本质区别？K8s 为什么选循环？',
+              points: [
+                '控制循环是**水平触发（level-triggered）**：任何时刻只比较"期望 vs 实际"，**事件丢失、乱序、组件重启都不影响最终收敛**；事件驱动是边缘触发，错过即永久丢失——这是 K8s 可靠性的根基，也是 Operator 必须幂等的深层原因。',
+                '代价：持续轮询的开销——靠 Informer 的 list-watch 本地缓存把"读"的成本摊平（声明式 API 题展开）。',
+              ],
+            },
+            {
+              question: '直接改 ReplicaSet 的 replicas 会发生什么？',
+              points: [
+                '会被 Deployment 调回去——**owner 语义**：Pod/RS 的 spec 归上层控制器管，绕过上层直接改下层是"改了也会被 reconcile 回来"的典型；同理直接改被 Deployment 管的 Pod 模板字段也无效（会触发新 RS）。',
+                '排查启示：改了不生效时先看对象的 ownerReferences，找到"真正说了算"的那一层。',
+              ],
+            },
+            {
+              question: '为什么滚动更新期间要求接口向后兼容？',
+              points: [
+                '新旧 RS 的 Pod **同时对外服务**（maxSurge/maxUnavailable 决定重叠量）：请求可能打到旧版本——接口字段、消息格式、DB schema 必须兼容两版，否则部分请求 500。',
+                ' incompatible 变更的标准解法是**分两次发布**：先发"同时认新旧格式"的版本，全量后再发"只认新格式"的版本——扩展-收缩（expand-and-contract）模式，与 schema 迁移同构。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'ops-k8s-statefulset',
+          title: 'StatefulSet 怎么同时保证「稳定网络标识」「有序部署」和「存储绑定」？',
+          difficulty: 'advanced',
+          tags: ['K8s', 'StatefulSet', '有状态应用'],
+          points: [
+            '**有状态应用的两类状态抽象**：**拓扑状态**（实例不对等——主从/主备，启动有顺序）+ **存储状态**（实例与数据绑定，重建后还得读到同一份数据）——StatefulSet 的全部设计都是围绕这两类状态。（来源：深入剖析 Kubernetes 18/19）',
+            '**稳定标识三板斧**：① Pod 名带编号 `<name>-<ordinal>`（web-0/web-1），hostname 与 Pod 名一致；② **严格按编号顺序创建**——web-0 未 Ready 前 web-1 一直 Pending；③ 配合 **Headless Service**（clusterIP: None）给每个 Pod 生成固定 DNS 记录 `<pod-name>.<svc-name>.<ns>.svc.cluster.local`——**网络身份不变、IP 可变**，所以访问必须走 DNS 不能记 IP。',
+            '**存储绑定**：volumeClaimTemplates 为每个 Pod 生成同编号 PVC（www-web-0）；删 Pod 后 **PVC/PV 不删**，重建的同名 Pod 按名字找回旧 PVC、重新挂上原 PV——数据原样恢复。',
+            '**发布控制**：滚动更新**按编号倒序**逐个更新；`updateStrategy.rollingUpdate.partition` 是**原生金丝雀**——只有序号 ≥ partition 的 Pod 被更新，序号更小的删除重建后仍保持旧版本。',
+          ],
+          followUps: [
+            {
+              question: '为什么有状态应用不能用 Deployment 管？',
+              points: [
+                'Deployment 的 Pod **完全对等**：无序创建、随机名字、共享同一模板——无法表达"主从""第 N 号实例"这类不对等拓扑，也没有"实例专属存储"的绑定关系。',
+                '硬套 Deployment 的后果：主从数据库用 Deployment 管会随机命名+对等扩缩，从库认不出主库、PVC 随机匹配——拓扑和存储两个状态全丢。',
+              ],
+            },
+            {
+              question: 'Headless Service 和普通 Service 的 DNS 行为差在哪？',
+              points: [
+                '普通 Service：A 记录解析到 **ClusterIP（VIP）**，由 kube-proxy 转发；Headless：没有 VIP，同名 A 记录直接返回**全部后端 Pod IP 集合**——客户端自己选节点（常配合客户端负载均衡/一致性哈希）。',
+                'StatefulSet 场景再加一层：**每个 Pod 有独立 DNS 记录**（`pod.svc.ns.svc.cluster.local`），这是"稳定网络标识"的落点——身份跟着名字走，不跟 IP 走。',
+              ],
+            },
+            {
+              question: '"重建节点后能从主库重新同步数据"的集群，还需要 PVC 一对一绑定吗？',
+              points: [
+                '**关键看恢复是否依赖"本地原数据"**：纯主从全量同步即可恢复的（重建从库→重新拉全量），PV 一对一绑定不是必需，甚至本地旧数据有害（脑裂后旧副本误上位的干净盘问题）；依赖本地持久化的（单实例带本地状态、同步代价极高的）才必须绑定。',
+                '表述分寸：StatefulSet 的存储绑定是**机制保障**，用不用它取决于应用的恢复语义——把"机制保证什么"和"应用需要什么"分开说，是这道题的高级答案。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'ops-k8s-kube-proxy',
+          title: 'kube-proxy 是怎么实现 Service 转发的？iptables 和 IPVS 模式的本质区别是什么？',
+          difficulty: 'advanced',
+          tags: ['K8s', 'Service', 'kube-proxy', 'iptables', 'IPVS'],
+          points: [
+            '**Endpoints 的准入条件**：selector 选中 + Running + readinessProbe 通过；Pod 异常时自动从 Endpoints 摘除——endpoints 对象由控制平面动态维护，kube-proxy 监听其变化。（来源：深入剖析 Kubernetes 37）',
+            '**iptables 模式**：Service VIP 只是 **iptables 规则里的配置，没有对应网络设备——所以 ping 不通 ClusterIP**；KUBE-SVC 链用 `statistic --mode random --probability` 随机分流，且 **probability 必须递减**（1/3、1/2、1）才能等概率（逐条匹配语义）；最终由 KUBE-SEP 链做 **DNAT** 改写目的地址到 Pod IP:Port。',
+            '**iptables 模式的瓶颈**：规则数 **O(Pod 数) 线性增长** + 控制循环不断刷新，大规模下刷新慢、匹配开销高——曾是 K8s 承载规模的头号障碍。',
+            '**IPVS 模式**：kube-proxy 创建 kube-ipvs0 虚拟网卡挂 VIP，用内核 **IPVS 模块**（哈希表）做负载均衡（rr 等多种调度算法）——**规则处理下沉内核态、代价与 Pod 数解耦**；但包过滤/SNAT 等辅助动作仍靠 iptables（这部分规则数不随 Pod 增长）。大规模集群建议 `--proxy-mode=ipvs`。',
+          ],
+          followUps: [
+            {
+              question: '为什么 ping 不通 Service 的 ClusterIP？',
+              points: [
+                'iptables/IPVS 模式下 VIP **只是规则里的匹配条件，不绑定在任何网络设备上**——ICMP 包到了协议栈找不到这个地址的直接路由，自然无响应；"ping 不通但服务正常"由此成为高频工单。',
+                'IPVS 模式例外地会把 VIP 挂在 kube-ipvs0 上，能 ping 通——这也是两种模式排障时的行为差异点。',
+              ],
+            },
+            {
+              question: 'iptables 三条分流规则的 probability 都写成 1/3 会怎样？',
+              points: [
+                '逐条匹配语义下：第一条命中概率 1/3；第二条是"没进第一条"里的 1/3 = 1/3 × 1/3；第三条 1/9——**流量严重偏斜到第一个后端**（1/3 : 1/9 : 1/9，剩下的走兜底）。',
+                '递减写法 1/3、1/2、1 的含义：第二个规则在剩余 2/3 里拿走 1/2（累计 1/3），最后一个兜底拿走全部——**概率的"条件化"是这道题的数学内核**，说得出推导才算懂。',
+              ],
+            },
+            {
+              question: '大规模集群为什么 IPVS 赢？这背后有什么通用性能原则？',
+              points: [
+                'iptables 是**线性规则匹配**（O(n) 且在热路径上），IPVS 是**内核态哈希表**（O(1) 查找）——后端从几百涨到几万时，前者规则刷新和匹配都线性劣化，后者几乎不变。',
+                '通用原则：**高频热路径上的查找要下沉内核态并选对数据结构**（哈希 vs 线性扫描）——与 DPDK/XDP、eBPF map、连接追踪 conntrack 的设计同构；eBPF 代理（Cilium）是这条路线的下一站。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'ops-k8s-flannel-overlay',
+          title: '容器跨主机网络是怎么实现的？Flannel 的 UDP、VXLAN、host-gw 三种后端性能差在哪？',
+          difficulty: 'advanced',
+          tags: ['K8s', 'CNI', 'VXLAN', 'Flannel'],
+          points: [
+            '**公共背景**：容器 IP 包经 docker0/cni0 网桥出现在宿主机上后，由**宿主机路由表**决定交给哪个"跨主设备"；flanneld 在 etcd 里维护**子网 ↔ 宿主机 IP** 映射（每台宿主机分一个 /24 子网）。（来源：深入剖析 Kubernetes 33/35）',
+            '**UDP 模式（已弃用，教学价值最高）**：TUN 设备 flannel0，IP 包要在"**内核 → 用户态 flanneld → 内核**"来回三次拷贝、封解封装全在用户态——性能最差；由此得出系统编程原则：**减少态切换、核心逻辑放内核态**。',
+            '**VXLAN 模式（主流 Overlay）**：VTEP 设备 flannel.1（VNI 默认 1），**封解封装全在内核**；flanneld 维护三张表——**路由表**（目的子网 → 对端 VTEP IP）、**ARP 表**（对端 VTEP IP → MAC）、**FDB 表**（对端 VTEP MAC → 宿主机 IP）；封包链条：原始 IP 包 → 加二层头成"内部数据帧" → 加 VXLAN 头（VNI）→ 套 UDP → 宿主机网络传输，对端按 VNI 逐层解包。',
+            '**host-gw 模式（路由方案）**：把每个远端子网路由的**下一跳直接设为目的宿主机 IP**（host 当 gateway），**零封装**；出帧时用下一跳的 MAC 作目的 MAC，所以**要求宿主机二层连通**（跨 VLAN 即失效）；实测性能损失约 10%，VXLAN 隧道约 20%~30%（MTU 减小 + 封装开销）。',
+          ],
+          followUps: [
+            {
+              question: 'UDP 模式为什么慢？三次态切换具体发生在哪？',
+              points: [
+                '容器发出 IP 包 → 内核送给 TUN 设备（第一次态切换：内核→用户态）→ flanneld 用户态封装 UDP → socket 发回内核走 eth0（第二次）→ 对端 flanneld 收包解封装再注入 TUN（第三、四次）——**每一次穿越都伴随数据拷贝与上下文切换**。',
+                '教训的通用性：VXLAN 把封装放进内核后性能大增——"**数据面逻辑放内核，控制面放用户态**"是网络系统的通用架构（XDP/eBPF、DPDK 内核旁路是这条轴上的另外几个点）。',
+              ],
+            },
+            {
+              question: 'host-gw 跨子网了怎么办？Overlay 和路由方案怎么选？',
+              points: [
+                'host-gw 依赖二层连通（下一跳 MAC 直接可达）；跨 VLAN/三层网络时要么让底层网络打通路由，要么退回 **IPIP/VXLAN 隧道**（Calico 的 IPIP、Flannel 的 VXLAN）。',
+                '选型逻辑：**Overlay（VXLAN）不依赖底层网络、通用但吃 MTU 与封装开销；路由方案（host-gw/BGP）性能好但要求网络配合**——自建机房可控网络优先路由，公有云网关不可控常用 Overlay 或云厂商 CNI（VPC 原生）。',
+                'MTU 细节：VXLAN 封装吃掉 50 字节，容器 MTU 要相应调小否则分片/丢包——"隧道 MTU 不匹配"是跨主机网络排障的高频坑。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'ops-k8s-calico-bgp',
+          title: 'Calico 的架构是什么？BGP 和 Route Reflector 各解决什么问题？',
+          difficulty: 'advanced',
+          tags: ['K8s', 'Calico', 'BGP', 'CNI'],
+          points: [
+            '**与 host-gw 同型的路由规则**：`<目的容器网段> via <目的宿主机IP>`；差别在**路由信息的分发方式**——Calico 用 **BGP**（内核原生支持、为大规模网络间共享路由设计的无中心协议）取代 flanneld+etcd 的集中式维护。（来源：深入剖析 Kubernetes 35）',
+            '**三组件**：CNI 插件（对接 K8s 配网）、**Felix**（DaemonSet，把路由写入内核、维护网络设备与 ACL）、**BIRD**（BGP Client，在集群内分发路由）；每个节点视作一台边界路由器（BGP Peer）。',
+            '**不用网桥**：每个容器一根 veth（cali 前缀）+ 一条 `/32` 主机路由直接指到设备——路由条目比 Flannel 多得多，换来更精细的策略控制。',
+            '**规模问题**：默认 **Node-to-Node Mesh 全互联，BGP 连接数 O(N²)**，建议 **<100 节点**；更大规模用 **Route Reflector**——指定少数节点集中学习/分发全局路由，连接数降到 O(N)。',
+            '**跨子网兜底**：宿主机二层不通时开 **IPIP 模式**（IP 包套 IP 包），性能与 VXLAN 相当；公有云网关不可控（无法把云上路由器加入 BGP mesh），云上要么接受 IPIP 隧道，要么用 VPC 原生 CNI；私有数据中心可把宿主机网关配为 BGP Peer，彻底避免隧道。',
+          ],
+          followUps: [
+            {
+              question: 'BGP 在这里到底在"传什么"？为什么说它是无中心的？',
+              points: [
+                '传的是**可达性**：本节点声明"容器网段 10.244.1.0/24 在我这，下一跳是我的宿主机 IP"——对端据此更新内核路由表；BGP 本身就是互联网 AS 之间交换路由的协议（与 net-foundation-bgp 的骨干互联同源），Linux 内核原生实现了它。',
+                '无中心 = 每个节点都是 Peer、互相建立会话交换路由，没有单点控制面——代价就是 Mesh 的 O(N²) 连接，RR 是用"中心化中转"换规模，与 Kafka 引入 Controller、K8s 引入 APIServer 的"去中心换可扩展"是同一权衡谱系。',
+              ],
+            },
+            {
+              question: 'Calico 和 Flannel 怎么选？网络策略（NetworkPolicy）的支持差在哪？',
+              points: [
+                'Flannel：**只管连通性**，简单稳定，中小集群省心；Calico：连通性 + **网络策略**（原生 NetworkPolicy 实现，还可加 GlobalNetworkPolicy）+ 三层路由性能——需要租户隔离/零信任网络时选它。',
+                '补充谱系：Cilium（eBPF 数据面，性能与可观测更强、内核版本要求高）、云厂商 VPC CNI（Pod 直接用 VPC IP，无隧道但吃 VPC 路由配额）——选型三问：底层网络话语权、策略需求、运维复杂度预算。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'ops-k8s-scheduler',
+          title: 'K8s 调度器是怎么为一个 Pod 选出节点的？过滤、打分和绑定各做了什么？',
+          difficulty: 'advanced',
+          tags: ['K8s', '调度器', '调度'],
+          points: [
+            '**两个控制循环**：Informer Path（Watch Pod/Node 变化，把待调度 Pod 放进**优先级调度队列**、持续更新 scheduler cache）+ Scheduling Path（出队 → 过滤 → 打分 → 绑定）。（来源：深入剖析 Kubernetes 41/42）',
+            '**Predicates（过滤，筛可行节点）**：GeneralPredicates（资源/端口冲突/主机名/nodeSelector）；Volume 类（VolumeZone、**VolumeBinding——Local PV 的 nodeAffinity 在这一步就决定 Pod 必须去哪个节点**）；宿主机类（**Taint/Toleration**、内存压力）；Pod 间类（Affinity/AntiAffinity，**topologyKey 决定作用域**）。执行时对节点并发计算，且有固定检查顺序（便宜的检查放前面）。',
+            '**Priorities（打分 0~10，最高分胜出）**：LeastRequestedPriority（空闲 CPU/内存最多）、BalancedResourceAllocation（CPU/内存使用率**方差最小**，防"CPU 分光、内存大量剩余"的畸形节点）、ImageLocality（大镜像已存在的节点加分，并按镜像分布对冲调度堆叠）。',
+            '**性能三板斧**：集群状态全量 Cache 化；**Assume 乐观绑定**（先改本地 cache、再异步向 APIServer 真正 Bind——不在关键路径上做远程调用）；无锁化（只对队列和 cache 加锁）。kubelet 收到 Pod 后用 GeneralPredicates 做 **Admit 二次确认**，兜住乐观假设与实际运行之间的时间差。',
+          ],
+          followUps: [
+            {
+              question: '调度器算资源时看的是 requests 还是 limits？',
+              points: [
+                '只看 **requests**：sum(requests) ≤ 节点可分配量——limits 是运行时上限（cgroup），不参与调度决策；requests 乱填（拍脑袋填小）会让节点超卖、OOM 频发（与 requests/limits、QoS 题联动）。',
+                'GPU 等硬件用 **Extended Resource**（key-value）声明：调度器不认识 key 只算 value，数值由 Device Plugin 上报——扩展机制保证了新硬件不用改调度器。',
+              ],
+            },
+            {
+              question: '怎么让一组 Pod 尽量分散到不同节点（或不同可用区）？',
+              points: [
+                '**podAntiAffinity + topologyKey**：topologyKey=kubernetes.io/hostname 按"节点"打散、topologyKey=topology.kubernetes.io/zone 按"可用区"打散——topologyKey 就是"打散的作用域"。',
+                '另一条路是**调打分权重**（软约束）：不用 AntiAffinity 硬性排他，而是给"已有很多同标签 Pod 的节点"减分——硬约束保证效果但降低可调度性（节点少了直接 Pending），软约束保调度成功率，按业务刚性选择。',
+              ],
+            },
+            {
+              question: '为什么 kubelet 要做二次确认（Admit）？',
+              points: [
+                '调度器的绑定决策基于**本地 cache 的瞬时快照**，从"选中节点"到"Pod 真正起来"之间资源可能被别人占走（并发调度、节点状态漂移）——kubelet 用同一套 GeneralPredicates 再验一遍，不过就拒绝，Pod 重新调度。',
+                '这是**乐观并发 + 最终校验**的模式：调度关键路径不等远程确认（吞吐），靠下游兜底（正确性）——与数据库乐观锁、OTA 灰度"先放量再验证"同构。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'ops-k8s-taint-toleration',
+          title: '节点的污点（Taint）与 Pod 的容忍（Toleration）是什么？实际运维怎么用？',
+          difficulty: 'intermediate',
+          tags: ['K8s', '污点', '调度', 'DaemonSet'],
+          points: [
+            '**方向性**：污点打在 **Node** 上、容忍写在 **Pod** 上；调度器用 PodToleratesNodeTaints 规则过滤——Pod 没有对应容忍就进不去这个节点。（来源：深入剖析 Kubernetes 42/21）',
+            '**三种 effect**：**NoSchedule**（只拦新调度）、**PreferNoSchedule**（尽量不调度，软性）、**NoExecute**（拦新调度 + **驱逐已在运行**的 Pod——存量也会被赶走）。',
+            '**经典用途**：master 默认打 `node-role.kubernetes.io/master:NoSchedule` 隔离控制面；**DaemonSet 模板自带对 master 污点的容忍**以覆盖全节点；GPU 等专用节点打污点只放行指定业务（配 tolerations 精确放行）。',
+            '**DaemonSet 的特殊性**：它**不走调度器**——控制器直接给 Daemon Pod 写入 nodeAffinity 落节点，所以新节点一加入 Pod 就自动创建（哪怕节点 NotReady 也能先起网络/存储 Agent——这正是 DaemonSet 运行时机早于集群可用的原因）。',
+          ],
+          followUps: [
+            {
+              question: '污点是在调度流程的哪一步生效的？',
+              points: [
+                '在 **Predicates（过滤）阶段**——PodToleratesNodeTaints 属于"宿主机相关"类过滤规则：不兼容的节点直接不可行，连打分机会都没有；NoExecute 的驱逐则由节点生命周期控制器在运行期执行。',
+                '排障联动：Pod Pending 且 Events 里出现 taint 相关原因时，对照 Pod 的 tolerations 与节点的 taints 找不匹配项（与 Pod 排障题衔接）。',
+              ],
+            },
+            {
+              question: 'NoExecute 的驱逐和节点故障转移怎么配合？',
+              points: [
+                '节点 NotReady 时节点控制器会给节点打 `node.kubernetes.io/not-ready:NoExecute` 污点，没有容忍的 Pod 被批量驱逐；Pod 可用 **tolerationSeconds** 给自己留缓冲（如容忍 not-ready 300s 再走——等短暂抖动过去，避免无谓漂移）。',
+                '权衡：容忍窗口太短 → 网络抖动就引发大规模重调度风暴；太长 → 真故障时恢复慢——**关键组件与普通业务的容忍策略应该分层设计**。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'ops-k8s-rbac',
+          title: 'K8s 的 RBAC 四种对象是什么？怎么给 Pod 里的程序授权？',
+          difficulty: 'intermediate',
+          tags: ['K8s', 'RBAC', 'ServiceAccount', '安全'],
+          points: [
+            '**四种对象**：**Role**（Namespace 内的权限规则：apiGroups/resources/verbs）、**RoleBinding**（把 subject 绑到 Role）、**ClusterRole/ClusterRoleBinding**（集群级：作用于非 namespaced 对象如 Node，或跨全部 Namespace）。RoleBinding 只能引用同 ns 的 Role，但**可以引用 ClusterRole**（复用规则集、限定生效范围）。（来源：深入剖析 Kubernetes 26）',
+            '**规则粒度**：verbs 全集 get/list/watch/create/update/patch/delete；`resourceNames` 可细到**具体某个对象**（只许 get 名叫 my-config 的那个 ConfigMap）。',
+            '**给程序授权的标准姿势是 ServiceAccount**（User 只是授权系统的逻辑概念，需外部认证提供）：SA 对应内置用户名 `system:serviceaccount:<ns>:<name>`；Pod 声明 serviceAccountName 后，其 Token 自动挂载到 `/var/run/secrets/kubernetes.io/serviceaccount`，容器内程序据此访问 APIServer。',
+            '**风险点**：Pod 不声明 SA 时用 **default SA**，而 default 通常权限不小——生产应给所有 ns 的 default SA 绑最小化 Role；内置预设 ClusterRole：cluster-admin（verbs=*，慎用）/admin/edit/view；`system:` 开头的是给系统组件用的。',
+          ],
+          followUps: [
+            {
+              question: '为什么所有组件都经 APIServer 做鉴权，而不是直连 etcd？',
+              points: [
+                '**etcd 只与 APIServer 直接通信**——单一入口让认证/授权/审计/限流集中在一点做，组件各自经 APIServer 取数（scheduler/controller/kubelet 无一例外）；旁路直连等于绕过全部访问控制。',
+                '延伸：这套"唯一入口 + 声明式 API + list-watch"是 K8s 架构的承重墙（声明式 API 题展开）——权限体系的完备性依赖架构上的收敛点。',
+              ],
+            },
+            {
+              question: 'Namespace 是安全隔离吗？RBAC 的边界在哪？',
+              points: [
+                '**不是**——Namespace 只是逻辑分组（配额、命名、权限规则的单位），网络层面 Pod 默认全通、节点层面没有隔离；K8s 只有 **soft multi-tenancy**，硬多租户要叠加 NetworkPolicy、节点池隔离甚至独立集群。',
+                'RBAC 管的是 **API 对象的读写**（谁能动哪些资源），不管容器内进程的行为、不管网络流量——**每个安全机制各管一段**，把它们各自的边界讲清楚是这题的核心。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'ops-k8s-declarative-api',
+          title: '什么是声明式 API？list-watch 机制在 K8s 架构里扮演什么角色？',
+          difficulty: 'advanced',
+          tags: ['K8s', '声明式 API', 'Informer', '架构'],
+          points: [
+            '**命令式 vs 声明式的分水岭是 kubectl apply**：create/replace 是"一次处理一个写请求"的命令式操作；apply 是对 API 对象的 **PATCH**——APIServer 可同时处理多个写操作并具备**合并（Merge）能力**。（来源：深入剖析 Kubernetes 23/09）',
+            '**声明式三要素**：① 提交 API 对象声明期望状态；② 允许多个写端以 PATCH 修改、不依赖本地原始 YAML；③ 基于对 API 对象的增删改查**自动完成实际状态向期望状态的调谐**。',
+            '**架构支撑**：APIServer 是唯一入口（认证/授权后读写 etcd），**etcd 只与 APIServer 直接通信**，scheduler/controller-manager/kubelet 全部经 APIServer 取数——组件解耦与统一鉴权的关键设计。',
+            '**list-watch**：各组件用 Informer 对感兴趣的对象 **List 全量 + Watch 增量**，同步进本地 cache 后做决策（调度器、各控制器、kubelet 同构）——配合"水平触发"的控制循环，错过事件也能靠下一轮 reconcile 补偿。',
+            '**落地案例**：Istio 用 Dynamic Admission Control + TwoWayMergePatch，在用户 Pod 提交时**自动注入 Envoy sidecar**——声明式 API 是"给平台写扩展"的基石。（来源：深入剖析 Kubernetes 23）',
+          ],
+          followUps: [
+            {
+              question: 'Watch 断线了会怎样？为什么这不出错？',
+              points: [
+                'Informer 重新 **List 全量对齐**本地 cache，再续 Watch——**全量对账兜底增量丢失**；配合控制循环的水平触发语义（随时重算"期望 vs 实际"），事件层任何丢失/乱序都不会造成永久状态错误。',
+                '代价与权衡：全量 List 对 APIServer 有压力，所以客户端要做 resync 节流、分页、资源版本（resourceVersion）续传——这是"最终一致 + 周期对账"的完整实现。',
+              ],
+            },
+            {
+              question: 'apply 能多写端合并，replace 为什么不行？',
+              points: [
+                'apply 的 PATCH 只提交**变化的字段**，多个写端各自 patch 互不覆盖（CI 改副本数、人改镜像可以共存）；replace 提交**完整对象**，后提交者会拿自己的"旧快照"覆盖别人的修改——**丢失更新**。',
+                '通用性：这组对比就是"merge vs 整体覆盖"的写冲突问题——Git 的三方合并、配置中心的 CAS 版本号，本质都是给"多写端"一个不互相踩踏的协议。',
+              ],
+            },
+            {
+              question: '命令式脚本和声明式 API 的工程收益差异在哪？',
+              points: [
+                '声明式：**幂等**（重复 apply 无副作用）、**可 GitOps**（仓库即期望状态，可评审可回滚）、**可审计**（API 对象有版本历史）、可收敛（漂移自动修复）；命令式脚本：步骤间有隐藏顺序依赖、失败重跑不安全、漂移不可见。',
+                '边界：命令式在"一次性运维动作"（清理、迁移）里仍合理——**状态型系统用声明式、动作型任务用命令式**，混用时要明确边界。',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'ops-k8s-priority-preemption',
+          title: 'Pod 的优先级与抢占（Preemption）机制是怎么设计的？',
+          difficulty: 'advanced',
+          tags: ['K8s', '优先级', '抢占', '调度'],
+          points: [
+            '**解决的问题**：高优先级 Pod 调度失败时不是"搁置等待"，而是**挤走节点上的低优先级 Pod** 保自己上位（Borg/Mesos 均有此机制）。（来源：深入剖析 Kubernetes 43）',
+            '**PriorityClass**：value 为 32bit 整数、**超过 10 亿的保留给系统 Pod**（保证系统组件永不被用户抢占）；globalDefault 设默认值；Pod 用 priorityClassName 引用。',
+            '**调度队列是优先级队列**（activeQ + unschedulableQ）：高优先级先出队；调度失败进 unschedulableQ，Pod 或集群变化后被移回 activeQ 重试。',
+            '**抢占流程**：失败事件触发寻牺牲者 → 先判断抢占是否可能（PodFitsHost 类失败抢占无解）→ 复制 scheduler cache **模拟抢占**（从节点上最低优先级 Pod 逐个"删除"直到放得下）→ 在所有方案里选**系统影响最小**的（牺牲者越少越好、优先级越低越好）→ 执行只做三件事：清理牺牲者的 nominatedNodeName、把抢占者的 nominatedNodeName 指向目标节点、异步删除牺牲者。',
+            '**两个精妙设计**：抢占者**不直接绑定**被抢占节点，回队列下一周期重新调度——牺牲者有默认 30s 优雅退出期，期间集群可调度性会变化；对含"潜在抢占者"的节点要把 Predicates **跑两遍**（假设抢占者已在场一遍 + 正常一遍），因为 InterPodAntiAffinity 需要考虑抢占者的占位。',
+          ],
+          followUps: [
+            {
+              question: '为什么抢占成功后不立即把 Pod 绑定到节点？',
+              points: [
+                '牺牲者有**优雅退出期**（默认 30s）：真正腾出的空间要等它们退完才知道；期间其他高优先级 Pod 可能也在调度——让抢占者回队列重新走一轮调度，保证决策基于最新状态、也给更高优先级留出插队通道。',
+                'nominatedNodeName 的作用是"占位提示"：调度器下一轮优先考虑该节点（软倾向而非硬绑定）——**乐观预留 + 最终重判**的组合。',
+              ],
+            },
+            {
+              question: '优先级体系和 QoS 体系是一回事吗？',
+              points: [
+                '**不是，两套账**：**QoS**（Guaranteed/Burstable/BestEffort，由 requests/limits 配置推导）决定**节点资源压力下 kubelet 的驱逐顺序**（运行期，BestEffort 先死）；**PriorityClass** 决定**调度顺序与抢占牺牲者选择**（调度期）。两者可以组合：一个高优先级但 BestEffort 的 Pod 能抢占别人，资源紧张时又先被驱逐。',
+                '设计启示：抢占解决"上不了车"，驱逐解决"车上谁先下"——把两个阶段分开讲，就不会混为一谈（与 requests/limits、QoS 题互链）。',
               ],
             },
           ],
@@ -732,6 +1180,13 @@ export const opsTrack: Track = {
               points: [
                 '**分级与降噪**：P0 只留“业务受损 + 需要人立即行动”的（电话），其余降级为工作消息；条件用**持续时长 + 分位数**（P99 > 500ms 持续 5 分钟）而非瞬时值；做**根因聚合**——DB 挂了只报 DB，不把它上游 20 个服务的报错各发一遍。',
                 '闭环治理：每条告警必须**可行动**（附 runbook），“收到也不知道干嘛”的告警直接删；每月统计**告警到真实故障的命中率**，持续偏低的规则下线调优——告警质量和代码一样需要持续重构，免疫了的告警等于没有告警。',
+              ],
+            },
+            {
+              question: 'K8s 里的监控数据采集链路是什么？Metrics Server 和 Prometheus 什么分工？',
+              points: [
+                '**两条采集线**：**Metrics Server** 聚合 kubelet 内 cAdvisor 的容器指标，**内存中短周期保存**（不落盘），供 HPA 与 `kubectl top` 消费；**Prometheus** 主动拉取各组件的 /metrics 端点、存 TSDB、支持历史查询与复杂聚合——"实时伸缩信号"与"可回溯分析"分开建设。（来源：深入剖析 Kubernetes 48）',
+                '**kube-state-metrics** 把 API 对象状态（Deployment 副本数、Pod Pending 数）转成指标——cAdvisor 看不到的"K8s 对象视角"靠它补齐；**节点级日志采集用 DaemonSet**（fluentd/filebeat + hostPath 挂 /var/log），新节点自动覆盖——"每节点恰好一个"的语义正是为 Agent 类负载设计的（与 DaemonSet/污点题互链）。',
               ],
             },
           ],
