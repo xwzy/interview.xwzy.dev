@@ -61,10 +61,11 @@
 | 50 | 六期·收尾审查与终版校准 | 全库 + README/大纲 | 0 | verify 全绿 | ✅ 已完成 | 见 git log |
 | 51 | 六期·补遗·分布式数据库 19~21 讲（查询优化三讲） | backend.ts be-distributed 19→21 | 2 | 4 条（含新题内） | ✅ 已完成 | 见 git log |
 | 52 | 六期·第二轮事实审查（四分片：backend / ops+sd / ai+career+转投 / career 补充） | 7 个数据文件 | 0 | 修复 18 处（3 P0 + 15 P1） | ✅ 已完成 | 见 git log |
+| 53 | 六期·补遗·leetcode 笔记（3 篇，批 44 规划时遗漏） | cs-fundamentals.ts | 1 | 3 条 | ✅ 已完成 | 见 git log |
 | 39 | 六期·私有笔记·消息队列双课程（高手课+RocketMQ） | backend.ts be-mq 7→15 | 8 | 8 条 | ✅ 已完成 | 见 git log |
 | 42 | 六期·私有笔记·educative Grokking Advanced SD（上：Chubby/设计模式/DoorDash） | system-design.ts 新领域 sd-paper | 8 | 3 条 + 转投清单 6 条 | 🟨 上已入库（storage 部分待补跑） | 见 git log |
 
-题库总量：656（起点）→ **1008**（当前，追问覆盖率 100%，追问 1895 步）。真题改编题统一打 `tags: ['真题改编']`，可全局搜索筛选。
+题库总量：656（起点）→ **1009**（当前，追问覆盖率 100%，追问 1900 步）。真题改编题统一打 `tags: ['真题改编']`，可全局搜索筛选。
 二期方案见 `docs/quiz-expansion-plan-v2.md`（批号自 11 起续编）；**六期方案见根目录 `MIGRATION-PLAN.md`**
 （来源：个人学习笔记库 `~/Downloads/private-notes/工作学习`，批号自 36 起续编，按批回填）。
 
@@ -623,3 +624,11 @@ sigsuspend 竞态、适配策略与边界标记等复核无误。
 **存疑不改（记录在案）**：课程实测口径（Dubbo 直调 8ms 等）外部不可证伪且自洽；Cassandra 4.0 read repair 语义变化（来源已标 Grokking）；YouTubeDNN 层宽按广泛复现口径（一手 PDF 403）。另：Glossary md（29 行术语小抄）判定无增量；iCloud 占位确认不可恢复（brctl 报 Path outside CloudDocs library）。
 
 **批 52 补遗（存疑项全部闭环，源码/文档直核）**：① Kafka 2.3"45 种请求"——2.3.0 ApiKeys.java 枚举恰 45 项，精确确认；② Kafka 0.9 G1 默认——0.9.0.0 kafka-run-class.sh 第 137 行 `-XX:+UseG1GC -XX:MaxGCPauseMillis=20 -XX:InitiatingHeapOccupancyPercent=35`，确认（附带印证调优题的 G1 参数）；③ Cassandra 4.0 read repair——4.0 官方文档确认 background read repair（read_repair_chance）已移除，system-design 与 backend 两处概率修复表述已补版本限定（3.x 口径 + 4.0 变化说明）；④ YouTubeDNN 原文确认为 RecSys 2016（DOI 10.1145/2959100.2959190，无 arXiv 版），层宽 1024/512/256 为论文图 3 广为复现口径，题内引用方式（不涉 arXiv 号）无需修改。
+
+## 批 53 · 六期·补遗·leetcode 笔记 ✅（来源：【00】面试/【2】leetcode 3 篇——批 44 规划时漏配的来源，终检时发现并补收）
+
+**新题 1**（cs-fundamentals.ts，cs-algo）：cs-algo-64-horses（64 匹马 8 赛道找最快 4 匹，最少 10 场——支配淘汰推理 + 25 匹 5 赛道 7 场经典变体 + 下界论证；打 `真题改编` 标记，来自面经题目清单）。
+
+**追问增强 3 条**：cs-algo-backtracking +1（括号生成：left<right 剪枝保证前缀合法 + 卡特兰数互链）、cs-algo-sort-compare +1（值域 ∈[0,n) 的 O(n) 计数/原地换位排序——绕开比较下界）、cs-algo-two-pointer-window +1（三次反转 O(1) 原地循环右移 + k 取模细节）。
+
+**范围判定**：面经题目清单的其余条目（链表反转/环检测/K 组、LRU、TopK、公共祖先、非递归遍历、回行矩阵等）均已被 cs-algo 既有手撕题覆盖；汽水瓶换购、构造小于 target 的最大数两道小谜题按"考察密度不足"丢弃；回溯递归.md 的括号生成 Go 解并入追问；知识库/【01】.md 为 0 字节空文件。**至此笔记库全部来源均已走完判定（收割或记录理由），无遗漏。**
