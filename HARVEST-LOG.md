@@ -48,10 +48,17 @@
 | 35 | 五期·批 31 两题二审 + 生产端到端验收 | ai-infra.ts | 0 | 修复 3 处 | ✅ 已完成 | 见 git log |
 | 41 | 六期·私有笔记·Kubernetes 双课程 | ops.ts | 12 | 10 条（含新题内另计） | ✅ 已完成 | 见 git log |
 | 48 | 六期·私有笔记·parallel-hashmap（Swiss Table） | computer-architecture.ts | 1 | 3 条（含新题内） | ✅ 已完成 | 见 git log |
+| 36 | 六期·私有笔记·Redis 双课程（核心技术+源码剖析） | backend.ts be-redis 9→20 | 11 | 17 条 | ✅ 已完成 | 见 git log |
+| 37 | 六期·私有笔记·MySQL 实战 45 讲 | backend.ts be-mysql 13→22 | 9 | 15 条 | ✅ 已完成 | 见 git log |
+| 38 | 六期·私有笔记·Kafka 核心技术与实战 | backend.ts be-mq 15→24 | 9 | 8 组 | ✅ 已完成 | 见 git log |
+| 40 | 六期·私有笔记·RPC实战 + Dubbo 源码 | backend.ts be-micro 7→15 | 8 | 9 条 | ✅ 已完成 | 见 git log |
+| 45 | 六期·私有笔记·人工智能基础课 | ai.ts ai-ml 21→25 / ai-dl 11→17 | 10 | 14 条 | ✅ 已完成 | 见 git log |
+| 46 | 六期·私有笔记·推荐系统双课程 | ai.ts 新领域 ai-recsys（12 题） | 12 | 1 条 + 转投 3 条 | ✅ 已完成 | 见 git log |
+| 44 | 六期·私有笔记·高阶面经/面试现场/真题/八股（career 部分） | career.ts 34→42 + sd 增强 1 | 8 | 13 条 | ✅ 已完成（技术侧转投批 43） | 见 git log |
 | 39 | 六期·私有笔记·消息队列双课程（高手课+RocketMQ） | backend.ts be-mq 7→15 | 8 | 8 条 | ✅ 已完成 | 见 git log |
 | 42 | 六期·私有笔记·educative Grokking Advanced SD（上：Chubby/设计模式/DoorDash） | system-design.ts 新领域 sd-paper | 8 | 3 条 + 转投清单 6 条 | 🟨 上已入库（storage 部分待补跑） | 见 git log |
 
-题库总量：656（起点）→ **901**（当前，追问覆盖率 100%，追问 1443 步）。真题改编题统一打 `tags: ['真题改编']`，可全局搜索筛选。
+题库总量：656（起点）→ **980**（当前，追问覆盖率 100%，追问 1771 步）。真题改编题统一打 `tags: ['真题改编']`，可全局搜索筛选。
 二期方案见 `docs/quiz-expansion-plan-v2.md`（批号自 11 起续编）；**六期方案见根目录 `MIGRATION-PLAN.md`**
 （来源：个人学习笔记库 `~/Downloads/private-notes/工作学习`，批号自 36 起续编，按批回填）。
 
@@ -519,3 +526,50 @@ sigsuspend 竞态、适配策略与边界标记等复核无误。
 **转投清单（backend.ts 6 条，主会话在批 36/37 之间落地）**：be-redis-lock（Chubby sequencer 作 fencing token 案例）、be-distributed-brain-split（controller epoch 僵尸+世代号持久化+resource/node fencing 两分法）、be-mq-no-loss（HWM 视角重述存储端不丢）、be-distributed-quorum（奇数节点论证+1<R<W<N+概率读修复）、be-redis-cluster（gossip 携带内容+phi 叠加感知链路）、be-distributed-config-registry（ephemeral 节点/拉长租约/proxy 聚合/负缓存教训）。
 
 **主动丢弃**：S8 HWM 消费者可见性（与 be-mq-no-loss 撞车）、CAP/PACELC/一致性哈希/Quorum 主体/向量时钟/Merkle/Hinted Handoff（现有题覆盖）、Kafka 交付语义与高吞吐（be-mq 全覆盖）。种子存档 `docs/quiz-harvest/seeds-v3-batch42-patterns.md`。**下（Dynamo/Cassandra/BigTable/GFS/HDFS）收割两次被限流，待补跑后补记本批。**
+
+
+## 批 36 · 六期·私有笔记·Redis 双课程 ✅（来源：【03】KV存储/redis 9.课程：Redis 核心技术与实战 52 篇 + Redis源码剖析与实战 46 篇）
+
+**新题 11**（backend.ts，be-redis 9→20）：be-redis-blocking-async（五大阻塞点+异步线程：删除 100 万元素 Hash 1.98s；UNLINK 摘除/释放两步+LAZYFREE_THRESHOLD=64 并入）、be-redis-slow-diagnosis（变慢系统排查：基线 2 倍判据、swap 48 倍延迟、慢日志；NUMA 绑核 504→260μs 降为追问）、be-redis-string-memory（char* 三宗罪→SDS→embstr 44 字节推导→64B 内存账→碎片治理 activedefrag）、be-redis-stats-collections（亿级统计四模式：Bitmap/HLL 12KB/0.81%、Set/ZSet 选型）、be-redis-replication-pitfalls（主从坑：EXPIRE 相对 TTL、min-replicas 组合、脑裂）、be-redis-buffers（客户端/复制/aof 缓冲区全景：1GB 硬上限、8mb/2mb/60）、be-redis-stream-mq（List→Stream 当 MQ：rax/消费组/ack）、be-redis-progressive-rehash（ht[2]/rehashidx、负载因子 1/5 双阈值、fork 期间禁扩容、siphash 防碰撞）、be-redis-ziplist-listpack（连锁更新→quicklist 8KB→listpack backlen 根治）、be-redis-io-threads（6.0 多线程：postpone 四条件、2× 阈值）、be-redis-event-loop（ae 一帧：beforeSleep、时间事件当 epoll 超时、serverCron 分频）。
+
+**追问增强 17 条**（→9 道既有题）：datatypes +2（跳表 span/P=0.25；共享对象池+GEO）、persistence +2（AOF 写后日志+触发阈值+禁 rehash；RDB 触发全景+fork/COW 观测）、eviction +2（EvictionPoolLRU 16 池+LFU 8bit 概率计数；定期删除 25%+缓存污染）、cache-3problems +1（布隆误判机理+互斥锁 vs 逻辑过期）、lock +2（Redlock 执行细节+超时定价；SET NX 原子性）、cluster +3（哨兵打分+纪元+hz 随机化；repl_state 状态机+两类复制缓冲区；Gossip 12KB+数据倾斜+Codis 对比）、consistency +2（MQ 重试兜底；6.0 客户端缓存 Tracking）、lua-pipeline +2（事务 ACID 逐项+Lua 扣库存；命令五站链路）、hotspot +1（INCR/EXPIRE 竞态）。
+
+**撞车裁决**：源码课 S6/S7/S8 与工程课撞车项——IO 多线程独立成题、AOF 重写管道并入 persistence、UNLINK 并入 blocking-async；SDS 与 String 内存账合并；Stream 与 MQ 合并；Codis 降为 cluster 追问。**丢弃**：Pika SSD 选型、时间序列模块、纯源码走读等。种子存档 seeds-v3-batch36-redis-{core,internals}.md。
+
+## 批 37 · 六期·私有笔记·MySQL 实战 45 讲 ✅（来源：【03】数据库/mysql/MySQL 实战 45 讲 49 篇）
+
+**新题 9**（backend.ts，be-mysql 13→22）：be-mysql-change-buffer（普通 vs 唯一索引+change buffer+99%→75% 事故）、be-mysql-flush-dirty（刷脏页抖动：io_capacity/F1/F2/flush_neighbors 连坐）、be-mysql-online-ddl（MDL 锁雪崩链+Online DDL row log+gh-ost）、be-mysql-orderby-temp（order by rand()+全字段 vs rowid+优先队列）、be-mysql-insert-locks（insert…select 加锁+唯一键冲突 S 锁死锁）、be-mysql-autoinc（8.0 自增持久化+不连续三原因+row_id 2^48 循环）、be-mysql-accidental-delete（Flashback/PITR/延迟备库分级+预防清单）、be-mysql-bufferpool-lru（young/old 5:3+1 秒阈值+BNL 污染）、be-mysql-memory-engine（堆组织表+重启丢失+binlog DELETE 传染）。
+
+**追问增强 15 条**（E1~E12 落 12 题）：重建索引姿势、ICP+前缀/hash 字段、隐式字符集+查一行也慢、长事务陷阱、MVCC 可见性口诀+只读事务不分配 trx_id、死锁检测 O(n)+热点行拆行、redo 三途径+binlog 三格式深层理由+双 1 四场景、GTID 本质+并行复制谱系、分区表真相、MRR/BKA+小表定义、RC 严格化特例、组提交细节。**丢弃**：grant/kill/健康检查/导表等操作类。种子存档 seeds-v3-batch37-mysql.md。
+
+## 批 38 · 六期·私有笔记·Kafka 核心技术与实战 ✅（来源：【03】消息队列/Kafka 核心技术与实战 47 篇）
+
+**新题 9**（backend.ts，be-mq 15→24）：be-mq-kafka-hw-epoch（高水位推进+滞后一轮 FETCH 错配+截断连锁丢失+Leader Epoch 补救）、be-mq-kafka-isr（replica.lag.time.max.ms=10s+Unclean 选举开关）、be-mq-kafka-controller（ZK 抢占+0.11 单线程重构+2.2 请求分级）、be-mq-kafka-request-purgatory（Reactor 四层+延时请求）、be-mq-kafka-rebalance（Coordinator 取模定位+JoinGroup/SyncGroup+STW 成因）、be-mq-kafka-rebalance-storm（session/heartbeat 三倍关系+四板斧+Static Membership）、be-mq-kafka-offsets-topic（__consumer_offsets+Compact+Log Cleaner 静默挂掉）、be-mq-kafka-idempotent-tx（PID+序列号单分区单会话/transactional.id fencing/isolation.level）、be-mq-kafka-tuning（四层优化漏斗+swappiness=1+吞吐延时反向参数表）。
+
+**追问增强 8 组**：no-loss（min.insync=factor-1 陷阱+扩分区不可见窗口+位移提交 API+HWM 机制级缺口与批 39 HWM 追问合并）、idempotent（at-least-once 默认根因+退 at-most-once）、order（全局序改分区有序 40 倍案例）、backlog（Lag/Lead 口径+位移重设七策略）、throughput（重压缩丢零拷贝）、why-and-choose（可重演性+不做读写分离）、delay-tx（Kafka 事务四步 API+LSO 隐藏+没有延迟消息的原因）。**丢弃**：对比类（按接盘约定单边机制）、S9/S10（素材并入增强）、压缩/TCP 连接/安全/MirrorMaker/Streams 等。种子存档 seeds-v3-batch38-kafka.md。
+
+## 批 40 · 六期·私有笔记·RPC实战与核心原理 + Dubbo 源码剖析 ✅（来源：29 篇 + 31 篇）
+
+**新题 8**（backend.ts，be-micro 7→15）：be-micro-rpc-protocol（私有协议：Dubbo 16 字节头逐字段+三段式可扩展头）、be-micro-serialization-security（readObject gadget chain+白名单+HMAC 内网认证）、be-micro-cluster-failover（六策略语义+retries=2 总尝试 3 次+重试重置超时预算）、be-micro-dubbo-spi（@SPI/@Adaptive/Wrapper：直调 8ms/反射 2019ms/Wrapper 12ms）、be-micro-async-rpc（请求 ID→Future 映射+startAsync 三要素）、be-micro-provider-thread-model（fixed 线程池+AbortPolicyWithReport+eager+100 快速失败）、be-micro-rpc-timeout（三层取值+四层覆盖+Dubbo3 APPLICATION_FIRST 坑）、be-micro-health-check（三态模型+间歇性失败 TCP 重传案例）。
+
+**追问增强 9 条**：动态代理/Wrapper（be-micro-rpc）、ShutdownHook 挡板+引用计数（graceful-lifecycle）、RpcContext attachments（tracing）、DNS/VIP 否决+消息总线（config-registry）、熔断挂代理+分组（limits-degrade）、IP/参数路由（deploy）、Netty 用户态零拷贝辨析（be-network-io-multiplexing）、应用级发现+register-mode（mesh）。**丢弃**：S9 客户端负载均衡（素材并入 E3）、S10 泛化调用（工具向）、时间轮/Reactor/CP-AP 等（已有覆盖）。种子存档 seeds-v3-batch40-rpc.md。
+
+## 批 45 · 六期·私有笔记·人工智能基础课 ✅（来源：【10】人工智能/人工智能基础课 59 篇 + 深度学习理论文章 2 篇）
+
+**新题 10**（ai.ts）：ai-ml 21→25——ai-ml-information-theory（熵/KL/交叉熵/最大熵）、ai-ml-probabilistic-graphical-models（贝叶斯网络 vs MRF+d-分离汇连陷阱）、ai-ml-rbf-network（局部逼近+与高斯核同构+两阶段训练）、ai-ml-transfer-learning（三类四法+负迁移）；ai-dl 11→17——ai-dl-perceptron-xor（含 (0.368,0.368) 数值例）、ai-dl-autoencoder（过完备悖论+变体谱系）、ai-dl-machine-translation（GNMT+覆盖率惩罚+零样本桥接）、ai-dl-deep-reinforcement-learning（DQN 经验回放+目标网络）、ai-dl-gan（最优判别器解析解+模式坍塌，与 ai-diffusion 分工声明）、ai-dl-ntk-generalization（NTK 等价+谱偏置）。
+
+**追问增强 14 条**：C4.5/基尼/多变量树（tree-ensembles）、间隔三件套+正定核（svm）、OOB 36.8%+AdaBoost 推导（ensembling-diversity）、正则五分类+早停≈L2（overfitting-regularization）、病态 Hessian+Nesterov（gradient-descent）、LR≈NB 等价（generative-discriminative）、聚类四族（kmeans）、GMM-HMM 语音链（em-gmm）、特征选择三法（dimensionality-reduction）、卷积=内积+DenseNet（cnn）、循环 vs 递归+peephole（rnn-lstm）、梯度弥散归因+预训练兴衰（backpropagation）、TransE（embedding）、注意力诞生于 GNMT（attention）。**丢弃**：对话系统（ai-llm 已覆盖任务型形态）、纯数学（cs-math 已覆盖）、SOM/蚁群等。种子存档 seeds-v3-batch45-ai.md。
+
+## 批 46 · 六期·私有笔记·推荐系统双课程 ✅（来源：【11】推荐系统：推荐系统三十六式 40 篇 + 手把手带你搭建推荐系统 36 篇）
+
+**新领域 ai-recsys（12 题）**（ai.ts）：ai-recsys-cf-similarity-metrics（basic，调整余弦/DIMSUM）、ai-recsys-dedup-sampling（basic，Simhash+加权采样）、ai-recsys-mf-svd-family（BiasSVD/SVD++/timeSVD/ALS）、ai-recsys-implicit-feedback-bpr（One-Class+加权 ALS α=40+BPR）、ai-recsys-ranking-evolution（LR→GBDT+LR→FM→Wide&Deep→DeepFM/DIN）、ai-recsys-explore-exploit-bandit（ε-greedy/UCB/汤普森/LinUCB）、ai-recsys-offline-online-gap（背离根因清单）、ai-recsys-cold-start-hot-ranking（HN 公式+牛顿冷却+贝叶斯平均）、ai-recsys-serving-storage（正排倒排+PMML+recommend_id 闭环）、ai-recsys-realtime-incremental（三层境界+Hoeffding 剪枝）、ai-recsys-vector-recall（DSSM 双塔+YouTubeDNN 防穿越）、ai-recsys-shilling-attack（托攻击配方+防护三层）。
+
+**增强**：ai-dl-embedding +1（item2vec 与 MF 亲缘）；**转投 system-design 3 条**：sd-classic-recommend +2（召回分数不可比与三步融合法；三层计算时序+列表组成重排四招+四要素权重）、sd-methodology-ab-testing +1（域/层/桶嵌套+发布层+样本量公式+Bandit 替代）。**丢弃**：工具教程、Scrapy 爬虫、RNN 播单（重复）、Feed 推拉、商业团队篇等。种子存档 seeds-v3-batch46-recsys.md。
+
+## 批 44 · 六期·私有笔记·高阶面经 + 面试现场 + 面试题收集 + 八股梳理 ✅（career 部分；来源：51+40+10+17 篇）
+
+**新题 8**（career.ts 34→42）：career-hr-recruit-process（招聘流程与各轮考察逻辑，basic）、career-hr-interview-nerves（紧张管理，basic）、career-project-learning-ability（学习能力证明，basic）、career-project-problem-solving（解决问题的能力）、career-project-leadership-without-title（非 leader 领导力）、career-growth-job-switch-decision（该不该换工作：钱/心/路）、career-growth-resignation-counteroffer（提离职被挽留）、career-project-senior-loop（架构师面试与系统设计轮，advanced）。
+
+**追问增强 13 条**：career 12（self-intro/weakness/salary-expectation 两三角形/career-plan 认知差/resume 详历法/highlights 伪亮点/star 四扣分点/deep-dive 采样模型/retro 两维度八层面/conflict 说 No/quantify 浪费三形态/reverse-questions）+ sd-methodology-framework 1（「人设+引导」自评）。
+
+**技术侧转投**（S9~S14 六道真题 + E13~E18，真题打 `真题改编` 标记）→ 并入批 43 批次落地（负载均衡动态算法/服务隔离/全链路超时/第三方防腐层/设计 MQ/MongoDB 选型 + 熔断抖动/B+ 树层高/fork COW/消费速率/智能指针编码素材）。**丢弃**：与 be-mysql/be-redis/be-mq 已成体系覆盖的八股主体、C++ 概念清单、伪装成面经的 OS 八股文件等，逐条注明。种子存档 seeds-v3-batch44-interview.md。
