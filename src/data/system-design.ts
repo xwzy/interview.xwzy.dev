@@ -1778,7 +1778,7 @@ export const systemDesignTrack: Track = {
             'HDFS 的强一致配方三件套：**写入须所有副本成功才算成功** + **单写者**（一个文件同一时刻只允许一个 writer）+ **严格不可变语义**（已写数据不能原地改，后期支持 append 但不改旧数据）——三个约束叠加，强一致变得 relatively easy（来源：Grokking Advanced System Design · HDFS）。',
             '为什么付得起：MapReduce 是 write-once-read-many 的受限计算模型，reducer 各写各的输出文件，天然不需要并发写与原地改——**工作负载的形状决定一致性可以有多便宜**，这是本题的核心论点。',
             'GFS 的相反选择：为多客户端**并发 append** 优化（at-least-once + 副本可不一致），换海量小文件并发追加场景的吞吐；代价是 undefined 区域、重复记录、stale 读，全部交给应用层消化——两个系统没有谁更先进，是**对各自负载的最优解**。',
-            '两者共同的 rack-aware 放置：HDFS 3 副本 = 第 1 副本在**写客户端本机**（不在集群则随机）、第 2 副本**跨 rack**、第 3 副本与第 2 同 rack 不同节点；硬约束：单节点 ≤1 副本、单 rack ≤2 副本。跨 rack 写变慢是**明码标价的可靠性换性能**（GFS 侧同一取舍：跨 rack 读可吃聚合带宽，写则吃亏）。',
+            '两者共同的 rack-aware 放置：HDFS 3 副本 = 第 1 副本在**写客户端本机**（writer 不在 DataNode 上则取**客户端同一 rack 的随机节点**）、第 2 副本**跨 rack**、第 3 副本与第 2 同 rack 不同节点；硬约束：单节点 ≤1 副本、单 rack ≤2 副本。跨 rack 写变慢是**明码标价的可靠性换性能**（GFS 侧同一取舍：跨 rack 读可吃聚合带宽，写则吃亏）。',
             '共同软肋与土办法：64MB/128MB 大块下，海量小文件集中在个别 DataNode/ChunkServer → 加副本 + 应用启动加**随机延迟**错峰——热点治理在两个系统里都要应用层配合。',
           ],
           followUps: [

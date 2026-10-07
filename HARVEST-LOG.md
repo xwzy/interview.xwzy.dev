@@ -62,6 +62,7 @@
 | 51 | 六期·补遗·分布式数据库 19~21 讲（查询优化三讲） | backend.ts be-distributed 19→21 | 2 | 4 条（含新题内） | ✅ 已完成 | 见 git log |
 | 52 | 六期·第二轮事实审查（四分片：backend / ops+sd / ai+career+转投 / career 补充） | 7 个数据文件 | 0 | 修复 18 处（3 P0 + 15 P1） | ✅ 已完成 | 见 git log |
 | 53 | 六期·补遗·leetcode 笔记（3 篇，批 44 规划时遗漏） | cs-fundamentals.ts | 1 | 3 条 | ✅ 已完成 | 见 git log |
+| 54 | 六期·全量覆盖审查（三分片：backend 51 题 / ops+sd 32 题 / ai+career+转投 ~40 题） | 7 个数据文件 | 0 | 修复 12 处（3 P0 + 7 P1 + 2 P2） | ✅ 已完成 | 见 git log |
 | 39 | 六期·私有笔记·消息队列双课程（高手课+RocketMQ） | backend.ts be-mq 7→15 | 8 | 8 条 | ✅ 已完成 | 见 git log |
 | 42 | 六期·私有笔记·educative Grokking Advanced SD（上：Chubby/设计模式/DoorDash） | system-design.ts 新领域 sd-paper | 8 | 3 条 + 转投清单 6 条 | 🟨 上已入库（storage 部分待补跑） | 见 git log |
 
@@ -632,3 +633,16 @@ sigsuspend 竞态、适配策略与边界标记等复核无误。
 **追问增强 3 条**：cs-algo-backtracking +1（括号生成：left<right 剪枝保证前缀合法 + 卡特兰数互链）、cs-algo-sort-compare +1（值域 ∈[0,n) 的 O(n) 计数/原地换位排序——绕开比较下界）、cs-algo-two-pointer-window +1（三次反转 O(1) 原地循环右移 + k 取模细节）。
 
 **范围判定**：面经题目清单的其余条目（链表反转/环检测/K 组、LRU、TopK、公共祖先、非递归遍历、回行矩阵等）均已被 cs-algo 既有手撕题覆盖；汽水瓶换购、构造小于 target 的最大数两道小谜题按"考察密度不足"丢弃；回溯递归.md 的括号生成 Go 解并入追问；知识库/【01】.md 为 0 字节空文件。**至此笔记库全部来源均已走完判定（收割或记录理由），无遗漏。**
+
+## 批 54 · 六期·全量覆盖审查 ✅（对象：批 36~53 全部新增，补齐批 52 抽样未覆盖的部分；至此六期新增每题至少两轮核查达成）
+
+**三分片覆盖**：backend 51 题（零 WebSearch，全部 curl 源码/手册 + 重算）；ops + system-design 32 题（kubernetes.io/Calico/flannel 官方文档 + K8s 源码 MaxNodeScore）；ai + career + 转投约 40 题（arxiv export、USENIX、openproceedings、Google Research pubs、Abseil GitHub raw）。
+
+**修复 12 处**：
+- **P0×3**：① be-redis-string-memory 的 activedefrag `cycle-min/max（25%/75%）` 与任何版本默认不符 → 改为"4.0/5.0 默认 5%/75%，6.0 起默认 1%/25%"（Redis 5.0 server.h 与 6.0 config.c 双向核对）；② be-mysql-flush-dirty 的 `innodb_max_dirty_pages_pct 默认 75%` → 官方手册 5.6/5.7/8.0 均为 **90%**（两处）；③ cs-algo-64-horses"最少 10 场"→ 重算证明支配淘汰后候选是 **9 匹**（原文漏 B3/C2），9 > 8 赛道单场收不完，**保证解为 11 场**，候选集与下界论证同步重写。
+- **P1×7**：Kafka replica.lag 默认分版本（≤2.4 为 10s、2.5+ 为 30s）；session.timeout 默认 3.0+ 为 45s；autoinc_lock_mode 8.0 起默认 2；internal_tmp_disk_storage_engine 8.0 已移除（此四条实为批 52 修复，本批全量复核确认）；IPVS 模式 1.35 废弃/1.40 默认禁用/1.43 移除（补时间线）；调度打分 1.19+ Scheduling Framework 归一化 0~100；Istio sidecar 注入 patchType 为 JSONPatch（非 TwoWayMergePatch）；Wide&Deep 线上收益 +3.9% 为 **App 获取率**（非 CTR，对照 arXiv 原文表列名）；广告"合约高于竞价时广告主让价"→"接受溢价"（经济方向颠倒）；HDFS 第一副本"不在集群则随机"→"取 writer 同 rack 随机节点"。
+- **P2×2**：正则化"五路"实列 4 类→"四大框架级路线"；机器翻译"三代演进"实列 4 阶段→改演进谱系表述。
+
+**通过确认（代表性）**：Redis io-threads 上限 128/自旋 100 万次/`items < io_threads_num*2` 回退（networking.c）、dict_force_resize_ratio=5、raxNode 头 4B、Kafka offsets 50 分区/Old 组位移保留 7 天（OffsetConfig/KafkaConfig 源码）、Dubbo DEFAULT_THREADS=200/状态码 20/30/31/100、RocketMQ selector=3/worker=8、Spanner 2^18 时间窗、Aurora 6 副本 4/6、Hu-Koren α=40 逐字、YouTubeDNN 塔 1024→512→256（官方 PDF）、GNMT 全部细节、OOB 36.8% 重算、Wide&Deep 32 维/1200 维拼接、Netflix 稀疏度 1.18%、Swiss Table 探测步数与内存峰值账、MapReduce OSDI'04 逐句。
+
+**存疑不改（记录在案）**：WAF=7/SAF=2 为课程内部推导（RUM 论文无此数）；NTK 题部分为博客口径；YouTubeDNN"最后行为当测试集"为课程对 rollback 的转述；课程实测数字（绑核尾延迟、Spanner TPS=125 等）沿用"课程口径"纪律。另记录：Abseil 上游 20250814 LTS 起 H2 语义有变（`hash>>57`），题内表述与所引 ≤2025.05 源一致，暂不动。

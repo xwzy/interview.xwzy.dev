@@ -882,7 +882,7 @@ export const opsTrack: Track = {
             '**Endpoints 的准入条件**：selector 选中 + Running + readinessProbe 通过；Pod 异常时自动从 Endpoints 摘除——endpoints 对象由控制平面动态维护，kube-proxy 监听其变化。（来源：深入剖析 Kubernetes 37）',
             '**iptables 模式**：Service VIP 只是 **iptables 规则里的配置，没有对应网络设备——所以 ping 不通 ClusterIP**；KUBE-SVC 链用 `statistic --mode random --probability` 随机分流，且 **probability 必须递减**（1/3、1/2、1）才能等概率（逐条匹配语义）；最终由 KUBE-SEP 链做 **DNAT** 改写目的地址到 Pod IP:Port。',
             '**iptables 模式的瓶颈**：规则数 **O(Pod 数) 线性增长** + 控制循环不断刷新，大规模下刷新慢、匹配开销高——曾是 K8s 承载规模的头号障碍。',
-            '**IPVS 模式**：kube-proxy 创建 kube-ipvs0 虚拟网卡挂 VIP，用内核 **IPVS 模块**（哈希表）做负载均衡（rr 等多种调度算法）——**规则处理下沉内核态、代价与 Pod 数解耦**；但包过滤/SNAT 等辅助动作仍靠 iptables（这部分规则数不随 Pod 增长）。大规模集群建议 `--proxy-mode=ipvs`。',
+            '**IPVS 模式**：kube-proxy 创建 kube-ipvs0 虚拟网卡挂 VIP，用内核 **IPVS 模块**（哈希表）做负载均衡（rr 等多种调度算法）——**规则处理下沉内核态、代价与 Pod 数解耦**；但包过滤/SNAT 等辅助动作仍靠 iptables（这部分规则数不随 Pod 增长）。K8s 1.35 之前的版本，大规模集群建议 `--proxy-mode=ipvs`——**注意：IPVS 模式自 1.35 起官方废弃（1.40 默认禁用、1.43 移除），继任者是 nftables 模式**，新集群不应再选 IPVS，但"哈希表替代线性规则匹配"的性能原理仍是标准考点。',
           ],
           followUps: [
             {
@@ -974,7 +974,7 @@ export const opsTrack: Track = {
           points: [
             '**两个控制循环**：Informer Path（Watch Pod/Node 变化，把待调度 Pod 放进**优先级调度队列**、持续更新 scheduler cache）+ Scheduling Path（出队 → 过滤 → 打分 → 绑定）。（来源：深入剖析 Kubernetes 41/42）',
             '**Predicates（过滤，筛可行节点）**：GeneralPredicates（资源/端口冲突/主机名/nodeSelector）；Volume 类（VolumeZone、**VolumeBinding——Local PV 的 nodeAffinity 在这一步就决定 Pod 必须去哪个节点**）；宿主机类（**Taint/Toleration**、内存压力）；Pod 间类（Affinity/AntiAffinity，**topologyKey 决定作用域**）。执行时对节点并发计算，且有固定检查顺序（便宜的检查放前面）。',
-            '**Priorities（打分 0~10，最高分胜出）**：LeastRequestedPriority（空闲 CPU/内存最多）、BalancedResourceAllocation（CPU/内存使用率**方差最小**，防"CPU 分光、内存大量剩余"的畸形节点）、ImageLocality（大镜像已存在的节点加分，并按镜像分布对冲调度堆叠）。',
+            '**Priorities（打分，最高分胜出）**：LeastRequestedPriority（空闲 CPU/内存最多）、BalancedResourceAllocation（CPU/内存使用率**方差最小**，防"CPU 分光、内存大量剩余"的畸形节点）、ImageLocality（大镜像已存在的节点加分，并按镜像分布对冲调度堆叠）——旧版算法每个优先级打 0~10 分；**1.19+ Scheduling Framework 把 Score 插件统一归一化到 0~100**（NodeResourcesFit/BalancedAllocation/ImageLocality 仍是默认打分插件），概念不变、数值刻度变。',
             '**性能三板斧**：集群状态全量 Cache 化；**Assume 乐观绑定**（先改本地 cache、再异步向 APIServer 真正 Bind——不在关键路径上做远程调用）；无锁化（只对队列和 cache 加锁）。kubelet 收到 Pod 后用 GeneralPredicates 做 **Admit 二次确认**，兜住乐观假设与实际运行之间的时间差。',
           ],
           followUps: [
@@ -1067,7 +1067,7 @@ export const opsTrack: Track = {
             '**声明式三要素**：① 提交 API 对象声明期望状态；② 允许多个写端以 PATCH 修改、不依赖本地原始 YAML；③ 基于对 API 对象的增删改查**自动完成实际状态向期望状态的调谐**。',
             '**架构支撑**：APIServer 是唯一入口（认证/授权后读写 etcd），**etcd 只与 APIServer 直接通信**，scheduler/controller-manager/kubelet 全部经 APIServer 取数——组件解耦与统一鉴权的关键设计。',
             '**list-watch**：各组件用 Informer 对感兴趣的对象 **List 全量 + Watch 增量**，同步进本地 cache 后做决策（调度器、各控制器、kubelet 同构）——配合"水平触发"的控制循环，错过事件也能靠下一轮 reconcile 补偿。',
-            '**落地案例**：Istio 用 Dynamic Admission Control + TwoWayMergePatch，在用户 Pod 提交时**自动注入 Envoy sidecar**——声明式 API 是"给平台写扩展"的基石。（来源：深入剖析 Kubernetes 23）',
+            '**落地案例**：Istio 用 Dynamic Admission Control（mutating webhook），在用户 Pod 提交时**自动注入 Envoy sidecar**——webhook 响应里改写对象只能用 **JSON Patch**（API 规定 patchType 只支持 JSONPatch），APIServer 应用补丁后再落库——声明式 API 是"给平台写扩展"的基石。（来源：深入剖析 Kubernetes 23）',
           ],
           followUps: [
             {

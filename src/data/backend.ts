@@ -2208,9 +2208,9 @@ export const backendTrack: Track = {
           points: [
             '**WAL 的代价**：更新只写内存 + redo log 就返回，内存页与磁盘页不一致即为**脏页**；"抖"的瞬间往往正在 flush 脏页——查询遇到的每个性能毛刺，都要先怀疑刷盘。',
             '**触发 flush 的四种场景**：① **redo log 写满**（write pos 追上 checkpoint）——最糟，所有更新停止、TPS 跌 0，系统全力推进 checkpoint；② **buffer pool 不够**，淘汰页时撞上脏页要先刷盘（常态，但一次查询淘汰太多脏页会明显变慢）；③ 系统空闲；④ 正常关闭。',
-            '**刷盘限速**：`innodb_io_capacity` 告诉 InnoDB 磁盘能力（应设为实测 IOPS，用 fio 压测；SSD 误设 300 会导致刷脏慢于产脏、脏页堆积）；实际速度 = capacity × max(F1(脏页比例，上限 `innodb_max_dirty_pages_pct` 默认 75%), F2(redo 落后量))——两个因素取大。',
+            '**刷盘限速**：`innodb_io_capacity` 告诉 InnoDB 磁盘能力（应设为实测 IOPS，用 fio 压测；SSD 误设 300 会导致刷脏慢于产脏、脏页堆积）；实际速度 = capacity × max(F1(脏页比例，上限 `innodb_max_dirty_pages_pct` 默认 90%), F2(redo 落后量))——两个因素取大。',
             '**flush neighbors 连坐**：刷一个脏页时若相邻页也脏就一起刷，且可蔓延——机械盘时代减少随机 IO 的好设计；SSD（IOPS 富余）应设 `innodb_flush_neighbors=0` 只刷自己，8.0 默认已是 0。',
-            '**反直觉推论与监控**：redo log 配太小（如 100M）→ checkpoint 频繁推进 → 不停刷脏 + 连带触发 change buffer merge，出现"磁盘压力不大但间歇性性能下跌"；经验值是 4 个 1GB。脏页比例 = `Innodb_buffer_pool_pages_dirty / pages_total`，别让它长期逼近 75%。（来源：极客时间·MySQL 实战 45 讲 12）',
+            '**反直觉推论与监控**：redo log 配太小（如 100M）→ checkpoint 频繁推进 → 不停刷脏 + 连带触发 change buffer merge，出现"磁盘压力不大但间歇性性能下跌"；经验值是 4 个 1GB。脏页比例 = `Innodb_buffer_pool_pages_dirty / pages_total`，别让它长期逼近 90% 的上限。（来源：极客时间·MySQL 实战 45 讲 12；默认值按官方手册 5.6~8.0 均为 90 校准）',
           ],
           followUps: [
             {
@@ -2889,7 +2889,7 @@ export const backendTrack: Track = {
           tags: ['Redis', '性能排查', '延迟'],
           points: [
             '**第一步：先判断"真的变慢了吗"**——测**基线性能**：`redis-cli --intrinsic-latency 120` 在**服务端本机**跑（剥离网络变量，测低压力下软硬件本身的最大延迟）；**运行时延迟 ≥ 基线 2 倍**才算变慢。反例：虚拟机里基线本身可达 ~9.9ms，10ms 的运行时延迟只比基线高 1.3%，不是变慢。（来源：极客时间·Redis 核心技术与实战 18/19）',
-            '**Redis 自身两查**：① **慢查询命令**——SMEMBERS/HGETALL 换 SCAN 系列、SORT/SUNION/SINTER 挪到客户端做、KEYS 禁止上生产；② **过期 key 集中删除**——定期删除每 100ms 一轮，过期比例超 25% 就持续循环删除形成阻塞，元凶常是大量 key 用同一 EXPIREAT 时间戳，修法是**过期时间加 1~3 分钟随机抖动**。',
+            '**Redis 自身两查**：① **慢查询命令**——SMEMBERS/HGETALL 换 SCAN 系列、SORT/SUNION/SINTER 挪到客户端做、KEYS 禁止上生产；② **过期 key 集中删除**——定期删除每 100ms 一轮（hz=10），单轮采样 20 个 key，过期占比超阈值就持续循环删除形成阻塞（5.0 及以前阈值 25%，6.0 起收紧为 10%），元凶常是大量 key 用同一 EXPIREAT 时间戳，修法是**过期时间加 1~3 分钟随机抖动**。',
             '**文件系统（AOF）**：everysec 的 fsync 在后台子线程做，但**主线程发现上一次 fsync 未完成时会阻塞等待**；AOF 重写大量抢磁盘 IO 会连锁拖慢主线程。缓解：`no-appendfsync-on-rewrite yes`（重写期间不 fsync，宕机多丢数据换性能）；高可靠 + 高性能就换 SSD。',
             '**操作系统两查之 swap**：实例 5000 万次 GET 从 300s 涨到近 4 小时（延迟约 48 倍）的真实案例；排查 `cat /proc/<pid>/smaps | egrep "Swap|Size"`，出现百 MB~GB 级 Swap 必须处理（加内存 / 拆实例 / 驱赶同机大内存邻居）。',
             '**操作系统两查之内存大页 THP**：大页 2MB vs 常规 4KB——持久化期间写时复制时改 100B 也要拷 2MB，`/sys/kernel/mm/transparent_hugepage/enabled` 应设 **never**。',
@@ -2938,7 +2938,7 @@ export const backendTrack: Track = {
             '**String 的内存账**（课程案例：10 位图片 ID → 10 位对象 ID，有效数据 16B）：SDS + RedisObject（8B 元数据 + 8B 指针）+ **dictEntry**（3 个 8B 指针 = 24B，jemalloc 向上对齐到 **32B**）——实际占 **64B**；**1 亿条记录 = 6.4GB，其中 4.8GB 是元数据**。（来源：极客时间·Redis 核心技术与实战 11）',
             '**省内存方案：集合类型二级编码**——用 ziplist/listpack 布局省掉大量 dictEntry 开销：图片 ID 前 7 位做 Hash key、后 3 位 + 对象 ID 做 field/value，每条降到 **16B（原来的 1/4）**；配套把 hash-max-ziplist-entries 设为 1000 保证不转哈希表（**一旦转哈希表就不可逆**）。',
             '**内存碎片的成因与度量**：内因是分配器（jemalloc）按固定大小分桶（8B/16B/32B…），外因是键值大小不一 + 反复删改；`INFO memory` 的 **mem_fragmentation_ratio = used_memory_rss / used_memory**——**1~1.5 合理、>1.5 要处理、<1 说明发生 swap**（物理内存反而小于申请量）。（来源：极客时间·Redis 核心技术与实战 20）',
-            '**碎片治理**：① 重启（粗暴，有不可用窗口与恢复成本）；② **activedefrag 自动清理（4.0-RC3+）**——"搬家让位、合并空间"，但内存拷贝会拖慢单线程：active-defrag-ignore-bytes（默认 100MB）、threshold-lower（10%）控制启动时机，cycle-min/max（**25%/75%**）限制清理占用的 CPU 比例。',
+            '**碎片治理**：① 重启（粗暴，有不可用窗口与恢复成本）；② **activedefrag 自动清理（4.0-RC3+）**——"搬家让位、合并空间"，但内存拷贝会拖慢单线程：active-defrag-ignore-bytes（默认 100MB）、threshold-lower（10%）控制启动时机，cycle-min/max 限制清理占用的 CPU 比例（4.0/5.0 默认 5%/75%，6.0 起默认 1%/25%）。',
           ],
           followUps: [
             {
