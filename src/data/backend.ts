@@ -2280,7 +2280,7 @@ export const backendTrack: Track = {
           points: [
             '**执行拆解**：`order by rand() limit 3` 的 explain 显示 **Using temporary + Using filesort**：建内存临时表（memory 引擎、无索引）→ 全表扫描逐行生成随机数写入（1 万行）→ 对临时表排序再全扫一遍（+1 万）→ 取 3 行（+3）——Rows_examined = 20003，几乎全部是无效功。',
             '**排序模式的镜像选择**：临时表排序选 **rowid 模式**（sort_buffer 只放随机值 + 位置信息）——因为 memory 引擎回表只是数组下标访问、不涉及磁盘，优化器优先选"排序行更小"；**InnoDB 表则优先全字段排序**（避免回表读盘）——同一设计思想"内存够就多利用内存"，在两种引擎上得出相反结论。',
-            '**内存 → 磁盘的陡增**：数据量超 `tmp_table_size`（默认 16M）时内存临时表**转磁盘临时表**（引擎由 `internal_tmp_disk_storage_engine` 决定，默认 InnoDB），代价陡增。',
+            '**内存 → 磁盘的陡增**：数据量超 `tmp_table_size`（默认 16M）时内存临时表**转磁盘临时表**（5.7 由 `internal_tmp_disk_storage_engine` 决定、默认 InnoDB；8.0 移除该参数、落盘固定 InnoDB），代价陡增。',
             '**优先队列排序**：limit N 很小且 N 元堆装得下 sort_buffer 时，不用归并排序把 1 万行全排完，只维护 N 元堆留前 N——`number_of_tmp_files=0`；limit 1000 超过 sort_buffer 就退化为外部归并排序。',
             '**替代方案与设计哲学**：随机取 Y1..Y3 的 max/min 后一条 `limit N, M-N+1` 语句只扫 C+M+1 行（逐个 `limit Y,1` 严格均匀但要扫 C+Y+1 行；min/max 主键间取随机点在 id 有空洞时概率不均）；哲学是**让数据库只做读写，业务逻辑放业务代码**。延伸：union 去重靠临时表的唯一约束、union all 免临时表；group by 无索引可用时也走临时表 + 排序，`order by null` 免排序、`SQL_BIG_RESULT` 提示直接走 sort_buffer。（来源：极客时间·MySQL 实战 45 讲 16/17/37）',
           ],
@@ -2353,7 +2353,7 @@ export const backendTrack: Track = {
             '**自增值不在表结构文件里**：MyISAM 存数据文件；**InnoDB 5.7 及以前只存内存**，重启后取 max(id)+1（重启本身可能改变 AUTO_INCREMENT 值）；**8.0 起把自增值变更写入 redo log**，重启可恢复。',
             '**不连续的来源**：真正执行插入**之前**自增值就 +1 且**不回退**——唯一键冲突、事务回滚都会留下空洞；批量插入用 **1→2→4 翻倍申领**，用不完浪费（第三种原因）。',
             '**为什么不回退**：回退要么每次申请都判重（多一次主键树查找），要么把自增锁扩大到事务结束（并发骤降）——InnoDB 选择"**只保证递增、不保证连续**"，拿连续性换性能。',
-            '**自增锁三档 `innodb_autoinc_lock_mode`**：0 语句级（5.0 老行为）、1 默认（普通 insert 申请即放，insert…select 等批量语句到语句结束）、2 全部申请即放。生产推荐 **mode=2 + binlog_format=row**：并发放开，且 row 格式记录实际值——statement 格式下备库重放无法复现不连续的 id。',
+            '**自增锁三档 `innodb_autoinc_lock_mode`**：0 语句级（5.0 老行为）、1（5.7 及以前默认：普通 insert 申请即放，insert…select 等批量语句到语句结束）、2 全部申请即放（**8.0 起默认即 2**，配套默认 row 格式）。生产推荐 **mode=2 + binlog_format=row**：并发放开，且 row 格式记录实际值——statement 格式下备库重放无法复现不连续的 id。',
             '**用完行为对比**：表自增 id 到 2^32-1 上限后**保持不变** → 再插入报主键冲突（插入失败，可用性问题）；无主键表的隐藏 **row_id 只写 6 字节**，到 2^48 归 0 循环、**后写覆盖先写**（数据丢失，可靠性问题）——所以要主动建自增主键，可靠性优先于可用性。（来源：极客时间·MySQL 实战 45 讲 39/45）',
           ],
           followUps: [
@@ -3882,7 +3882,7 @@ export const backendTrack: Track = {
           tags: ['Kafka', 'ISR', '高可用', 'CAP'],
           points: [
             'ISR（In-sync Replicas）是与 Leader 保持同步的副本集合，**必然包含 Leader 自己**，极端情况下 ISR 只剩 Leader 一个——它是动态集合，不是配置出来的静态列表。（来源：极客时间·Kafka 核心技术与实战 23）',
-            '判定标准是时间不是条数：Broker 端 `replica.lag.time.max.ms`（默认 10 秒）——Follower 落后 Leader 的**时间间隔**不连续超过该值即算同步，哪怕它保存的消息条数明显少；持续慢于 Leader 写入速度、超时即被踢出（收缩），之后追上进度自动加回（扩张）。JMX 指标 `ISRShrink/ISRExpand` 频繁抖动 = 副本反复进出 ISR，要查网络与 Follower 所在 Broker 的负载。（来源：极客时间·Kafka 核心技术与实战 36）',
+            '判定标准是时间不是条数：Broker 端 `replica.lag.time.max.ms`（2.4 及以前默认 10 秒，2.5+ 默认 30 秒）——Follower 落后 Leader 的**时间间隔**不连续超过该值即算同步，哪怕它保存的消息条数明显少；持续慢于 Leader 写入速度、超时即被踢出（收缩），之后追上进度自动加回（扩张）。JMX 指标 `ISRShrink/ISRExpand` 频繁抖动 = 副本反复进出 ISR，要查网络与 Follower 所在 Broker 的负载。（来源：极客时间·Kafka 核心技术与实战 36）',
             '与高水位联动：分区 HW 计算要求副本「在 ISR 中」且 LEO 落后不超过 replica.lag.time.max.ms **两个条件同时成立**——刚追上进度但尚未回到 ISR 的副本不算，防止出现 HW > LEO 的矛盾状态。',
             'Unclean Leader Election：ISR 全挂（含 Leader）时，把「不在 ISR 中的存活副本」选为新 Leader，由 Broker 端 `unclean.leader.election.enable` 控制——开启换可用性、必然可能丢数据；关闭保一致性、分区不可用。课程强烈建议保持 false（新版本默认即 false）。（来源：极客时间·Kafka 核心技术与实战 11）',
           ],
@@ -3891,7 +3891,7 @@ export const backendTrack: Track = {
               question: '为什么 0.9 之后用「落后时间」而不是「落后条数」判定同步？',
               points: [
                 '条数阈值在瞬时高峰下会**误杀健康 Follower**：突发流量下正常副本也会短暂落后一大截，按条数判定就把它们踢出 ISR，引发无意义的收缩/扩张抖动。',
-                '时间窗口天然容忍突发：「持续落后超过 10 秒」才判定真的跟不上——用时间衡量抗抖动性远好于条数，这也是绝大多数流式系统用 lag time 而不是 lag count 做存活判定的共性。（来源：极客时间·Kafka 核心技术与实战 23）',
+                '时间窗口天然容忍突发：「持续落后超过该阈值（旧默认 10 秒）」才判定真的跟不上——用时间衡量抗抖动性远好于条数，这也是绝大多数流式系统用 lag time 而不是 lag count 做存活判定的共性。（来源：极客时间·Kafka 核心技术与实战 23）',
               ],
             },
             {
@@ -4027,7 +4027,7 @@ export const backendTrack: Track = {
           tags: ['Kafka', '重平衡', '故障排查', '参数调优'],
           points: [
             '先定治理目标：计划内的增减成员无法避免，要消灭的是「不必要重平衡」——绝大多数是被 Coordinator **误判死亡**或**消费超时**引发的；消费者组 join rate/sync rate 指标持续偏高就是重平衡频繁的监控印证。（来源：极客时间·Kafka 核心技术与实战 17/19/25）',
-            '第一类·心跳不及时被踢：配方 `session.timeout.ms=6s`（课程推荐，默认 10s，越小越快揪出僵尸成员）+ `heartbeat.interval.ms=2s`，并保证 **session.timeout.ms ≥ 3 × heartbeat.interval.ms**——被判死前至少发出 3 轮心跳。',
+            '第一类·心跳不及时被踢：配方 `session.timeout.ms=6s`（课程推荐；2.x 默认 10s、3.0 起默认已调到 45s，越小越快揪出僵尸成员）+ `heartbeat.interval.ms=2s`，并保证 **session.timeout.ms ≥ 3 × heartbeat.interval.ms**——被判死前至少发出 3 轮心跳。',
             '第二类·消费太慢主动离组：max.poll.interval.ms（默认 5 分钟）内没处理完 poll 返回的一批，消费者主动离组。定量配方：单条处理最长 2s × max.poll.records 500 = 一批要 1000s，要么把 max.poll.interval.ms 调到 1000s 以上，要么把 max.poll.records 降到 150。四板斧按优先级：**缩短单条处理耗时 > 调大 max.poll.interval.ms > 调小 max.poll.records > 多线程加速消费**（最难，位移提交易错）。（来源：极客时间·Kafka 核心技术与实战 19）',
             '参数设计演进要能讲：0.10.1.0 之前「消费超时」与「存活判活」共用 session.timeout.ms，两者诉求天然冲突（判活要短、消费要长）；引入 max.poll.interval.ms 把「消费能力」从「存活性」中剥离——一个参数拆成两个各管各的。',
             '参数都对还在重平衡就去查 GC：频繁 Full GC 的长停顿会让心跳线程/主线程停摆，翻 kafkaServer-gc.log。另有冷门坑：Standalone Consumer 与消费者组撞了相同 group.id，提交位移必抛 CommitFailedException 且四板斧全部无效——多团队共用集群时按规范规划 group.id。（来源：极客时间·Kafka 核心技术与实战 19）',
@@ -4532,7 +4532,7 @@ export const backendTrack: Track = {
           difficulty: 'intermediate',
           tags: ['HDFS', 'MapReduce', '分布式存储', '大数据'],
           points: [
-            '**单机天花板先立住**：Linux **inode** 固定 15 个索引（12 直接 + 1/2/3 级间接），4K 块下单文件上限约 70G；机械盘随机读写受磁头移动（毫秒级）制约——单机文件系统到不了 100T。（来源：后端技术面试 38 讲 05）',
+            '**单机天花板先立住**：Linux **inode** 固定 15 个索引（12 直接 + 1/2/3 级间接），4K 块下单文件上限可推导：12×4K + 1K×4K + 1K²×4K + 1K³×4K ≈ **4TB**（每块存 1K 个 4 字节指针）——TB 级天花板，远到不了 100T；机械盘随机读写受磁头移动（毫秒级）制约。（来源：后端技术面试 38 讲 05）',
             '**递进方案一：RAID（多盘当一个用）**——RAID 0 条带并行（容量/速度 ×N，一块坏全坏）、RAID 1 镜像、RAID 10 兼得但利用率 50%、RAID 5 N-1 数据 + 1 校验（利用率 (N-1)/N，坏一块可算回）、RAID 6 双校验防坏两块；但单机插盘数有限（8 盘 ≈ 7 倍），仍不够 100T。（来源：后端技术面试 38 讲 05）',
             '**递进方案二：HDFS——设计同构性是答题主线**：**inode → NameNode**（元数据：路径/权限/块 ID 与位置），**数据块 → DataNode**（块分布存储），默认 3 副本跨服务器甚至跨机架；客户端可**并行读多个数据块**——数千台集群上并发遍历，1 分钟绰绰有余。元数据与数据分离、数据永不经过 NameNode，与「单机 inode 索引数据块」是同一设计。（来源：后端技术面试 38 讲 31/05）',
             '**存下来还要算得快：移动计算不移动数据**——MapReduce 把计算程序调度到数据所在节点读本地块（数据本地性），map 输出 <k,v>，**shuffle 把相同 key 聚到同一 reduce** 完成关联；**Hive = SQL 编译成 Operator DAG 再映射到 map/reduce**；**Spark 用内存存中间结果 + RDD 算子链**，复杂计算一个 DAG 完成（分钟级批处理不够用再上流计算 Flink）。收束：大数据就是**分布式技术在计算领域的应用**，与缓存/MQ/存储同一思想（用更多机器换算力）；差别是数据有关联性，需要中心元数据节点管理。（来源：后端技术面试 38 讲 31）',

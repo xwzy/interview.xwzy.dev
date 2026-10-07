@@ -1487,7 +1487,7 @@ export const csTrack: Track = {
             {
               question: 'RUM 猜想给 LSM vs B+ 树之争提供了什么理论骨架？',
               points: [
-                '**RUM 猜想**（SIGMOD/EDBT 2016）：**Read / Update（写）/ Storage 三种开销最多同时优化两个**——B+ 树选了读与空间（写放大高）、LSM 选了写与空间（读放大高），只是选了不同的角。（来源：分布式数据库 30 讲 22）',
+                '**RUM 猜想**（EDBT 2016）：**Read / Update（写）/ Storage 三种开销最多同时优化两个**——按论文的角位：**B+ 树占了读的角**（快读的代价是写放大与页内空间冗余），**LSM 占了写的角**（快写的代价是读放大与多副本空间开销），只是选了不同的角。（来源：分布式数据库 30 讲 22、RUM 论文 EDBT 2016）',
                 '**量化账**：B+Tree 插入一条记录牵动 3 页 7 条索引记录（**WAF=7**），Tiered 合并 **SAF=2**（新旧两份并存）vs B+Tree 1.33——"LSM 写放大比 B+Tree 还严重（Tiered 时）"是反直觉点；Leveled 每层 10 倍容量、配布隆过滤器后读复杂度 O(X+L-1+logN)。',
                 '**WiscKey（FAST 2016）**：compact 的本质是整理 key，value 重写纯属浪费 → **KV 分离**存储（前提是 SSD 随机读够快）——TiDB TiTan 的理论来源； Pebble/TiTan/轮转合并/TiFlash Delta Tree（Delta≈L0、Stable≈L1）说明**列存也在 LSM 化保写入**。',
               ],

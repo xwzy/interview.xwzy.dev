@@ -60,6 +60,7 @@
 | 49 | 六期·私有笔记·产品设计课程精选 | career.ts 42→49 | 7 | 3 条 + 转投 1 | ✅ 已完成 | 见 git log |
 | 50 | 六期·收尾审查与终版校准 | 全库 + README/大纲 | 0 | verify 全绿 | ✅ 已完成 | 见 git log |
 | 51 | 六期·补遗·分布式数据库 19~21 讲（查询优化三讲） | backend.ts be-distributed 19→21 | 2 | 4 条（含新题内） | ✅ 已完成 | 见 git log |
+| 52 | 六期·第二轮事实审查（四分片：backend / ops+sd / ai+career+转投 / career 补充） | 7 个数据文件 | 0 | 修复 18 处（3 P0 + 15 P1） | ✅ 已完成 | 见 git log |
 | 39 | 六期·私有笔记·消息队列双课程（高手课+RocketMQ） | backend.ts be-mq 7→15 | 8 | 8 条 | ✅ 已完成 | 见 git log |
 | 42 | 六期·私有笔记·educative Grokking Advanced SD（上：Chubby/设计模式/DoorDash） | system-design.ts 新领域 sd-paper | 8 | 3 条 + 转投清单 6 条 | 🟨 上已入库（storage 部分待补跑） | 见 git log |
 
@@ -608,3 +609,15 @@ sigsuspend 竞态、适配策略与边界标记等复核无误。
 **新题 2**（backend.ts，be-distributed 19→21）：be-distributed-pushdown-index（计算下推：Data Shipping vs Code Shipping、TiDB 缓存写提交与漏读 Merge 方案、分区索引 co-located 与分片分裂 Bucket 方案、全局索引两笔账——读两轮通讯+写多分布式事务；追问：唯一索引为何必须全局、Join 下推前提与倾斜代价）、be-distributed-join-strategies（单机算法谱系 SNLJ/BNLJ/ILJ/SMJ/GHJ/HHJ、TiDB 存储不互联与 TiSpark/OB MPP 两条解法、复制表与小表广播、大表重分布分级代价；追问：GHJ 与 Spark Shuffle 同构、Inner 表选择受保留语义约束——课程思考题口径）。
 
 第 21 讲（聚合加速）与 19/20 讲重叠度高（下推+并行框架已被两题承接），不再单列。**iCloud 占位文件确认不可恢复**：brctl 报 "Path is outside of any CloudDocs app library"（从 iCloud Drive 拷出的死副本），机器学习/DRL/nginx/memcache 笔记需用户从原始笔记应用重新导出，已在迁移大纲 C 节标注。
+
+## 批 52 · 六期·第二轮事实审查 ✅（对象：批 36~51 全部新增内容，四分片抽样核查）
+
+**核查方式**：按文件分四片并行/补跑，每片列硬断言清单（数字/参数默认值/版本行为/归因），对照官方文档与论文原文核实（Chubby OSDI 2006、GFS SOSP 2003、Dynamo SOSP 2007、BigTable OSDI 2006 全文抓取；Redis 7.0/Dubbo 2.7.23/RocketMQ 5.2.0/Kafka trunk 源码逐字核对；MySQL 手册、Spanner 论文、kubernetes.io、阮一峰排名算法文等）。P0=数值错/机制张冠李戴，P1=缺限定/过绝对，边缘小注按历期纪律不列错。
+
+**修复 18 处（3 P0 + 15 P1）**：
+- **P0×3**：① inode 索引上限"单文件约 70G"→标准推导 ≈4TB（12×4K+1K×4K+1K²×4K+1K³×4K）；② 调整余弦示例"-0.1"实算不可复现且与自身叙述矛盾→改为 -1 并补皮尔逊辨析；③ 加权采样"以权重为均值的指数分布"参数化错误→改为 Eᵢ=−ln(R)/wᵢ（率=wᵢ）取最小 k 个。
+- **P1×15（摘要）**：注意力出生于 Bahdanau 2014（非 GNMT 2016/早三年）；GNMT 注意力连接层级（编码器顶层↔解码器底层）；GAN 元研究精确到 Lucic et al. 2018；MapReduce 2004 网络账补全（1800 机共享 100~200Gbps 根）；Swiss Table H2 取低 7 bit、元数据组 16B 进 SSE 寄存器、8 线程提速约 1.6 倍；Kafka replica.lag.time.max.ms 2.5+ 默认 30s（原 10s）；session.timeout.ms 3.0+ 默认 45s；MySQL 8.0 autoinc_lock_mode 默认已是 2；internal_tmp_disk_storage_engine 8.0 已移除；DaemonSet"不走调度器"→"锁死 nodeAffinity 后仍由调度器绑定"；kubeadm 1.24+ control-plane 污点演进；Kafka quota 按 broker 各自计量；lock-delay 为"上限 1 分钟"；Git 类比非 Dynamo 论文原文；RUM 猜想出处 EDBT 2016 及角位归属。
+
+**通过确认（抽查全绿的代表性断言）**：embstr 44 推导、LAZYFREE_THRESHOLD=64、Dubbo 16B 头全字段、retries=2 总 3 次、RocketMQ 流控三阈值、max.poll.records=500、Spanner commit-wait 2ɛ、Chubby 租约 12s→60s/Grace 45s/KeepAlive 93%、GFS 64MB chunk/lease 60s、Dynamo (3,2,2)/时钟截断、BigTable tablet 100~200MB、K8s 1.28 原生 sidecar/优先级 10 亿分界/backoffLimit 6、HN 公式/贝叶斯平均/BPR/YouTubeDNN/Simhash≤3/Netflix 稀疏度 1.18% 实算、eCPM 竞价算例。
+
+**存疑不改（记录在案）**：课程实测口径（Dubbo 直调 8ms 等）外部不可证伪且自洽；Cassandra 4.0 read repair 语义变化（来源已标 Grokking）；YouTubeDNN 层宽按广泛复现口径（一手 PDF 403）。另：Glossary md（29 行术语小抄）判定无增量；iCloud 占位确认不可恢复（brctl 报 Path outside CloudDocs library）。

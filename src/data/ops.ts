@@ -1009,8 +1009,8 @@ export const opsTrack: Track = {
           points: [
             '**方向性**：污点打在 **Node** 上、容忍写在 **Pod** 上；调度器用 PodToleratesNodeTaints 规则过滤——Pod 没有对应容忍就进不去这个节点。（来源：深入剖析 Kubernetes 42/21）',
             '**三种 effect**：**NoSchedule**（只拦新调度）、**PreferNoSchedule**（尽量不调度，软性）、**NoExecute**（拦新调度 + **驱逐已在运行**的 Pod——存量也会被赶走）。',
-            '**经典用途**：master 默认打 `node-role.kubernetes.io/master:NoSchedule` 隔离控制面；**DaemonSet 模板自带对 master 污点的容忍**以覆盖全节点；GPU 等专用节点打污点只放行指定业务（配 tolerations 精确放行）。',
-            '**DaemonSet 的特殊性**：它**不走调度器**——控制器直接给 Daemon Pod 写入 nodeAffinity 落节点，所以新节点一加入 Pod 就自动创建（哪怕节点 NotReady 也能先起网络/存储 Agent——这正是 DaemonSet 运行时机早于集群可用的原因）。',
+            '**经典用途**：控制面节点默认打污点隔离（旧版 `node-role.kubernetes.io/master:NoSchedule`；1.24+ 的 kubeadm 改用 `node-role.kubernetes.io/control-plane:NoSchedule`，master 污点已废弃）；**DaemonSet 模板自带对 master 污点的容忍**以覆盖全节点；GPU 等专用节点打污点只放行指定业务（配 tolerations 精确放行）。',
+            '**DaemonSet 的特殊性**：它**不走"自由选点"的常规调度**——控制器直接给 Daemon Pod 写入 nodeAffinity 把落点锁死（1.12+ 起最终绑定仍由默认调度器完成，但节点在 Pod 创建时已被指定），所以新节点一加入 Pod 就自动创建；哪怕节点 NotReady 也能先起网络/存储 Agent（DaemonSet Pod 自动容忍 not-ready/unreachable 污点）——这正是 DaemonSet 运行时机早于集群整体可用的原因。',
           ],
           followUps: [
             {
